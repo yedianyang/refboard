@@ -463,13 +463,16 @@ async function analyzeCommand(args) {
   const provider = ai.getProvider(opts.provider);
 
   log(`Analyzing: ${basename(imagePath)}`);
-  const result = await provider.analyzeImage(imagePath, opts.prompt);
-
-  if (opts.json) {
-    console.log(JSON.stringify(result));
-  } else {
-    log(`\nDescription: ${result.description}`);
-    if (result.tags?.length) log(`Tags: ${result.tags.join(', ')}`);
+  try {
+    const result = await provider.analyzeImage(imagePath, opts.prompt);
+    if (opts.json) {
+      console.log(JSON.stringify(result));
+    } else {
+      log(`\nDescription: ${result.description}`);
+      if (result.tags?.length) log(`Tags: ${result.tags.join(', ')}`);
+    }
+  } catch (e) {
+    exit(e.message);
   }
 }
 
@@ -578,12 +581,15 @@ async function askCommand(args) {
   ];
 
   log('Thinking...\n');
-  const answer = await provider.chat(messages);
-
-  if (opts.json) {
-    console.log(JSON.stringify({ answer }));
-  } else {
-    log(answer);
+  try {
+    const answer = await provider.chat(messages);
+    if (opts.json) {
+      console.log(JSON.stringify({ answer }));
+    } else {
+      log(answer);
+    }
+  } catch (e) {
+    exit(e.message);
   }
 }
 
