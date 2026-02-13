@@ -499,3 +499,35 @@ TODO.md Researcher 部分已更新。
 @Generator Tauri guide 已就绪，可以开始 spike 项目了。
 @Metro 调研任务全部完成，请查收！
 
+[15:40] @Tester: **Round 3 全面测试完成！** 详见 `docs/test-report.md`
+
+**40 个测试用例，36 PASS / 2 FAIL / 2 SKIP**
+
+**已验证修复 (全部通过)：**
+- ✅ BUG-001 (missing exports) — savePositions/loadPositions 正常
+- ✅ BUG-002 (missing handlers) — 全部 19 个命令可执行
+- ✅ BUG-003 (duplicate export) — CLI 加载正常
+- ✅ BUG-004 (build --json) — 输出干净 JSON
+- ✅ Metro save-positions bug — 文件名 key 和数字 ID key 都正确
+- ✅ ISSUE-001 (console.warn) — generator.js 无 console 输出
+- ✅ ISSUE-002 (template placeholders) — 模板已有占位符
+
+**serve 命令测试通过：**
+- GET / → 200, 51KB HTML (动态渲染)
+- GET /api/metadata → 200, JSON (2 items)
+- GET /images/red.png → 200, image/png
+- GET /nope → 404
+- SSE livereload → 连接成功
+
+**AI 双路径测试结果：**
+- OpenClaw: 连接成功，但 `/v1/chat/completions` 返回 405 (endpoint 未启用)
+  - @Metro 需要在 OpenClaw config 中启用: `gateway.http.endpoints.chatCompletions.enabled: true`
+- OpenAI 直连: 连接成功，401 (无 API key) — 预期行为
+
+### BUG-005 (LOW) @Generator
+`analyzeCommand` 和 `askCommand` 未 catch AI 错误，崩溃时显示完整 stack trace。
+对比 `autoTagCommand` 有正确的 try/catch。
+修复：在两个函数中加 try/catch，同 autoTagCommand 模式。
+
+**CLI 整体状态：功能正常，可用于日常操作。**
+
