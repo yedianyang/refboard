@@ -333,8 +333,11 @@
     <button class="toolbar-btn" id="addStickyBtn" title="Add sticky note">
       📝 Note
     </button>
+    <button class="toolbar-btn" id="autoTileBtn" title="Auto-arrange items in grid">
+      ⊞ Tile
+    </button>
     <button class="toolbar-btn" id="fitViewBtn" title="Fit all items in view">
-      ⊞ Fit View
+      👁 Fit View
     </button>
     <button class="toolbar-btn" id="toggleInfoBtn" title="Toggle info panel">
       ℹ️ Info
@@ -487,6 +490,38 @@
       offsetX = 0;
       offsetY = 0;
       updateTransform();
+    };
+    
+    // Auto-tile - arrange items in a spread grid
+    document.getElementById('autoTileBtn').onclick = () => {
+      const cards = Array.from(document.querySelectorAll('.card'));
+      if (cards.length === 0) return;
+      
+      // Calculate grid dimensions - prefer wide layout
+      const cols = Math.ceil(Math.sqrt(cards.length * 1.5));
+      const cardWidth = 320;
+      const cardHeight = 420;
+      const gapX = 80;
+      const gapY = 60;
+      
+      cards.forEach((card, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const x = col * (cardWidth + gapX) + 100;
+        const y = row * (cardHeight + gapY) + 100;
+        
+        card.style.left = x + 'px';
+        card.style.top = y + 'px';
+        
+        // Save position
+        positions[card.dataset.id] = { x, y };
+      });
+      
+      localStorage.setItem('refboard-positions-{{BOARD_ID}}', JSON.stringify(positions));
+      updateMinimap();
+      
+      // Fit view after tiling
+      setTimeout(() => document.getElementById('fitViewBtn').click(), 50);
     };
     
     // Fit view
