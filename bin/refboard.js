@@ -3,7 +3,9 @@
 import { parseArgs } from 'node:util';
 import { resolve, join, basename, dirname } from 'node:path';
 import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, readdirSync, watch } from 'node:fs';
+import { homedir } from 'node:os';
 import { generateBoard, findImages, autoLayout } from '../lib/generator.js';
+import { generateDashboard, addRecentProject, scanProjects } from '../lib/dashboard.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -17,6 +19,7 @@ const commands = {
   list: listItems,
   remove: removeItem,
   meta: editMeta,
+  home: generateHome,
   help: showHelp,
 };
 
@@ -183,6 +186,9 @@ async function buildBoard(args) {
     
     console.log(`  Items: ${result.itemCount}`);
     console.log(`\n✓ ${outputPath}`);
+    
+    // Add to recent projects
+    addRecentProject(projectDir, config.title);
   } else {
     await legacyBuild();
   }
@@ -298,6 +304,38 @@ async function editMeta(args) {
   console.log(JSON.stringify(item, null, 2));
 }
 
+async function generateHome(args) {
+  const opts = parseOptions(args);
+  const outputFile = resolve(opts.output || join(homedir(), '.refboard', 'home.html'));
+  
+  // Default scan directories
+  const scanDirs = opts.scan 
+    ? opts.scan.split(',').map(d => resolve(d.trim()))
+    : [
+        join(homedir(), 'Projects'),
+        join(homedir(), 'Documents'),
+        process.cwd(),
+      ];
+  
+  console.log('RefBoard Home');
+  console.log('  Scanning:', scanDirs.join(', '));
+  
+  const result = generateDashboard({
+    outputFile,
+    scanDirs,
+    title: 'RefBoard',
+  });
+  
+  console.log(`  Found ${result.projectCount} projects`);
+  console.log(`\n✓ ${outputFile}`);
+  
+  // Auto-open if requested
+  if (opts.open !== false) {
+    const { exec } = await import('node:child_process');
+    exec(`open "${outputFile}"`);
+  }
+}
+
 async function legacyBuild() {
   const options = {
     input: { type: 'string', short: 'i', default: '.' },
@@ -342,6 +380,7 @@ COMMANDS
   refboard list                    List all items
   refboard remove <n|file>         Remove item
   refboard meta <n|file> [opts]    Edit item metadata
+  refboard home [opts]             Open project dashboard
 
 OPTIONS
   --title "..."     Item/board title
