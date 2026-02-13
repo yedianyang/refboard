@@ -6,14 +6,15 @@
   <title>{{TITLE}}</title>
   <style>
     :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface-hover: #1a1a1a;
-      --border: #2a2a2a;
+      --bg: #1a1a1a;
+      --surface: #252525;
+      --surface-hover: #2a2a2a;
+      --border: #333;
       --text: #e0e0e0;
       --text-muted: #888;
       --accent: #d4af37;
       --accent-dim: #a38829;
+      --grid-color: #222;
     }
     
     * {
@@ -26,338 +27,638 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      line-height: 1.6;
+      overflow: hidden;
+      height: 100vh;
+      user-select: none;
     }
     
-    /* Header */
-    .header {
-      padding: 2rem;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
-    }
-    
-    .header h1 {
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-    }
-    
-    .header p {
-      color: var(--text-muted);
-      max-width: 600px;
-    }
-    
-    .meta {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-    
-    /* Filters */
-    .filters {
-      padding: 1rem 2rem;
+    /* Toolbar */
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
       align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      z-index: 1000;
     }
     
-    .filters-label {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      margin-right: 0.5rem;
+    .toolbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
     }
     
-    .tag-filter {
-      background: var(--surface);
+    .toolbar-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+    
+    .toolbar-btn {
+      background: transparent;
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 0.35rem 0.75rem;
-      border-radius: 2rem;
-      font-size: 0.8rem;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
       cursor: pointer;
-      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     
-    .tag-filter:hover {
-      border-color: var(--accent-dim);
+    .toolbar-btn:hover {
+      background: var(--surface-hover);
       color: var(--text);
     }
     
-    .tag-filter.active {
+    .toolbar-btn.active {
       background: var(--accent);
       border-color: var(--accent);
       color: #000;
     }
     
-    .clear-filters {
-      background: transparent;
-      border: none;
-      color: var(--accent);
-      cursor: pointer;
-      font-size: 0.8rem;
-      margin-left: 0.5rem;
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
     }
     
-    .clear-filters:hover {
-      text-decoration: underline;
+    .zoom-level {
+      font-size: 12px;
+      color: var(--text-muted);
+      min-width: 48px;
+      text-align: center;
     }
     
-    /* Grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 1.5rem;
-      padding: 2rem;
+    /* Canvas */
+    .canvas-container {
+      position: fixed;
+      top: 48px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      cursor: grab;
+      background: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 40px 40px;
+      background-position: center center;
+    }
+    
+    .canvas-container.dragging {
+      cursor: grabbing;
+    }
+    
+    .canvas {
+      position: absolute;
+      transform-origin: 0 0;
     }
     
     /* Cards */
     .card {
+      position: absolute;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
       overflow: hidden;
-      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: move;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: box-shadow 0.2s;
+      min-width: 200px;
+      max-width: 400px;
     }
     
     .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
     
-    .card.hidden {
-      display: none;
+    .card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(0,0,0,0.5);
+    }
+    
+    .card.dragging {
+      opacity: 0.9;
+      z-index: 100;
     }
     
     .card-image {
-      position: relative;
+      width: 100%;
+      max-height: 300px;
+      overflow: hidden;
       background: #000;
-      cursor: pointer;
     }
     
     .card-image img {
       width: 100%;
-      height: 360px;
-      object-fit: contain;
-      object-position: center top;
+      height: auto;
       display: block;
-      transition: opacity 0.2s;
-      background: #000;
-    }
-    
-    .card-image:hover img {
-      opacity: 0.9;
+      pointer-events: none;
     }
     
     .card-content {
-      padding: 1rem;
+      padding: 12px;
     }
     
     .card-title {
-      font-size: 1.1rem;
+      font-size: 14px;
       font-weight: 600;
-      margin-bottom: 0.25rem;
+      margin-bottom: 4px;
       color: var(--text);
     }
     
     .card-artist {
-      font-size: 0.9rem;
+      font-size: 12px;
       color: var(--accent);
-      margin-bottom: 0.5rem;
+      margin-bottom: 8px;
     }
     
     .card-description {
-      font-size: 0.85rem;
+      font-size: 11px;
       color: var(--text-muted);
-      margin-bottom: 0.75rem;
-    }
-    
-    .card-details {
-      margin: 0.5rem 0;
-      font-size: 0.85rem;
-    }
-    
-    .card-details summary {
-      color: var(--accent-dim);
-      cursor: pointer;
-      padding: 0.25rem 0;
-    }
-    
-    .card-details summary:hover {
-      color: var(--accent);
-    }
-    
-    .card-details p {
-      color: var(--text-muted);
-      padding: 0.5rem 0;
-      border-left: 2px solid var(--border);
-      padding-left: 0.75rem;
-      margin-top: 0.5rem;
+      line-height: 1.5;
     }
     
     .card-tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-top: 0.75rem;
+      gap: 4px;
+      margin-top: 8px;
     }
     
     .tag {
       background: var(--bg);
       border: 1px solid var(--border);
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
       color: var(--text-muted);
     }
     
-    /* Lightbox */
-    .lightbox {
+    /* Sticky Notes */
+    .sticky {
+      position: absolute;
+      width: 200px;
+      min-height: 100px;
+      background: #fef08a;
+      border: none;
+      border-radius: 2px;
+      padding: 12px;
+      cursor: move;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+      font-size: 13px;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+    
+    .sticky.selected {
+      box-shadow: 0 0 0 2px var(--accent), 2px 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .sticky-content {
+      outline: none;
+      min-height: 60px;
+    }
+    
+    /* Info Panel */
+    .info-panel {
       position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.95);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      cursor: zoom-out;
+      right: 0;
+      top: 48px;
+      bottom: 0;
+      width: 320px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      padding: 16px;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.2s;
+      z-index: 999;
     }
     
-    .lightbox.active {
-      display: flex;
+    .info-panel.open {
+      transform: translateX(0);
     }
     
-    .lightbox img {
-      max-width: 90vw;
-      max-height: 90vh;
-      object-fit: contain;
-      border-radius: 4px;
+    .info-panel h2 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: var(--accent);
     }
     
-    .lightbox-close {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
+    .info-panel h3 {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 16px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .info-panel p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    
+    .info-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
       background: transparent;
       border: none;
-      color: var(--text);
-      font-size: 2rem;
-      cursor: pointer;
-      opacity: 0.7;
-    }
-    
-    .lightbox-close:hover {
-      opacity: 1;
-    }
-    
-    /* Footer */
-    .footer {
-      padding: 2rem;
-      text-align: center;
-      border-top: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 0.8rem;
+      font-size: 20px;
+      cursor: pointer;
     }
     
-    .footer a {
-      color: var(--accent);
-      text-decoration: none;
+    /* Minimap */
+    .minimap {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      width: 160px;
+      height: 100px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      z-index: 998;
     }
     
-    .footer a:hover {
-      text-decoration: underline;
+    .minimap-viewport {
+      position: absolute;
+      border: 1px solid var(--accent);
+      background: rgba(212, 175, 55, 0.1);
+      pointer-events: none;
     }
     
-    /* Responsive */
-    @media (max-width: 640px) {
-      .header { padding: 1.5rem 1rem; }
-      .header h1 { font-size: 1.5rem; }
-      .filters { padding: 1rem; }
-      .grid { padding: 1rem; gap: 1rem; }
-      .grid { grid-template-columns: 1fr; }
+    .minimap-item {
+      position: absolute;
+      background: var(--accent-dim);
+      border-radius: 1px;
+    }
+    
+    /* Help */
+    .help-text {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 998;
+    }
+    
+    .help-text kbd {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin: 0 2px;
     }
   </style>
 </head>
 <body>
-  <header class="header">
+  <div class="toolbar">
     <h1>{{TITLE}}</h1>
-    <p>{{DESCRIPTION}}</p>
-    <div class="meta">{{ITEM_COUNT}} references · Generated {{GENERATED_AT}}</div>
-  </header>
-  
-  <div class="filters">
-    <span class="filters-label">Filter:</span>
-    <button class="tag-filter active" data-tag="all">All</button>
-    {{TAGS}}
-    <button class="clear-filters" style="display:none">Clear</button>
+    <div class="toolbar-divider"></div>
+    <button class="toolbar-btn" id="addStickyBtn" title="Add sticky note">
+      📝 Note
+    </button>
+    <button class="toolbar-btn" id="fitViewBtn" title="Fit all items in view">
+      ⊞ Fit View
+    </button>
+    <button class="toolbar-btn" id="toggleInfoBtn" title="Toggle info panel">
+      ℹ️ Info
+    </button>
+    <div class="zoom-controls">
+      <button class="toolbar-btn" id="zoomOutBtn">−</button>
+      <span class="zoom-level" id="zoomLevel">100%</span>
+      <button class="toolbar-btn" id="zoomInBtn">+</button>
+      <button class="toolbar-btn" id="resetZoomBtn">Reset</button>
+    </div>
   </div>
   
-  <main class="grid">
-    {{ITEMS}}
-  </main>
-  
-  <div class="lightbox" id="lightbox">
-    <button class="lightbox-close">&times;</button>
-    <img src="" alt="">
+  <div class="canvas-container" id="canvasContainer">
+    <div class="canvas" id="canvas">
+      {{ITEMS}}
+    </div>
   </div>
   
-  <footer class="footer">
-    Generated with <a href="https://github.com/jingxiguo/refboard">RefBoard</a>
-  </footer>
+  <div class="info-panel" id="infoPanel">
+    <button class="info-close" id="infoClose">&times;</button>
+    <h2 id="infoTitle">Select an item</h2>
+    <div id="infoContent">
+      <p style="color: var(--text-muted)">Click on a card to see details</p>
+    </div>
+  </div>
+  
+  <div class="minimap" id="minimap"></div>
+  
+  <div class="help-text">
+    <kbd>Scroll</kbd> Zoom · <kbd>Drag</kbd> Pan · <kbd>Click</kbd> Select · <kbd>Double-click</kbd> Details
+  </div>
   
   <script>
-    // Lightbox
-    const lightbox = document.getElementById('lightbox');
-    const lightboxImg = lightbox.querySelector('img');
+    // Canvas state
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let selectedCard = null;
+    let cardDragging = null;
+    let cardDragStartX = 0;
+    let cardDragStartY = 0;
     
-    document.querySelectorAll('.card-image').forEach(el => {
-      el.addEventListener('click', () => {
-        lightboxImg.src = el.querySelector('img').src;
-        lightbox.classList.add('active');
+    const container = document.getElementById('canvasContainer');
+    const canvas = document.getElementById('canvas');
+    const zoomLevel = document.getElementById('zoomLevel');
+    const infoPanel = document.getElementById('infoPanel');
+    const minimap = document.getElementById('minimap');
+    
+    // Item data
+    const items = {{ITEMS_DATA}};
+    
+    // Initialize positions if not set
+    let positions = JSON.parse(localStorage.getItem('refboard-positions-{{BOARD_ID}}') || '{}');
+    
+    function updateTransform() {
+      canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+      zoomLevel.textContent = Math.round(scale * 100) + '%';
+      updateBackgroundGrid();
+      updateMinimap();
+    }
+    
+    function updateBackgroundGrid() {
+      const gridSize = 40 * scale;
+      container.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+      container.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+    }
+    
+    // Pan
+    container.addEventListener('mousedown', (e) => {
+      if (e.target === container || e.target === canvas) {
+        isDragging = true;
+        dragStartX = e.clientX - offsetX;
+        dragStartY = e.clientY - offsetY;
+        container.classList.add('dragging');
+      }
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        offsetX = e.clientX - dragStartX;
+        offsetY = e.clientY - dragStartY;
+        updateTransform();
+      }
+      
+      if (cardDragging) {
+        const dx = (e.clientX - cardDragStartX) / scale;
+        const dy = (e.clientY - cardDragStartY) / scale;
+        const card = cardDragging;
+        const id = card.dataset.id;
+        const pos = positions[id] || { x: 0, y: 0 };
+        card.style.left = (pos.x + dx) + 'px';
+        card.style.top = (pos.y + dy) + 'px';
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (isDragging) {
+        isDragging = false;
+        container.classList.remove('dragging');
+      }
+      
+      if (cardDragging) {
+        const card = cardDragging;
+        const id = card.dataset.id;
+        positions[id] = {
+          x: parseInt(card.style.left),
+          y: parseInt(card.style.top)
+        };
+        localStorage.setItem('refboard-positions-{{BOARD_ID}}', JSON.stringify(positions));
+        card.classList.remove('dragging');
+        cardDragging = null;
+      }
+    });
+    
+    // Zoom
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
+      
+      // Zoom towards mouse position
+      const scaleChange = newScale / scale;
+      offsetX = mouseX - (mouseX - offsetX) * scaleChange;
+      offsetY = mouseY - (mouseY - offsetY) * scaleChange;
+      scale = newScale;
+      
+      updateTransform();
+    });
+    
+    // Zoom buttons
+    document.getElementById('zoomInBtn').onclick = () => {
+      scale = Math.min(5, scale * 1.2);
+      updateTransform();
+    };
+    
+    document.getElementById('zoomOutBtn').onclick = () => {
+      scale = Math.max(0.1, scale / 1.2);
+      updateTransform();
+    };
+    
+    document.getElementById('resetZoomBtn').onclick = () => {
+      scale = 1;
+      offsetX = 0;
+      offsetY = 0;
+      updateTransform();
+    };
+    
+    // Fit view
+    document.getElementById('fitViewBtn').onclick = () => {
+      const cards = document.querySelectorAll('.card, .sticky');
+      if (cards.length === 0) return;
+      
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      cards.forEach(card => {
+        const x = parseInt(card.style.left) || 0;
+        const y = parseInt(card.style.top) || 0;
+        const w = card.offsetWidth;
+        const h = card.offsetHeight;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w);
+        maxY = Math.max(maxY, y + h);
+      });
+      
+      const contentWidth = maxX - minX + 100;
+      const contentHeight = maxY - minY + 100;
+      const containerRect = container.getBoundingClientRect();
+      
+      scale = Math.min(
+        containerRect.width / contentWidth,
+        containerRect.height / contentHeight,
+        1
+      ) * 0.9;
+      
+      offsetX = (containerRect.width - contentWidth * scale) / 2 - minX * scale;
+      offsetY = (containerRect.height - contentHeight * scale) / 2 - minY * scale;
+      
+      updateTransform();
+    };
+    
+    // Card interactions
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        selectCard(card);
+        
+        cardDragging = card;
+        cardDragStartX = e.clientX;
+        cardDragStartY = e.clientY;
+        card.classList.add('dragging');
+      });
+      
+      card.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        showInfo(card.dataset.id);
       });
     });
     
-    lightbox.addEventListener('click', () => {
-      lightbox.classList.remove('active');
-    });
+    function selectCard(card) {
+      if (selectedCard) selectedCard.classList.remove('selected');
+      selectedCard = card;
+      card.classList.add('selected');
+    }
     
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') lightbox.classList.remove('active');
-    });
+    function showInfo(id) {
+      const item = items.find(i => i.id == id);
+      if (!item) return;
+      
+      document.getElementById('infoTitle').textContent = item.title || item.filename;
+      
+      let html = '';
+      if (item.artist) html += `<p><strong>${item.artist}</strong>${item.year ? ' · ' + item.year : ''}</p>`;
+      if (item.description) {
+        html += `<h3>Description</h3><p>${item.description}</p>`;
+      }
+      if (item.context) {
+        html += `<h3>Historical Context</h3><p>${item.context}</p>`;
+      }
+      if (item.influences) {
+        html += `<h3>Influences</h3><p>${item.influences}</p>`;
+      }
+      if (item.tags && item.tags.length) {
+        html += `<h3>Tags</h3><div class="card-tags">${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>`;
+      }
+      
+      document.getElementById('infoContent').innerHTML = html || '<p style="color: var(--text-muted)">No details available</p>';
+      infoPanel.classList.add('open');
+    }
     
-    // Tag filtering
-    const cards = document.querySelectorAll('.card');
-    const tagButtons = document.querySelectorAll('.tag-filter');
-    const clearBtn = document.querySelector('.clear-filters');
-    let activeTag = 'all';
+    // Info panel toggle
+    document.getElementById('toggleInfoBtn').onclick = () => {
+      infoPanel.classList.toggle('open');
+    };
     
-    tagButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tag = btn.dataset.tag;
+    document.getElementById('infoClose').onclick = () => {
+      infoPanel.classList.remove('open');
+    };
+    
+    // Add sticky note
+    document.getElementById('addStickyBtn').onclick = () => {
+      const sticky = document.createElement('div');
+      sticky.className = 'sticky';
+      sticky.innerHTML = '<div class="sticky-content" contenteditable="true">New note...</div>';
+      sticky.style.left = (-offsetX / scale + 100) + 'px';
+      sticky.style.top = (-offsetY / scale + 100) + 'px';
+      canvas.appendChild(sticky);
+      
+      sticky.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        if (selectedCard) selectedCard.classList.remove('selected');
+        document.querySelectorAll('.sticky.selected').forEach(s => s.classList.remove('selected'));
+        sticky.classList.add('selected');
         
-        tagButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeTag = tag;
-        
-        clearBtn.style.display = tag === 'all' ? 'none' : 'inline';
-        
-        cards.forEach(card => {
-          if (tag === 'all') {
-            card.classList.remove('hidden');
-          } else {
-            const cardTags = JSON.parse(card.dataset.tags || '[]');
-            card.classList.toggle('hidden', !cardTags.includes(tag));
-          }
-        });
+        if (!e.target.matches('.sticky-content')) {
+          cardDragging = sticky;
+          cardDragStartX = e.clientX;
+          cardDragStartY = e.clientY;
+        }
       });
+    };
+    
+    // Minimap
+    function updateMinimap() {
+      const cards = document.querySelectorAll('.card');
+      if (cards.length === 0) return;
+      
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      cards.forEach(card => {
+        const x = parseInt(card.style.left) || 0;
+        const y = parseInt(card.style.top) || 0;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + card.offsetWidth);
+        maxY = Math.max(maxY, y + card.offsetHeight);
+      });
+      
+      const padding = 50;
+      const contentWidth = maxX - minX + padding * 2;
+      const contentHeight = maxY - minY + padding * 2;
+      const mapScale = Math.min(160 / contentWidth, 100 / contentHeight);
+      
+      let html = '';
+      cards.forEach(card => {
+        const x = (parseInt(card.style.left) - minX + padding) * mapScale;
+        const y = (parseInt(card.style.top) - minY + padding) * mapScale;
+        const w = card.offsetWidth * mapScale;
+        const h = card.offsetHeight * mapScale;
+        html += `<div class="minimap-item" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
+      });
+      
+      // Viewport indicator
+      const containerRect = container.getBoundingClientRect();
+      const vpX = ((-offsetX / scale) - minX + padding) * mapScale;
+      const vpY = ((-offsetY / scale) - minY + padding) * mapScale;
+      const vpW = (containerRect.width / scale) * mapScale;
+      const vpH = (containerRect.height / scale) * mapScale;
+      html += `<div class="minimap-viewport" style="left:${vpX}px;top:${vpY}px;width:${vpW}px;height:${vpH}px"></div>`;
+      
+      minimap.innerHTML = html;
+    }
+    
+    // Apply saved positions on load
+    document.querySelectorAll('.card').forEach(card => {
+      const id = card.dataset.id;
+      if (positions[id]) {
+        card.style.left = positions[id].x + 'px';
+        card.style.top = positions[id].y + 'px';
+      }
     });
     
-    clearBtn.addEventListener('click', () => {
-      document.querySelector('[data-tag="all"]').click();
-    });
+    // Initial setup
+    updateTransform();
+    
+    // Fit view on load if first time
+    if (Object.keys(positions).length === 0) {
+      setTimeout(() => document.getElementById('fitViewBtn').click(), 100);
+    }
   </script>
 </body>
 </html>
