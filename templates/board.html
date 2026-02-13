@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-hover: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --text-muted: #888;
+      --accent: #d4af37;
+      --accent-dim: #a38829;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    /* Header */
+    .header {
+      padding: 2rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+    
+    .meta {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    
+    /* Filters */
+    .filters {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .filters-label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-right: 0.5rem;
+    }
+    
+    .tag-filter {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tag-filter:hover {
+      border-color: var(--accent-dim);
+      color: var(--text);
+    }
+    
+    .tag-filter.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+    
+    .clear-filters {
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+    
+    .clear-filters:hover {
+      text-decoration: underline;
+    }
+    
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+    
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    
+    .card.hidden {
+      display: none;
+    }
+    
+    .card-image {
+      position: relative;
+      background: #000;
+      cursor: pointer;
+    }
+    
+    .card-image img {
+      width: 100%;
+      height: 360px;
+      object-fit: contain;
+      object-position: center top;
+      display: block;
+      transition: opacity 0.2s;
+      background: #000;
+    }
+    
+    .card-image:hover img {
+      opacity: 0.9;
+    }
+    
+    .card-content {
+      padding: 1rem;
+    }
+    
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: var(--text);
+    }
+    
+    .card-artist {
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    
+    .card-description {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+    
+    .card-details {
+      margin: 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    
+    .card-details summary {
+      color: var(--accent-dim);
+      cursor: pointer;
+      padding: 0.25rem 0;
+    }
+    
+    .card-details summary:hover {
+      color: var(--accent);
+    }
+    
+    .card-details p {
+      color: var(--text-muted);
+      padding: 0.5rem 0;
+      border-left: 2px solid var(--border);
+      padding-left: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+    
+    .tag {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: zoom-out;
+    }
+    
+    .lightbox.active {
+      display: flex;
+    }
+    
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+    
+    .lightbox-close {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 2rem;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    
+    .lightbox-close:hover {
+      opacity: 1;
+    }
+    
+    /* Footer */
+    .footer {
+      padding: 2rem;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+      .header { padding: 1.5rem 1rem; }
+      .header h1 { font-size: 1.5rem; }
+      .filters { padding: 1rem; }
+      .grid { padding: 1rem; gap: 1rem; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>{{TITLE}}</h1>
+    <p>{{DESCRIPTION}}</p>
+    <div class="meta">{{ITEM_COUNT}} references · Generated {{GENERATED_AT}}</div>
+  </header>
+  
+  <div class="filters">
+    <span class="filters-label">Filter:</span>
+    <button class="tag-filter active" data-tag="all">All</button>
+    {{TAGS}}
+    <button class="clear-filters" style="display:none">Clear</button>
+  </div>
+  
+  <main class="grid">
+    {{ITEMS}}
+  </main>
+  
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close">&times;</button>
+    <img src="" alt="">
+  </div>
+  
+  <footer class="footer">
+    Generated with <a href="https://github.com/jingxiguo/refboard">RefBoard</a>
+  </footer>
+  
+  <script>
+    // Lightbox
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = lightbox.querySelector('img');
+    
+    document.querySelectorAll('.card-image').forEach(el => {
+      el.addEventListener('click', () => {
+        lightboxImg.src = el.querySelector('img').src;
+        lightbox.classList.add('active');
+      });
+    });
+    
+    lightbox.addEventListener('click', () => {
+      lightbox.classList.remove('active');
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') lightbox.classList.remove('active');
+    });
+    
+    // Tag filtering
+    const cards = document.querySelectorAll('.card');
+    const tagButtons = document.querySelectorAll('.tag-filter');
+    const clearBtn = document.querySelector('.clear-filters');
+    let activeTag = 'all';
+    
+    tagButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tag = btn.dataset.tag;
+        
+        tagButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTag = tag;
+        
+        clearBtn.style.display = tag === 'all' ? 'none' : 'inline';
+        
+        cards.forEach(card => {
+          if (tag === 'all') {
+            card.classList.remove('hidden');
+          } else {
+            const cardTags = JSON.parse(card.dataset.tags || '[]');
+            card.classList.toggle('hidden', !cardTags.includes(tag));
+          }
+        });
+      });
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      document.querySelector('[data-tag="all"]').click();
+    });
+  </script>
+</body>
+</html>

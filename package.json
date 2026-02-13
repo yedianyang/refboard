@@ -1,0 +1,25 @@
+{
+  "name": "refboard",
+  "version": "1.0.0",
+  "description": "Visual reference board generator for artists and designers",
+  "main": "index.js",
+  "bin": {
+    "refboard": "./bin/refboard.js"
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "mood-board",
+    "reference",
+    "art",
+    "design",
+    "visual"
+  ],
+  "author": "Jingxi Guo",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
