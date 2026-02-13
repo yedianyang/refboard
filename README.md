@@ -2,12 +2,10 @@
 
 Visual reference board generator for artists and designers. Create beautiful, portable mood boards from your image collection.
 
-![RefBoard Screenshot](examples/screenshot.png)
-
 ## Features
 
-- **Simple** — Point to a folder, get an HTML mood board
-- **Portable** — Single HTML file, no server needed
+- **Simple CLI** — `init`, `add`, `build` workflow
+- **Portable output** — Single HTML file, no server needed
 - **Rich metadata** — Artist info, historical context, tags
 - **Filterable** — Filter references by tags
 - **Lightbox** — Click to view full-size images
@@ -22,38 +20,78 @@ npm install -g refboard
 Or use directly with npx:
 
 ```bash
-npx refboard -i ./my-refs -o board.html
+npx refboard init my-project
 ```
 
 ## Quick Start
 
-1. Create a folder with your reference images:
+```bash
+# Create a new project
+refboard init my-references
+
+# Add images
+cd my-references
+refboard add ~/Downloads/sculpture.jpg --title "Bronze Figure" --artist "Unknown"
+refboard add ~/Downloads/building.jpg --tags "architecture,art-deco"
+
+# Edit metadata.json to add descriptions, context, etc.
+
+# Build the board
+refboard build
+
+# Open board.html in your browser
+```
+
+## Commands
+
+### `refboard init [directory]`
+
+Initialize a new project with the standard structure:
 
 ```
 my-project/
-  images/
-    image1.jpg
-    image2.png
-  metadata.json
+  refboard.json     # Project configuration
+  metadata.json     # Image metadata
+  images/           # Image files
 ```
 
-2. Generate the board:
+### `refboard add <image> [options]`
 
-```bash
-refboard -i ./my-project -o mood-board.html
+Add an image to the project.
+
+Options:
+- `--title "Title"` — Set artwork title
+- `--artist "Name"` — Set artist name
+- `--tags "tag1,tag2"` — Add tags (comma-separated)
+
+### `refboard build [options]`
+
+Generate the HTML reference board.
+
+Options:
+- `-o, --output <file>` — Output file (default: board.html)
+- `-e, --embed` — Embed images as base64 (larger file, fully portable)
+
+## Project Configuration
+
+### refboard.json
+
+```json
+{
+  "name": "art-deco-references",
+  "title": "Art Deco Sculpture References",
+  "description": "Visual references for 3D metal sculpture",
+  "output": "board.html"
+}
 ```
 
-3. Open `mood-board.html` in your browser
-
-## Metadata Format
-
-Create a `metadata.json` in your input folder:
+### metadata.json
 
 ```json
 {
   "board": {
     "title": "Art Deco Sculpture References",
-    "description": "Visual references for 3D metal printed sculpture, 1920-1950s aesthetic"
+    "description": "1920-1950s aesthetic, heroism, machine age"
   },
   "items": [
     {
@@ -62,7 +100,7 @@ Create a `metadata.json` in your input folder:
       "artist": "Demetre Chiparus",
       "year": "1925",
       "description": "Chryselephantine sculpture combining bronze and ivory",
-      "context": "Part of the Art Deco movement's fascination with exotic dancers and theatrical performers",
+      "context": "Part of the Art Deco movement's fascination with exotic dancers",
       "influences": "Ballet Russes, Egyptian revival, Cubism",
       "tags": ["art-deco", "sculpture", "bronze", "1920s"]
     }
@@ -79,46 +117,23 @@ Create a `metadata.json` in your input folder:
 | `artist` | Artist/creator name |
 | `year` | Year of creation |
 | `description` | Brief description |
-| `context` | Historical context (collapsible) |
-| `influences` | Artistic influences (collapsible) |
+| `context` | Historical context (collapsible in UI) |
+| `influences` | Artistic influences (collapsible in UI) |
 | `tags` | Array of tags for filtering |
 
-## CLI Options
+## Legacy Mode
 
-```
-Usage:
-  refboard [options]
+You can also use RefBoard without a project structure:
 
-Options:
-  -i, --input <dir>    Input directory (default: .)
-  -o, --output <file>  Output HTML file (default: board.html)
-  -t, --title <title>  Board title (default: "Reference Board")
-  -e, --embed          Embed images as base64
-  -h, --help           Show help
-```
-
-## Directory Structure
-
-RefBoard looks for images in these locations (in order):
-- `<input>/images/`
-- `<input>/raw/`
-- `<input>/` (root)
-
-## Examples
-
-**Basic usage:**
 ```bash
-refboard -i ./references
-```
+# Point to any folder with images
+refboard -i ./my-images -o board.html
 
-**With custom title:**
-```bash
-refboard -i ./art-deco -t "Art Deco Mood Board" -o art-deco.html
-```
+# With custom title
+refboard -i ./refs -t "My Mood Board" -o output.html
 
-**Embedded images (fully portable):**
-```bash
-refboard -i ./project --embed -o portable-board.html
+# Embedded images
+refboard -i ./project --embed
 ```
 
 ## Use Cases
@@ -128,6 +143,13 @@ refboard -i ./project --embed -o portable-board.html
 - **Interior design** — Create mood boards for client presentations
 - **Research** — Document artistic movements with context
 - **Collaboration** — Share curated references with your team
+
+## Tips
+
+1. **Use descriptive filenames** — RefBoard shows filenames when titles aren't set
+2. **Add context** — The collapsible "Historical Context" and "Influences" fields are great for research boards
+3. **Tag consistently** — Use lowercase, hyphenated tags for easy filtering
+4. **Embed for sharing** — Use `--embed` when sharing the board (all images included in HTML)
 
 ## License
 
