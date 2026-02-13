@@ -2,12 +2,28 @@
   "name": "refboard",
   "version": "1.0.0",
   "description": "Visual reference board generator for artists and designers",
-  "main": "index.js",
+  "main": "./index.js",
   "bin": {
     "refboard": "./bin/refboard.js"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "templates/",
+    "index.js",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "test": "node test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yedianyang/refboard.git"
+  },
+  "homepage": "https://github.com/yedianyang/refboard",
+  "bugs": {
+    "url": "https://github.com/yedianyang/refboard/issues"
   },
   "keywords": [
     "mood-board",
