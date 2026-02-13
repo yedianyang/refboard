@@ -34,6 +34,7 @@ const commands = {
   ask: askCommand,
   config: configCommand,
   agent: agentCommand,
+  serve: serveCommand,
   'save-positions': savePositionsCommand,
   help: showHelp,
 };
@@ -187,9 +188,11 @@ async function buildBoard(args) {
   if (projectDir) {
     const config = loadConfig(projectDir);
     const outputPath = resolve(projectDir, opts.output || config.output || 'board.html');
-    
-    log(`RefBoard build`);
-    log(`  Project: ${config.name || basename(projectDir)}`);
+
+    if (!opts.json) {
+      log(`RefBoard build`);
+      log(`  Project: ${config.name || basename(projectDir)}`);
+    }
 
     const result = await generateBoard({
       inputDir: projectDir,
@@ -696,6 +699,21 @@ async function savePositionsCommand(args) {
   }
 }
 
+async function serveCommand(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+
+  const opts = parseOptions(args);
+  const config = loadConfig(projectDir);
+  const port = parseInt(opts.port) || 3000;
+
+  log(`RefBoard serve`);
+  log(`  Project: ${config.name || basename(projectDir)}`);
+
+  const { startServer } = await import('../lib/server.js');
+  await startServer({ projectDir, port, config, log });
+}
+
 function showHelp() {
   console.log(`
 RefBoard - Visual reference board generator
@@ -711,6 +729,7 @@ COMMANDS
   refboard meta <n|file> [opts]    Edit item metadata
   refboard status                  Show project status summary
   refboard home [opts]             Open project dashboard
+  refboard serve [--port 3000]     Start local dev server with livereload
 
 AI COMMANDS
   refboard analyze <image>         Analyze image with AI

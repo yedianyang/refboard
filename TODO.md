@@ -22,10 +22,10 @@
 | ⬜ | 批量布局命令 | `refboard layout --grid/--cluster` |
 | ✅ | **AI Provider 统一接口** | lib/ai-provider.js — 6 个 Provider Adapter + CLI 命令全部实现 |
 | ✅ | 图片自动分析 | analyze / auto-tag / ask / search 命令已实现 |
-| 🔄 | AI 双路径支持 | openclaw 代理 + 云端直连 |
-| ⬜ | 修复 openclaw adapter | 对接 OpenClaw Gateway 正确 API |
-| ⬜ | 修复 save-positions bug | 只保存部分位置的问题 |
-| ⬜ | serve 命令 | 本地服务器 + 实时渲染 |
+| ✅ | AI 双路径支持 | config 支持 flat keys (ai.provider/ai.apiKey) + 嵌套 providers |
+| ✅ | 修复 openclaw adapter | 添加 auth headers + OPENCLAW_API_KEY 环境变量 + 连接错误提示 |
+| ✅ | 修复 save-positions bug | 支持 filename keys 和 numeric ID keys 两种格式 |
+| ✅ | serve 命令 | lib/server.js — HTTP 服务器 + 动态渲染 + 图片代理 + SSE livereload |
 
 ---
 
@@ -198,6 +198,8 @@ refboard agent export --format json
 | ✅ | PureRef 研究 | 轻量参考板、Pack排列、标准化尺寸、窗口模式 |
 | ✅ | Layout 算法研究 | Tidy Up / Pack All / 对齐分布对比 |
 | ✅ | 研究报告输出 | docs/research.md (含交互对比+RefBoard建议) |
+| ✅ | Tauri 2.0 调研 | docs/tauri-guide.md (项目结构+Rust基础+IPC+图片处理+打包) |
+| ✅ | OpenClaw API 调研 | docs/openclaw-integration.md (端点+认证+adapter修复建议) |
 
 ---
 
@@ -218,6 +220,9 @@ refboard agent export --format json
 **P0 (本周)**
 - [x] 拖拽位置持久化 (@generator + @template)
 - [x] 关键词过滤 (@template)
+- [x] save-positions bug 修复 (@generator)
+- [x] openclaw adapter 修复 (@generator)
+- [x] serve 命令 (@generator)
 - [ ] 测试报告 (@tester)
 
 **P1 (短期)**

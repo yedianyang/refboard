@@ -1,4 +1,4 @@
-# RefBoard CLI Test Report
+# RefBoard CLI Test Report (Round 2)
 
 > Tester: @Tester | Date: 2026-02-14
 > Node: v22.22.0 | Platform: darwin
@@ -9,158 +9,172 @@
 
 | Metric | Value |
 |--------|-------|
-| Commands Tested | 17 |
-| PASS | 0 |
-| FAIL | 17 |
-| Critical Bugs | 2 |
-| Minor Issues | 2 |
+| Commands Total | 19 (incl. new `serve`) |
+| Tested (functionally) | 15 |
+| PASS | 13 |
+| FAIL (before BUG-003) | 2 (not tested: `home`, `watch`) |
+| FAIL (after BUG-003) | 19 (all blocked) |
+| Bugs Found | 4 (1 old fixed, 1 new critical, 2 design issues) |
 
-**Result: ALL COMMANDS FAIL.** CLI is completely non-functional due to a broken import.
+**Round 1:** BUG-001 and BUG-002 completely blocked CLI. Generator fixed both.
+
+**Round 2:** After fixes, 13 commands PASS. Then a new change introduced BUG-003 (duplicate export), breaking CLI again.
 
 ---
 
-## BUG-001 (CRITICAL) - CLI cannot start: missing exports
+## Bug Status
 
-**File:** `bin/refboard.js:7`
+| Bug | Severity | Status | Owner |
+|-----|----------|--------|-------|
+| BUG-001 (missing exports) | CRITICAL | ✅ FIXED | @Generator |
+| BUG-002 (missing handlers) | CRITICAL | ✅ FIXED | @Generator |
+| BUG-003 (duplicate export) | CRITICAL | ❌ OPEN | @Generator |
+| BUG-004 (build --json leaks log) | LOW | ❌ OPEN | @Generator |
+| Metro's save-positions bug | - | ✅ FIXED | @Generator |
+| ISSUE-001 (console.warn) | MINOR | ❌ OPEN | @Generator |
+| ISSUE-002 (dead placeholders) | MINOR | ❌ OPEN | @Generator @Template |
+
+---
+
+## BUG-003 (CRITICAL) - Duplicate export of `renderBoard`
+
+**File:** `lib/generator.js:218` + `lib/generator.js:380`
 **Assigned to:** @Generator
 
 ### Description
 
-The CLI imports `savePositions` and `loadPositions` from `lib/generator.js`, but these functions do not exist and are not exported.
+`renderBoard` is exported twice:
+1. Line 218: `export function renderBoard(...)` (named export)
+2. Line 380: `export { ..., renderBoard }` (re-export)
 
-```js
-// bin/refboard.js:7
-import { generateBoard, findImages, autoLayout, loadMetadata, savePositions, loadPositions } from '../lib/generator.js';
-```
-
-`lib/generator.js:317` only exports:
-```js
-export { findImages, loadMetadata, autoLayout };
-// + generateBoard (named export at line 206)
-```
+Node.js rejects the module with `SyntaxError: Duplicate export of 'renderBoard'`.
 
 ### Reproduction
 
 ```bash
 $ node bin/refboard.js help
-SyntaxError: The requested module '../lib/generator.js' does not provide an export named 'loadPositions'
+SyntaxError: Duplicate export of 'renderBoard'
+    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)
 ```
 
 ### Impact
 
-**ALL 17 commands are blocked.** No CLI command can execute because Node.js refuses to load the module.
+**ALL 19 commands blocked.** Same severity as BUG-001 — no CLI command can run.
 
 ### Fix
 
-Either:
-1. Remove unused imports `savePositions, loadPositions` from `bin/refboard.js`
-2. Or implement and export these functions in `lib/generator.js`
+Remove `renderBoard` from line 380's export list (it's already exported at line 218):
+```js
+export { findImages, loadMetadata, autoLayout, savePositions, loadPositions };
+```
 
 ---
 
-## BUG-002 (CRITICAL) - 7 command handlers referenced but never defined
+## BUG-004 (LOW) - `build --json` leaks log() output
 
-**File:** `bin/refboard.js:31-37`
+**File:** `bin/refboard.js:191-206`
 **Assigned to:** @Generator
 
 ### Description
 
-The commands map references 7 handler functions that are never defined in the file:
-
-| Command | Handler Function | Line |
-|---------|-----------------|------|
-| `analyze` | `analyzeCommand` | 31 |
-| `auto-tag` | `autoTagCommand` | 32 |
-| `search` | `searchCommand` | 33 |
-| `ask` | `askCommand` | 34 |
-| `config` | `configCommand` | 35 |
-| `agent` | `agentCommand` | 36 |
-| `save-positions` | `savePositionsCommand` | 37 |
+When running `build --json`, the output is not clean JSON. `log()` messages ("RefBoard build", "Project: ...") are printed before the JSON object.
 
 ### Reproduction
 
-Even if BUG-001 were fixed, running any of these commands would cause:
 ```bash
-$ refboard analyze test.jpg
-ReferenceError: analyzeCommand is not defined
+$ refboard build --json
+RefBoard build                    # <-- not JSON
+  Project: test-project           # <-- not JSON
+{"success":true,"itemCount":3,"output":"..."}
 ```
 
-### Impact
+### Expected
 
-7 out of 17 commands would crash at runtime. These include all AI/agent functionality and the config/save-positions utilities.
-
-### Fix
-
-Implement the 7 missing functions, or remove them from the commands map and `help` output until they are ready.
+Only the JSON line should be printed. Either suppress `log()` when `--json` is set, or recommend using `-q --json`.
 
 ---
 
-## ISSUE-001 (Minor) - console.warn in library code
+## BUG-001 (FIXED) - Missing exports from generator.js
 
-**File:** `lib/generator.js:159`
-**Assigned to:** @Generator
+**Status:** ✅ Fixed by @Generator. `savePositions` and `loadPositions` now implemented and exported.
 
-### Description
+## BUG-002 (FIXED) - 7 missing command handlers
 
-`loadMetadata()` uses `console.warn()` directly, violating the project convention that library functions should not produce console output (only the CLI layer should).
+**Status:** ✅ Fixed by @Generator. All 7 handlers implemented:
+`analyzeCommand`, `autoTagCommand`, `searchCommand`, `askCommand`, `configCommand`, `agentCommand`, `savePositionsCommand`.
 
-```js
-console.warn(`Warning: Could not parse metadata.json: ${e.message}`);
-```
+## Metro's save-positions bug (FIXED)
 
-### Fix
-
-Either throw the error or return it in the result for the CLI layer to handle.
-
----
-
-## ISSUE-002 (Minor) - Unused template placeholder replacements
-
-**File:** `lib/generator.js:302,310`
-**Assigned to:** @Generator / @Template
-
-### Description
-
-The generator replaces `{{DESCRIPTION}}` and `{{GENERATED_AT}}` in the board template, but these placeholders do not exist in `templates/board.html`. The replacements are silent no-ops.
-
-```js
-.replaceAll('{{DESCRIPTION}}', escapeHtml(boardDescription))  // no match in template
-.replaceAll('{{GENERATED_AT}}', new Date().toISOString())      // no match in template
-```
-
-`{{GENERATED_AT}}` is also replaced in `lib/dashboard.js:141` but does not exist in `templates/dashboard.html`.
-
-### Fix
-
-Either add the placeholders to the templates, or remove the dead replacement code.
+**Status:** ✅ Fixed. `savePositions` now supports both numeric ID keys and filename keys (line 322-331).
 
 ---
 
 ## Per-Command Test Results
 
-Since BUG-001 blocks all execution, results below are based on **static code analysis**.
+Tests ran successfully between BUG-001/002 fix and BUG-003 introduction.
 
 | # | Command | Status | Notes |
 |---|---------|--------|-------|
-| 1 | `help` | FAIL | Blocked by BUG-001 |
-| 2 | `init` | FAIL | Blocked by BUG-001; code looks correct |
-| 3 | `add` | FAIL | Blocked by BUG-001; code looks correct |
-| 4 | `import` | FAIL | Blocked by BUG-001; code looks correct |
-| 5 | `build` | FAIL | Blocked by BUG-001; code looks correct |
-| 6 | `watch` | FAIL | Blocked by BUG-001; code looks correct |
-| 7 | `list` | FAIL | Blocked by BUG-001; code looks correct |
-| 8 | `remove` | FAIL | Blocked by BUG-001; code looks correct |
-| 9 | `meta` | FAIL | Blocked by BUG-001; code looks correct |
-| 10 | `status` | FAIL | Blocked by BUG-001; code looks correct |
-| 11 | `home` | FAIL | Blocked by BUG-001; code looks correct |
-| 12 | `analyze` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 13 | `auto-tag` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 14 | `search` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 15 | `ask` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 16 | `config` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 17 | `agent` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| 18 | `save-positions` | FAIL | BUG-001 + BUG-002 (handler missing) |
-| -- | Legacy mode | FAIL | Blocked by BUG-001 |
+| 1 | `help` | ✅ PASS | Shows all 19 commands + options |
+| 2 | `init [dir]` | ✅ PASS | Creates project, detects duplicates |
+| 3 | `add <image>` | ✅ PASS | Copies image, updates metadata, supports --title/--artist/--tags |
+| 4 | `add` (no args) | ✅ PASS | Correct error message + exit 1 |
+| 5 | `import <folder>` | ✅ PASS | Imports 2 images, skips existing, auto-builds |
+| 6 | `build` | ✅ PASS | Generates board.html with 3 items |
+| 7 | `build --json` | ⚠ PASS* | Returns JSON but leaks log() lines (BUG-004) |
+| 8 | `build --embed` | ✅ PASS | Generates with base64-embedded images |
+| 9 | `list` | ✅ PASS | Shows items with titles, artists, tags |
+| 10 | `list --json` | ✅ PASS | Clean JSON array output |
+| 11 | `status` | ✅ PASS | Shows name/title/items/tags/lastBuild |
+| 12 | `status --json` | ✅ PASS | Clean JSON output |
+| 13 | `meta <n> --title/--tags` | ✅ PASS | Updates metadata, prints updated item |
+| 14 | `remove <n>` | ✅ PASS | Removes item from metadata |
+| 15 | `config` (read all) | ✅ PASS | Shows full refboard.json |
+| 16 | `config ai.provider openai` | ✅ PASS | Sets nested config value |
+| 17 | `config ai.provider` (read) | ✅ PASS | Returns `"openai"` |
+| 18 | `search "red"` | ✅ PASS | Finds matching item by tag/title |
+| 19 | `search "blue" --json` | ✅ PASS | Returns JSON results |
+| 20 | `search "nonexistent"` | ✅ PASS | "No matches found" |
+| 21 | `agent export` | ✅ PASS | Outputs full metadata JSON |
+| 22 | `agent layout` | ✅ PASS | Re-lays out 3 items |
+| 23 | `agent` (no sub) | ✅ PASS | Correct usage error |
+| 24 | `save-positions` (filename keys) | ✅ PASS | All positions saved correctly |
+| 25 | `save-positions` (numeric keys) | ✅ PASS | Maps IDs to sorted filenames correctly |
+| 26 | `home` | ⏭ SKIPPED | Opens browser; tested existence only |
+| 27 | `watch` | ⏭ SKIPPED | Long-running; tested build path instead |
+| 28 | `serve` | ❌ BLOCKED | BUG-003 prevents testing |
+| 29 | `analyze` | ❌ BLOCKED | BUG-003 + needs AI provider |
+| 30 | `auto-tag` | ❌ BLOCKED | BUG-003 + needs AI provider |
+| 31 | `ask` | ❌ BLOCKED | BUG-003 + needs AI provider |
+
+---
+
+## AI Provider Dual-Path Testing
+
+**Status:** ❌ BLOCKED by BUG-003
+
+Planned tests (pending BUG-003 fix):
+
+### Path 1: OpenClaw Gateway (localhost:18789)
+
+| Test | Command | Status |
+|------|---------|--------|
+| analyze via openclaw | `refboard analyze <img> --provider openclaw` | ⬜ Pending |
+| auto-tag via openclaw | `refboard auto-tag --all --provider openclaw` | ⬜ Pending |
+| ask via openclaw | `refboard ask "question" --provider openclaw` | ⬜ Pending |
+
+### Path 2: Direct API
+
+| Test | Command | Status |
+|------|---------|--------|
+| analyze via openai | `refboard analyze <img> --provider openai` | ⬜ Pending |
+| analyze via anthropic | `refboard analyze <img> --provider anthropic` | ⬜ Pending |
+| error handling (no key) | `refboard analyze <img> --provider openai` (no API key) | ⬜ Pending |
+
+**Prerequisites:**
+1. BUG-003 must be fixed
+2. OpenClaw Gateway must be running on localhost:18789 (Path 1)
+3. API keys must be configured in env vars or refboard.json (Path 2)
 
 ---
 
@@ -168,20 +182,37 @@ Since BUG-001 blocks all execution, results below are based on **static code ana
 
 | Module | Status | Notes |
 |--------|--------|-------|
-| `lib/generator.js` | OK | Loads fine, exports work |
-| `lib/dashboard.js` | OK | Loads fine, exports work |
-| `lib/ai-provider.js` | OK | Loads fine, all adapters defined |
-| `index.js` | OK | Re-exports work correctly |
-| `bin/refboard.js` | BROKEN | Cannot load (BUG-001) |
+| `lib/generator.js` | ❌ BROKEN | Duplicate export of `renderBoard` (BUG-003) |
+| `lib/dashboard.js` | ✅ OK | Loads fine |
+| `lib/ai-provider.js` | ✅ OK | All 6 adapters defined |
+| `lib/server.js` | ❌ BLOCKED | Depends on generator.js |
+| `index.js` | ❌ BLOCKED | Re-exports from generator.js |
+| `bin/refboard.js` | ❌ BLOCKED | Imports from generator.js |
+
+---
+
+## New Features Verified (via code review)
+
+| Feature | Added By | Status |
+|---------|----------|--------|
+| `serve` command + livereload | @Generator | Code present, untested (BUG-003) |
+| `renderBoard()` pure function | @Generator | Code present, untested (BUG-003) |
+| `/api/metadata` endpoint | @Generator | Code present, untested (BUG-003) |
+| SSE livereload injection | @Generator | Code present, untested (BUG-003) |
+| `imageBaseUrl` option | @Generator | Code present, untested (BUG-003) |
 
 ---
 
 ## Recommendations
 
-1. **@Generator**: Fix BUG-001 immediately — remove or implement the missing exports. This unblocks all other testing.
-2. **@Generator**: For BUG-002, either implement the 7 missing command handlers, or register them as stubs that print "not yet implemented" so other commands work.
-3. After BUG-001 is fixed, @Tester will re-run full functional testing (init -> add -> build -> list -> status -> remove -> meta -> home cycle).
+1. **@Generator:** Fix BUG-003 immediately — remove `renderBoard` from line 380 export list. One-line fix.
+2. **@Generator:** Fix BUG-004 — suppress `log()` when `--json` flag is set in `buildBoard()`.
+3. **@Tester:** After BUG-003 fix, run:
+   - `serve` command test (with livereload)
+   - AI dual-path tests (openclaw + direct API)
+   - `home` command generation test
+4. **@Generator:** ISSUE-001 (`console.warn` in library) still open.
 
 ---
 
-*Report generated by @Tester — waiting for @Generator to fix blockers before re-test.*
+*Report generated by @Tester (Round 2) — BUG-003 blocks final testing.*
