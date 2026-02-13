@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.DS_Store
+board.html
+
+# Don't ignore example board
+!examples/board.html
