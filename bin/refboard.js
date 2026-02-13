@@ -1,32 +1,36 @@
 #!/usr/bin/env node
 
 import { parseArgs } from 'node:util';
-import { resolve, join, basename } from 'node:path';
-import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
-import { generateBoard } from '../lib/generator.js';
+import { resolve, join, basename, dirname } from 'node:path';
+import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, readdirSync, watch } from 'node:fs';
+import { generateBoard, findImages, autoLayout } from '../lib/generator.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
 
-// Commands
 const commands = {
   init: initProject,
   add: addImage,
+  import: importImages,
   build: buildBoard,
+  watch: watchProject,
+  list: listItems,
+  remove: removeItem,
+  meta: editMeta,
   help: showHelp,
 };
 
-// Default to build if no command or if first arg looks like an option
 if (!command || command.startsWith('-')) {
-  // Legacy mode: direct build with options
   await legacyBuild();
 } else if (commands[command]) {
   await commands[command](args.slice(1));
 } else {
   console.error(`Unknown command: ${command}`);
-  console.log('Run "refboard help" for usage');
+  showHelp();
   process.exit(1);
 }
+
+// ============ Commands ============
 
 async function initProject(args) {
   const dir = args[0] || '.';
@@ -34,161 +38,264 @@ async function initProject(args) {
   const configPath = join(targetDir, 'refboard.json');
   
   if (existsSync(configPath)) {
-    console.error('Project already initialized (refboard.json exists)');
+    console.error('Project already exists');
     process.exit(1);
   }
   
-  // Create directories
   mkdirSync(join(targetDir, 'images'), { recursive: true });
   
-  // Create config
   const config = {
     name: basename(targetDir),
-    title: 'My Reference Board',
+    title: basename(targetDir).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
     description: '',
     output: 'board.html',
+    layout: { maxCols: 4 }
   };
   writeFileSync(configPath, JSON.stringify(config, null, 2));
   
-  // Create empty metadata
-  const metadata = {
-    board: {
-      title: config.title,
-      description: config.description,
-    },
-    items: [],
-  };
+  const metadata = { board: { title: config.title, description: '' }, items: [] };
   writeFileSync(join(targetDir, 'metadata.json'), JSON.stringify(metadata, null, 2));
   
-  console.log(`✓ Initialized RefBoard project in ${targetDir}`);
+  console.log(`✓ Created RefBoard project: ${targetDir}`);
   console.log(`
-Next steps:
-  1. Add images:     refboard add <image-file>
-  2. Edit metadata:  Edit metadata.json to add descriptions
-  3. Build board:    refboard build
+Commands:
+  refboard add <image>       Add single image
+  refboard import <folder>   Import all images from folder
+  refboard build             Generate board.html
+  refboard watch             Watch for changes and auto-build
 `);
 }
 
 async function addImage(args) {
-  if (args.length === 0) {
-    console.error('Usage: refboard add <image-file> [--title "Title"] [--artist "Artist"]');
-    process.exit(1);
-  }
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
   
-  // Find project root (look for refboard.json)
-  let projectDir = process.cwd();
-  while (!existsSync(join(projectDir, 'refboard.json'))) {
-    const parent = resolve(projectDir, '..');
-    if (parent === projectDir) {
-      console.error('Not in a RefBoard project. Run "refboard init" first.');
-      process.exit(1);
-    }
-    projectDir = parent;
-  }
+  if (!args.length) exit('Usage: refboard add <image> [--title "..."] [--artist "..."] [--tags "a,b,c"]');
   
-  // Parse args
   const imagePath = resolve(args[0]);
-  let title = '';
-  let artist = '';
-  let tags = [];
+  if (!existsSync(imagePath)) exit(`File not found: ${imagePath}`);
   
-  for (let i = 1; i < args.length; i++) {
-    if (args[i] === '--title' && args[i + 1]) {
-      title = args[++i];
-    } else if (args[i] === '--artist' && args[i + 1]) {
-      artist = args[++i];
-    } else if (args[i] === '--tags' && args[i + 1]) {
-      tags = args[++i].split(',').map(t => t.trim());
-    }
-  }
-  
-  if (!existsSync(imagePath)) {
-    console.error(`Image not found: ${imagePath}`);
-    process.exit(1);
-  }
-  
-  // Copy image to images/
+  // Parse options
+  const opts = parseOptions(args.slice(1));
   const filename = basename(imagePath);
   const destPath = join(projectDir, 'images', filename);
   
   if (existsSync(destPath)) {
-    console.error(`Image already exists: images/${filename}`);
-    process.exit(1);
+    console.log(`⚠ Image exists: ${filename}`);
+    return;
   }
   
   copyFileSync(imagePath, destPath);
   
   // Update metadata
-  const metadataPath = join(projectDir, 'metadata.json');
-  const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
+  const metaPath = join(projectDir, 'metadata.json');
+  const metadata = JSON.parse(readFileSync(metaPath, 'utf-8'));
   
-  metadata.items.push({
+  const item = {
     file: filename,
-    title: title || '',
-    artist: artist || '',
-    year: '',
-    description: '',
-    context: '',
-    influences: '',
-    tags: tags,
-  });
+    title: opts.title || '',
+    artist: opts.artist || '',
+    year: opts.year || '',
+    description: opts.desc || '',
+    tags: opts.tags ? opts.tags.split(',').map(t => t.trim()) : [],
+  };
   
-  writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+  metadata.items.push(item);
+  writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
   
-  console.log(`✓ Added: images/${filename}`);
-  if (title || artist) {
-    console.log(`  Title: ${title || '(none)'}`);
-    console.log(`  Artist: ${artist || '(none)'}`);
+  console.log(`✓ Added: ${filename}`);
+}
+
+async function importImages(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+  
+  const sourceDir = resolve(args[0] || '.');
+  if (!existsSync(sourceDir)) exit(`Folder not found: ${sourceDir}`);
+  
+  const opts = parseOptions(args.slice(1));
+  const extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'];
+  
+  const files = readdirSync(sourceDir).filter(f => 
+    extensions.includes(f.toLowerCase().slice(f.lastIndexOf('.')))
+  );
+  
+  if (!files.length) {
+    console.log('No images found');
+    return;
   }
-  console.log(`\nEdit metadata.json to add more details.`);
+  
+  const metaPath = join(projectDir, 'metadata.json');
+  const metadata = JSON.parse(readFileSync(metaPath, 'utf-8'));
+  const existingFiles = new Set(metadata.items.map(i => i.file));
+  
+  let added = 0;
+  for (const file of files) {
+    if (existingFiles.has(file)) continue;
+    
+    const src = join(sourceDir, file);
+    const dest = join(projectDir, 'images', file);
+    
+    if (!existsSync(dest)) {
+      copyFileSync(src, dest);
+    }
+    
+    metadata.items.push({
+      file,
+      title: '',
+      artist: '',
+      tags: opts.tags ? opts.tags.split(',').map(t => t.trim()) : [],
+    });
+    
+    added++;
+    console.log(`  + ${file}`);
+  }
+  
+  writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+  console.log(`\n✓ Imported ${added} images`);
+  
+  // Auto-build if requested
+  if (opts.build !== false) {
+    console.log('\nBuilding...');
+    await buildBoard([]);
+  }
 }
 
 async function buildBoard(args) {
-  // Find project root
-  let projectDir = process.cwd();
-  while (!existsSync(join(projectDir, 'refboard.json'))) {
-    const parent = resolve(projectDir, '..');
-    if (parent === projectDir) {
-      // Not in a project, fall back to legacy mode
-      await legacyBuild();
-      return;
-    }
-    projectDir = parent;
-  }
+  const projectDir = findProject();
+  const opts = parseOptions(args);
   
-  // Load config
-  const config = JSON.parse(readFileSync(join(projectDir, 'refboard.json'), 'utf-8'));
-  
-  // Parse args for overrides
-  let embed = false;
-  let output = config.output || 'board.html';
-  
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--embed' || args[i] === '-e') {
-      embed = true;
-    } else if ((args[i] === '--output' || args[i] === '-o') && args[i + 1]) {
-      output = args[++i];
-    }
-  }
-  
-  const outputPath = resolve(projectDir, output);
-  
-  console.log(`RefBoard - Building reference board`);
-  console.log(`  Project: ${config.name || basename(projectDir)}`);
-  console.log(`  Output:  ${outputPath}`);
-  
-  try {
-    await generateBoard({
+  // Support both project mode and legacy mode
+  if (projectDir) {
+    const config = loadConfig(projectDir);
+    const outputPath = resolve(projectDir, opts.output || config.output || 'board.html');
+    
+    console.log(`RefBoard build`);
+    console.log(`  Project: ${config.name || basename(projectDir)}`);
+    
+    const result = await generateBoard({
       inputDir: projectDir,
       outputFile: outputPath,
-      title: config.title || 'Reference Board',
-      embedImages: embed,
+      title: config.title,
+      embedImages: opts.embed || false,
+      config,
     });
-    console.log(`\n✓ Board generated: ${outputPath}`);
-  } catch (err) {
-    console.error(`\nError: ${err.message}`);
-    process.exit(1);
+    
+    console.log(`  Items: ${result.itemCount}`);
+    console.log(`\n✓ ${outputPath}`);
+  } else {
+    await legacyBuild();
   }
+}
+
+async function watchProject(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+  
+  console.log('Watching for changes...');
+  console.log('Press Ctrl+C to stop\n');
+  
+  let buildTimeout;
+  const rebuild = () => {
+    clearTimeout(buildTimeout);
+    buildTimeout = setTimeout(async () => {
+      console.log(`[${new Date().toLocaleTimeString()}] Rebuilding...`);
+      await buildBoard([]);
+    }, 500);
+  };
+  
+  // Watch images folder
+  const imagesDir = join(projectDir, 'images');
+  if (existsSync(imagesDir)) {
+    watch(imagesDir, rebuild);
+  }
+  
+  // Watch metadata
+  watch(join(projectDir, 'metadata.json'), rebuild);
+  
+  // Initial build
+  await buildBoard([]);
+}
+
+async function listItems(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+  
+  const metadata = JSON.parse(readFileSync(join(projectDir, 'metadata.json'), 'utf-8'));
+  
+  console.log(`\n${metadata.board?.title || 'RefBoard'}\n${'─'.repeat(40)}`);
+  
+  metadata.items.forEach((item, i) => {
+    const tags = item.tags?.length ? ` [${item.tags.join(', ')}]` : '';
+    const title = item.title || item.file;
+    const artist = item.artist ? ` — ${item.artist}` : '';
+    console.log(`${String(i + 1).padStart(2)}. ${title}${artist}${tags}`);
+  });
+  
+  console.log(`\nTotal: ${metadata.items.length} items`);
+}
+
+async function removeItem(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+  
+  if (!args[0]) exit('Usage: refboard remove <index|filename>');
+  
+  const metaPath = join(projectDir, 'metadata.json');
+  const metadata = JSON.parse(readFileSync(metaPath, 'utf-8'));
+  
+  const target = args[0];
+  let index = parseInt(target) - 1;
+  
+  if (isNaN(index)) {
+    index = metadata.items.findIndex(i => i.file === target);
+  }
+  
+  if (index < 0 || index >= metadata.items.length) {
+    exit('Item not found');
+  }
+  
+  const removed = metadata.items.splice(index, 1)[0];
+  writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+  
+  console.log(`✓ Removed: ${removed.file}`);
+}
+
+async function editMeta(args) {
+  const projectDir = findProject();
+  if (!projectDir) exit('Not in a RefBoard project');
+  
+  if (!args[0]) exit('Usage: refboard meta <index|filename> [--title "..."] [--artist "..."]');
+  
+  const metaPath = join(projectDir, 'metadata.json');
+  const metadata = JSON.parse(readFileSync(metaPath, 'utf-8'));
+  
+  const target = args[0];
+  let index = parseInt(target) - 1;
+  
+  if (isNaN(index)) {
+    index = metadata.items.findIndex(i => i.file === target);
+  }
+  
+  if (index < 0 || index >= metadata.items.length) {
+    exit('Item not found');
+  }
+  
+  const opts = parseOptions(args.slice(1));
+  const item = metadata.items[index];
+  
+  if (opts.title !== undefined) item.title = opts.title;
+  if (opts.artist !== undefined) item.artist = opts.artist;
+  if (opts.year !== undefined) item.year = opts.year;
+  if (opts.desc !== undefined) item.description = opts.desc;
+  if (opts.tags !== undefined) item.tags = opts.tags.split(',').map(t => t.trim());
+  if (opts.context !== undefined) item.context = opts.context;
+  if (opts.influences !== undefined) item.influences = opts.influences;
+  
+  writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+  
+  console.log(`✓ Updated: ${item.file}`);
+  console.log(JSON.stringify(item, null, 2));
 }
 
 async function legacyBuild() {
@@ -201,73 +308,105 @@ async function legacyBuild() {
   };
   
   const { values } = parseArgs({ options, allowPositionals: true });
-  
-  if (values.help) {
-    showHelp();
-    return;
-  }
+  if (values.help) { showHelp(); return; }
   
   const inputDir = resolve(values.input);
   const outputFile = resolve(values.output);
   
-  if (!existsSync(inputDir)) {
-    console.error(`Error: Input directory not found: ${inputDir}`);
-    process.exit(1);
-  }
+  if (!existsSync(inputDir)) exit(`Not found: ${inputDir}`);
   
-  console.log(`RefBoard - Generating visual reference board`);
-  console.log(`  Input:  ${inputDir}`);
-  console.log(`  Output: ${outputFile}`);
+  console.log(`RefBoard`);
+  console.log(`  Input: ${inputDir}`);
   
-  try {
-    await generateBoard({
-      inputDir,
-      outputFile,
-      title: values.title,
-      embedImages: values.embed,
-    });
-    console.log(`\n✓ Board generated: ${outputFile}`);
-  } catch (err) {
-    console.error(`\nError: ${err.message}`);
-    process.exit(1);
-  }
+  const result = await generateBoard({
+    inputDir,
+    outputFile,
+    title: values.title,
+    embedImages: values.embed,
+  });
+  
+  console.log(`  Items: ${result.itemCount}`);
+  console.log(`\n✓ ${outputFile}`);
 }
 
 function showHelp() {
   console.log(`
 RefBoard - Visual reference board generator
 
-Commands:
-  refboard init [dir]           Initialize a new project
-  refboard add <image> [opts]   Add an image to the project
-  refboard build [opts]         Build the reference board
-  refboard help                 Show this help
+COMMANDS
+  refboard init [dir]              Create new project
+  refboard add <image> [opts]      Add single image
+  refboard import <folder> [opts]  Import folder of images
+  refboard build [opts]            Generate HTML board
+  refboard watch                   Watch and auto-rebuild
+  refboard list                    List all items
+  refboard remove <n|file>         Remove item
+  refboard meta <n|file> [opts]    Edit item metadata
 
-Init:
-  refboard init                 Initialize in current directory
-  refboard init ./my-project    Initialize in specified directory
+OPTIONS
+  --title "..."     Item/board title
+  --artist "..."    Artist name
+  --year "..."      Year
+  --desc "..."      Description
+  --tags "a,b,c"    Tags (comma-separated)
+  --context "..."   Historical context
+  --embed           Embed images as base64
+  --output, -o      Output file
 
-Add:
-  refboard add photo.jpg
-  refboard add photo.jpg --title "Artwork" --artist "Name"
-  refboard add photo.jpg --tags "art-deco,sculpture"
+LEGACY MODE (no project)
+  refboard -i <folder> -o board.html -t "Title"
 
-Build:
-  refboard build                Build using project config
-  refboard build --embed        Embed images as base64
-  refboard build -o out.html    Custom output file
-
-Legacy mode (no project):
-  refboard -i ./folder -o board.html
-  refboard -i ./refs -t "My Board" --embed
+EXAMPLES
+  refboard init my-refs
+  refboard add photo.jpg --title "Sculpture" --artist "Unknown" --tags "bronze,1920s"
+  refboard import ~/Downloads/refs --tags "inspiration"
+  refboard build --embed
+  refboard meta 1 --title "Updated Title"
 
 Project structure:
-  my-project/
-    refboard.json       Project config
-    metadata.json       Image metadata
-    images/             Image files
-    board.html          Generated output
-
-More info: https://github.com/jingxiguo/refboard
+  project/
+    refboard.json     Config
+    metadata.json     Item data
+    images/           Image files
+    board.html        Output
 `);
+}
+
+// ============ Helpers ============
+
+function findProject() {
+  let dir = process.cwd();
+  while (dir !== dirname(dir)) {
+    if (existsSync(join(dir, 'refboard.json'))) return dir;
+    dir = dirname(dir);
+  }
+  return null;
+}
+
+function loadConfig(dir) {
+  const path = join(dir, 'refboard.json');
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf-8')) : {};
+}
+
+function parseOptions(args) {
+  const opts = {};
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const val = args[i + 1];
+      if (val && !val.startsWith('--')) {
+        opts[key] = val;
+        i++;
+      } else {
+        opts[key] = true;
+      }
+    }
+  }
+  return opts;
+}
+
+function exit(msg) {
+  console.error(`Error: ${msg}`);
+  process.exit(1);
 }

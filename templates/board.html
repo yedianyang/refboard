@@ -6,30 +6,35 @@
   <title>{{TITLE}}</title>
   <style>
     :root {
-      --bg: #1a1a1a;
-      --surface: #252525;
+      --bg: #121212;
+      --bg-secondary: #1a1a1a;
+      --surface: #222;
       --surface-hover: #2a2a2a;
       --border: #333;
-      --text: #e0e0e0;
-      --text-muted: #888;
-      --accent: #d4af37;
-      --accent-dim: #a38829;
-      --grid-color: #222;
+      --text: #f0f0f0;
+      --text-secondary: #999;
+      --text-muted: #666;
+      --accent: #f5c518;
+      --accent-hover: #ffd84d;
+      --accent-dim: #b8940f;
+      --success: #4ade80;
+      --error: #f87171;
+      --grid-color: rgba(255,255,255,0.03);
+      --grid-accent: rgba(255,255,255,0.06);
+      --shadow: 0 4px 20px rgba(0,0,0,0.5);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
     }
     
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       overflow: hidden;
       height: 100vh;
       user-select: none;
+      -webkit-font-smoothing: antialiased;
     }
     
     /* Toolbar */
@@ -38,85 +43,153 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 48px;
-      background: var(--surface);
+      height: 52px;
+      background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      padding: 0 16px;
-      gap: 16px;
+      padding: 0 20px;
+      gap: 12px;
       z-index: 1000;
+      backdrop-filter: blur(10px);
     }
     
-    .toolbar h1 {
-      font-size: 14px;
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 16px;
+      border-right: 1px solid var(--border);
+    }
+    
+    .toolbar-brand h1 {
+      font-size: 15px;
       font-weight: 600;
       color: var(--accent);
+      letter-spacing: -0.3px;
+    }
+    
+    .toolbar-brand .count {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 8px;
     }
     
     .toolbar-divider {
       width: 1px;
-      height: 24px;
+      height: 28px;
       background: var(--border);
+      margin: 0 8px;
     }
     
-    .toolbar-btn {
+    .btn {
       background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      border: 1px solid transparent;
+      color: var(--text-secondary);
       padding: 6px 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: all 0.15s;
     }
     
-    .toolbar-btn:hover {
-      background: var(--surface-hover);
+    .btn:hover {
+      background: var(--surface);
       color: var(--text);
     }
     
-    .toolbar-btn.active {
+    .btn.active {
       background: var(--accent);
-      border-color: var(--accent);
       color: #000;
+    }
+    
+    .btn-icon {
+      padding: 6px 8px;
     }
     
     .zoom-controls {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       margin-left: auto;
     }
     
     .zoom-level {
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 500;
       color: var(--text-muted);
-      min-width: 48px;
+      min-width: 44px;
       text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    /* Search */
+    .search-box {
+      position: relative;
+    }
+    
+    .search-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px 6px 32px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: 180px;
+      outline: none;
+      transition: all 0.15s;
+    }
+    
+    .search-input:focus {
+      border-color: var(--accent);
+      width: 220px;
+    }
+    
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 12px;
     }
     
     /* Canvas */
     .canvas-container {
       position: fixed;
-      top: 48px;
+      top: 52px;
       left: 0;
       right: 0;
       bottom: 0;
       overflow: hidden;
       cursor: grab;
       background: 
+        linear-gradient(var(--grid-accent) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-accent) 1px, transparent 1px),
         linear-gradient(var(--grid-color) 1px, transparent 1px),
         linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-      background-size: 40px 40px;
-      background-position: center center;
+      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+      background-position: -1px -1px;
     }
     
-    .canvas-container.dragging {
-      cursor: grabbing;
-    }
+    .canvas-container.panning { cursor: grabbing; }
     
     .canvas {
       position: absolute;
@@ -126,54 +199,86 @@
     /* Cards */
     .card {
       position: absolute;
+      width: 260px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       cursor: move;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      transition: box-shadow 0.2s;
-      min-width: 200px;
-      max-width: 400px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s, border-color 0.2s;
     }
     
     .card:hover {
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: var(--shadow-lg);
+      border-color: #444;
     }
     
     .card.selected {
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg);
     }
     
     .card.dragging {
-      opacity: 0.9;
+      opacity: 0.95;
       z-index: 100;
+      cursor: grabbing;
+    }
+    
+    .card.filtered-out {
+      opacity: 0.15;
+      pointer-events: none;
     }
     
     .card-image {
       width: 100%;
-      max-height: 300px;
+      height: 180px;
       overflow: hidden;
       background: #000;
+      position: relative;
     }
     
     .card-image img {
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: cover;
       display: block;
       pointer-events: none;
+      transition: transform 0.3s;
+    }
+    
+    .card:hover .card-image img {
+      transform: scale(1.02);
+    }
+    
+    .card-image-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(transparent 60%, rgba(0,0,0,0.6));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .card:hover .card-image-overlay {
+      opacity: 1;
     }
     
     .card-content {
-      padding: 12px;
+      padding: 14px;
     }
     
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
-      margin-bottom: 4px;
       color: var(--text);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    
+    .card-title.card-filename {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 12px;
     }
     
     .card-artist {
@@ -184,394 +289,479 @@
     
     .card-description {
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     
     .card-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     
     .tag {
       background: var(--bg);
-      border: 1px solid var(--border);
-      padding: 2px 6px;
-      border-radius: 3px;
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 10px;
       color: var(--text-muted);
+      font-weight: 500;
     }
     
-    /* Sticky Notes */
-    .sticky {
+    /* Connections */
+    .connections-layer {
       position: absolute;
-      width: 200px;
-      min-height: 100px;
-      background: #fef08a;
-      border: none;
-      border-radius: 2px;
-      padding: 12px;
-      cursor: move;
-      box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
-      font-size: 13px;
-      color: #1a1a1a;
-      line-height: 1.4;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: -1;
     }
     
-    .sticky.selected {
-      box-shadow: 0 0 0 2px var(--accent), 2px 2px 8px rgba(0,0,0,0.2);
-    }
-    
-    .sticky-content {
-      outline: none;
-      min-height: 60px;
+    .connection {
+      stroke: var(--accent-dim);
+      stroke-width: 2;
+      fill: none;
+      opacity: 0.5;
     }
     
     /* Info Panel */
     .info-panel {
       position: fixed;
       right: 0;
-      top: 48px;
+      top: 52px;
       bottom: 0;
-      width: 320px;
-      background: var(--surface);
+      width: 340px;
+      background: var(--bg-secondary);
       border-left: 1px solid var(--border);
-      padding: 16px;
-      overflow-y: auto;
       transform: translateX(100%);
-      transition: transform 0.2s;
+      transition: transform 0.25s ease;
       z-index: 999;
+      display: flex;
+      flex-direction: column;
     }
     
-    .info-panel.open {
-      transform: translateX(0);
+    .info-panel.open { transform: translateX(0); }
+    
+    .info-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
     }
     
-    .info-panel h2 {
+    .info-header h2 {
       font-size: 16px;
-      margin-bottom: 12px;
-      color: var(--accent);
-    }
-    
-    .info-panel h3 {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin: 16px 0 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .info-panel p {
-      font-size: 13px;
-      line-height: 1.6;
+      font-weight: 600;
       color: var(--text);
+      line-height: 1.3;
     }
     
     .info-close {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: transparent;
+      background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 20px;
+      font-size: 18px;
       cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    
+    .info-close:hover { color: var(--text); }
+    
+    .info-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
+    .info-section {
+      margin-bottom: 20px;
+    }
+    
+    .info-section h3 {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    
+    .info-section p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+    
+    .info-meta {
+      font-size: 13px;
+      color: var(--accent);
     }
     
     /* Minimap */
     .minimap {
       position: fixed;
-      bottom: 16px;
-      right: 16px;
-      width: 160px;
-      height: 100px;
-      background: var(--surface);
+      bottom: 20px;
+      right: 20px;
+      width: 180px;
+      height: 120px;
+      background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 8px;
       overflow: hidden;
       z-index: 998;
+      box-shadow: var(--shadow);
     }
     
-    .minimap-viewport {
-      position: absolute;
-      border: 1px solid var(--accent);
-      background: rgba(212, 175, 55, 0.1);
-      pointer-events: none;
+    .minimap-content {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
     
     .minimap-item {
       position: absolute;
       background: var(--accent-dim);
-      border-radius: 1px;
+      border-radius: 2px;
+      opacity: 0.8;
     }
     
-    /* Help */
-    .help-text {
+    .minimap-viewport {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(245, 197, 24, 0.1);
+      border-radius: 2px;
+    }
+    
+    /* Filter Tags */
+    .filter-panel {
       position: fixed;
-      bottom: 16px;
-      left: 16px;
+      left: 20px;
+      bottom: 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      z-index: 998;
+      max-width: 300px;
+      box-shadow: var(--shadow);
+    }
+    
+    .filter-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    
+    .filter-tag {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .filter-tag:hover {
+      border-color: var(--accent-dim);
+      color: var(--text);
+    }
+    
+    .filter-tag.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+    
+    /* Keyboard hints */
+    .keyboard-hints {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 14px;
       font-size: 11px;
       color: var(--text-muted);
-      z-index: 998;
+      z-index: 997;
+      display: flex;
+      gap: 16px;
     }
     
-    .help-text kbd {
+    .keyboard-hints kbd {
       background: var(--surface);
       border: 1px solid var(--border);
       padding: 2px 6px;
-      border-radius: 3px;
-      margin: 0 2px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 10px;
+    }
+    
+    /* Drop zone */
+    .drop-zone {
+      position: fixed;
+      inset: 52px 0 0 0;
+      background: rgba(245, 197, 24, 0.1);
+      border: 3px dashed var(--accent);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    
+    .drop-zone.active {
+      display: flex;
+    }
+    
+    .drop-zone-text {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      cursor: zoom-out;
+    }
+    
+    .lightbox.active { display: flex; }
+    
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <h1>{{TITLE}}</h1>
+    <div class="toolbar-brand">
+      <h1>{{TITLE}}</h1>
+      <span class="count">{{ITEM_COUNT}}</span>
+    </div>
+    
+    <div class="toolbar-group">
+      <button class="btn" id="tileBtn" title="Auto-arrange (T)">⊞ Tile</button>
+      <button class="btn" id="fitBtn" title="Fit view (F)">◎ Fit</button>
+    </div>
+    
     <div class="toolbar-divider"></div>
-    <button class="toolbar-btn" id="addStickyBtn" title="Add sticky note">
-      📝 Note
-    </button>
-    <button class="toolbar-btn" id="autoTileBtn" title="Auto-arrange items in grid">
-      ⊞ Tile
-    </button>
-    <button class="toolbar-btn" id="fitViewBtn" title="Fit all items in view">
-      👁 Fit View
-    </button>
-    <button class="toolbar-btn" id="toggleInfoBtn" title="Toggle info panel">
-      ℹ️ Info
-    </button>
+    
+    <div class="toolbar-group">
+      <button class="btn" id="infoBtn" title="Toggle info panel (I)">ℹ Info</button>
+    </div>
+    
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search..." title="Search (/)">
+    </div>
+    
     <div class="zoom-controls">
-      <button class="toolbar-btn" id="zoomOutBtn">−</button>
+      <button class="btn btn-icon" id="zoomOutBtn" title="Zoom out (-)">−</button>
       <span class="zoom-level" id="zoomLevel">100%</span>
-      <button class="toolbar-btn" id="zoomInBtn">+</button>
-      <button class="toolbar-btn" id="resetZoomBtn">Reset</button>
+      <button class="btn btn-icon" id="zoomInBtn" title="Zoom in (+)">+</button>
+      <button class="btn" id="resetBtn" title="Reset zoom (0)">Reset</button>
     </div>
   </div>
   
-  <div class="canvas-container" id="canvasContainer">
+  <div class="canvas-container" id="container">
+    <svg class="connections-layer" id="connections"></svg>
     <div class="canvas" id="canvas">
       {{ITEMS}}
     </div>
   </div>
   
   <div class="info-panel" id="infoPanel">
-    <button class="info-close" id="infoClose">&times;</button>
-    <h2 id="infoTitle">Select an item</h2>
-    <div id="infoContent">
-      <p style="color: var(--text-muted)">Click on a card to see details</p>
+    <div class="info-header">
+      <h2 id="infoTitle">Select an item</h2>
+      <button class="info-close" id="infoClose">×</button>
+    </div>
+    <div class="info-body" id="infoBody">
+      <p style="color: var(--text-muted)">Click on a card to see details. Double-click to view full image.</p>
     </div>
   </div>
   
-  <div class="minimap" id="minimap"></div>
+  <div class="minimap" id="minimap">
+    <div class="minimap-content" id="minimapContent"></div>
+  </div>
   
-  <div class="help-text">
-    <kbd>Scroll</kbd> Zoom · <kbd>Drag</kbd> Pan · <kbd>Click</kbd> Select · <kbd>Double-click</kbd> Details
+  <div class="filter-panel" id="filterPanel" style="display: none;">
+    <div class="filter-title">Filter by tag</div>
+    <div class="filter-tags" id="filterTags"></div>
+  </div>
+  
+  <div class="keyboard-hints">
+    <span><kbd>Space</kbd> Pan</span>
+    <span><kbd>Scroll</kbd> Zoom</span>
+    <span><kbd>T</kbd> Tile</span>
+    <span><kbd>F</kbd> Fit</span>
+    <span><kbd>Del</kbd> Remove</span>
+  </div>
+  
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-zone-text">Drop images here</div>
+  </div>
+  
+  <div class="lightbox" id="lightbox">
+    <img src="" alt="">
   </div>
   
   <script>
-    // Canvas state
+    const items = {{ITEMS_DATA}};
+    const tags = {{TAGS_DATA}};
+    const boardId = '{{BOARD_ID}}';
+    
+    // State
     let scale = 1;
     let offsetX = 0;
     let offsetY = 0;
-    let isDragging = false;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let selectedCard = null;
+    let dragCard = null;
     let dragStartX = 0;
     let dragStartY = 0;
-    let selectedCard = null;
-    let cardDragging = null;
-    let cardDragStartX = 0;
-    let cardDragStartY = 0;
+    let positions = JSON.parse(localStorage.getItem(`refboard-${boardId}`) || '{}');
+    let activeFilter = null;
+    let searchQuery = '';
     
-    const container = document.getElementById('canvasContainer');
+    // Elements
+    const container = document.getElementById('container');
     const canvas = document.getElementById('canvas');
     const zoomLevel = document.getElementById('zoomLevel');
     const infoPanel = document.getElementById('infoPanel');
-    const minimap = document.getElementById('minimap');
+    const lightbox = document.getElementById('lightbox');
+    const minimapContent = document.getElementById('minimapContent');
+    const filterPanel = document.getElementById('filterPanel');
+    const filterTags = document.getElementById('filterTags');
+    const searchInput = document.getElementById('searchInput');
+    const dropZone = document.getElementById('dropZone');
     
-    // Item data
-    const items = {{ITEMS_DATA}};
+    // Initialize tags filter
+    if (tags.length > 0) {
+      filterPanel.style.display = 'block';
+      filterTags.innerHTML = `<button class="filter-tag active" data-tag="">All</button>` +
+        tags.map(t => `<button class="filter-tag" data-tag="${t}">${t}</button>`).join('');
+    }
     
-    // Initialize positions if not set
-    let positions = JSON.parse(localStorage.getItem('refboard-positions-{{BOARD_ID}}') || '{}');
+    // Apply saved positions
+    document.querySelectorAll('.card').forEach(card => {
+      const id = card.dataset.id;
+      if (positions[id]) {
+        card.style.left = positions[id].x + 'px';
+        card.style.top = positions[id].y + 'px';
+      }
+    });
     
+    // Transform
     function updateTransform() {
       canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
       zoomLevel.textContent = Math.round(scale * 100) + '%';
-      updateBackgroundGrid();
       updateMinimap();
     }
     
-    function updateBackgroundGrid() {
-      const gridSize = 40 * scale;
-      container.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-      container.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
-    }
-    
     // Pan
-    container.addEventListener('mousedown', (e) => {
-      if (e.target === container || e.target === canvas) {
-        isDragging = true;
-        dragStartX = e.clientX - offsetX;
-        dragStartY = e.clientY - offsetY;
-        container.classList.add('dragging');
+    container.addEventListener('mousedown', e => {
+      if (e.target === container || e.target === canvas || e.target.tagName === 'svg') {
+        isPanning = true;
+        panStartX = e.clientX - offsetX;
+        panStartY = e.clientY - offsetY;
+        container.classList.add('panning');
       }
     });
     
-    document.addEventListener('mousemove', (e) => {
-      if (isDragging) {
-        offsetX = e.clientX - dragStartX;
-        offsetY = e.clientY - dragStartY;
+    document.addEventListener('mousemove', e => {
+      if (isPanning) {
+        offsetX = e.clientX - panStartX;
+        offsetY = e.clientY - panStartY;
         updateTransform();
       }
-      
-      if (cardDragging) {
-        const dx = (e.clientX - cardDragStartX) / scale;
-        const dy = (e.clientY - cardDragStartY) / scale;
-        const card = cardDragging;
-        const id = card.dataset.id;
-        const pos = positions[id] || { x: 0, y: 0 };
-        card.style.left = (pos.x + dx) + 'px';
-        card.style.top = (pos.y + dy) + 'px';
+      if (dragCard) {
+        const id = dragCard.dataset.id;
+        const basePos = positions[id] || { x: parseInt(dragCard.style.left), y: parseInt(dragCard.style.top) };
+        const dx = (e.clientX - dragStartX) / scale;
+        const dy = (e.clientY - dragStartY) / scale;
+        dragCard.style.left = (basePos.x + dx) + 'px';
+        dragCard.style.top = (basePos.y + dy) + 'px';
       }
     });
     
-    document.addEventListener('mouseup', (e) => {
-      if (isDragging) {
-        isDragging = false;
-        container.classList.remove('dragging');
+    document.addEventListener('mouseup', e => {
+      if (isPanning) {
+        isPanning = false;
+        container.classList.remove('panning');
       }
-      
-      if (cardDragging) {
-        const card = cardDragging;
-        const id = card.dataset.id;
-        positions[id] = {
-          x: parseInt(card.style.left),
-          y: parseInt(card.style.top)
-        };
-        localStorage.setItem('refboard-positions-{{BOARD_ID}}', JSON.stringify(positions));
-        card.classList.remove('dragging');
-        cardDragging = null;
+      if (dragCard) {
+        const id = dragCard.dataset.id;
+        positions[id] = { x: parseInt(dragCard.style.left), y: parseInt(dragCard.style.top) };
+        savePositions();
+        dragCard.classList.remove('dragging');
+        dragCard = null;
+        updateMinimap();
       }
     });
     
     // Zoom
-    container.addEventListener('wheel', (e) => {
+    container.addEventListener('wheel', e => {
       e.preventDefault();
       const rect = container.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.max(0.1, Math.min(5, scale * zoomFactor));
-      
-      // Zoom towards mouse position
-      const scaleChange = newScale / scale;
-      offsetX = mouseX - (mouseX - offsetX) * scaleChange;
-      offsetY = mouseY - (mouseY - offsetY) * scaleChange;
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.max(0.1, Math.min(5, scale * factor));
+      const ratio = newScale / scale;
+      offsetX = mx - (mx - offsetX) * ratio;
+      offsetY = my - (my - offsetY) * ratio;
       scale = newScale;
-      
       updateTransform();
     });
     
-    // Zoom buttons
-    document.getElementById('zoomInBtn').onclick = () => {
-      scale = Math.min(5, scale * 1.2);
-      updateTransform();
-    };
-    
-    document.getElementById('zoomOutBtn').onclick = () => {
-      scale = Math.max(0.1, scale / 1.2);
-      updateTransform();
-    };
-    
-    document.getElementById('resetZoomBtn').onclick = () => {
-      scale = 1;
-      offsetX = 0;
-      offsetY = 0;
-      updateTransform();
-    };
-    
-    // Auto-tile - arrange items in a spread grid
-    document.getElementById('autoTileBtn').onclick = () => {
-      const cards = Array.from(document.querySelectorAll('.card'));
-      if (cards.length === 0) return;
-      
-      // Calculate grid dimensions - prefer wide layout
-      const cols = Math.ceil(Math.sqrt(cards.length * 1.5));
-      const cardWidth = 320;
-      const cardHeight = 420;
-      const gapX = 80;
-      const gapY = 60;
-      
-      cards.forEach((card, index) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-        const x = col * (cardWidth + gapX) + 100;
-        const y = row * (cardHeight + gapY) + 100;
-        
-        card.style.left = x + 'px';
-        card.style.top = y + 'px';
-        
-        // Save position
-        positions[card.dataset.id] = { x, y };
-      });
-      
-      localStorage.setItem('refboard-positions-{{BOARD_ID}}', JSON.stringify(positions));
-      updateMinimap();
-      
-      // Fit view after tiling
-      setTimeout(() => document.getElementById('fitViewBtn').click(), 50);
-    };
-    
-    // Fit view
-    document.getElementById('fitViewBtn').onclick = () => {
-      const cards = document.querySelectorAll('.card, .sticky');
-      if (cards.length === 0) return;
-      
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      cards.forEach(card => {
-        const x = parseInt(card.style.left) || 0;
-        const y = parseInt(card.style.top) || 0;
-        const w = card.offsetWidth;
-        const h = card.offsetHeight;
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x + w);
-        maxY = Math.max(maxY, y + h);
-      });
-      
-      const contentWidth = maxX - minX + 100;
-      const contentHeight = maxY - minY + 100;
-      const containerRect = container.getBoundingClientRect();
-      
-      scale = Math.min(
-        containerRect.width / contentWidth,
-        containerRect.height / contentHeight,
-        1
-      ) * 0.9;
-      
-      offsetX = (containerRect.width - contentWidth * scale) / 2 - minX * scale;
-      offsetY = (containerRect.height - contentHeight * scale) / 2 - minY * scale;
-      
-      updateTransform();
-    };
-    
     // Card interactions
     document.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('mousedown', (e) => {
+      card.addEventListener('mousedown', e => {
         e.stopPropagation();
         selectCard(card);
-        
-        cardDragging = card;
-        cardDragStartX = e.clientX;
-        cardDragStartY = e.clientY;
+        dragCard = card;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
         card.classList.add('dragging');
       });
       
-      card.addEventListener('dblclick', (e) => {
+      card.addEventListener('dblclick', e => {
         e.stopPropagation();
-        showInfo(card.dataset.id);
+        const img = card.querySelector('img');
+        if (img) {
+          lightbox.querySelector('img').src = img.src;
+          lightbox.classList.add('active');
+        }
       });
     });
     
@@ -579,6 +769,7 @@
       if (selectedCard) selectedCard.classList.remove('selected');
       selectedCard = card;
       card.classList.add('selected');
+      showInfo(card.dataset.id);
     }
     
     function showInfo(id) {
@@ -588,111 +779,194 @@
       document.getElementById('infoTitle').textContent = item.title || item.filename;
       
       let html = '';
-      if (item.artist) html += `<p><strong>${item.artist}</strong>${item.year ? ' · ' + item.year : ''}</p>`;
+      if (item.artist) {
+        html += `<div class="info-section"><h3>Artist</h3><p class="info-meta">${item.artist}${item.year ? ' · ' + item.year : ''}</p></div>`;
+      }
       if (item.description) {
-        html += `<h3>Description</h3><p>${item.description}</p>`;
+        html += `<div class="info-section"><h3>Description</h3><p>${item.description}</p></div>`;
       }
       if (item.context) {
-        html += `<h3>Historical Context</h3><p>${item.context}</p>`;
+        html += `<div class="info-section"><h3>Historical Context</h3><p>${item.context}</p></div>`;
       }
       if (item.influences) {
-        html += `<h3>Influences</h3><p>${item.influences}</p>`;
+        html += `<div class="info-section"><h3>Influences</h3><p>${item.influences}</p></div>`;
       }
-      if (item.tags && item.tags.length) {
-        html += `<h3>Tags</h3><div class="card-tags">${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>`;
+      if (item.tags?.length) {
+        html += `<div class="info-section"><h3>Tags</h3><div class="card-tags">${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div></div>`;
       }
       
-      document.getElementById('infoContent').innerHTML = html || '<p style="color: var(--text-muted)">No details available</p>';
+      document.getElementById('infoBody').innerHTML = html || '<p style="color: var(--text-muted)">No details available</p>';
       infoPanel.classList.add('open');
     }
     
-    // Info panel toggle
-    document.getElementById('toggleInfoBtn').onclick = () => {
-      infoPanel.classList.toggle('open');
-    };
+    // Buttons
+    document.getElementById('tileBtn').onclick = autoTile;
+    document.getElementById('fitBtn').onclick = fitView;
+    document.getElementById('infoBtn').onclick = () => infoPanel.classList.toggle('open');
+    document.getElementById('infoClose').onclick = () => infoPanel.classList.remove('open');
+    document.getElementById('zoomInBtn').onclick = () => { scale = Math.min(5, scale * 1.2); updateTransform(); };
+    document.getElementById('zoomOutBtn').onclick = () => { scale = Math.max(0.1, scale / 1.2); updateTransform(); };
+    document.getElementById('resetBtn').onclick = () => { scale = 1; offsetX = 0; offsetY = 0; updateTransform(); };
     
-    document.getElementById('infoClose').onclick = () => {
-      infoPanel.classList.remove('open');
-    };
+    // Lightbox
+    lightbox.onclick = () => lightbox.classList.remove('active');
     
-    // Add sticky note
-    document.getElementById('addStickyBtn').onclick = () => {
-      const sticky = document.createElement('div');
-      sticky.className = 'sticky';
-      sticky.innerHTML = '<div class="sticky-content" contenteditable="true">New note...</div>';
-      sticky.style.left = (-offsetX / scale + 100) + 'px';
-      sticky.style.top = (-offsetY / scale + 100) + 'px';
-      canvas.appendChild(sticky);
+    // Auto tile
+    function autoTile() {
+      const cards = Array.from(document.querySelectorAll('.card:not(.filtered-out)'));
+      const cols = Math.ceil(Math.sqrt(cards.length * 1.2));
+      const cardW = 280, cardH = 400, gapX = 50, gapY = 40;
       
-      sticky.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        if (selectedCard) selectedCard.classList.remove('selected');
-        document.querySelectorAll('.sticky.selected').forEach(s => s.classList.remove('selected'));
-        sticky.classList.add('selected');
-        
-        if (!e.target.matches('.sticky-content')) {
-          cardDragging = sticky;
-          cardDragStartX = e.clientX;
-          cardDragStartY = e.clientY;
-        }
+      cards.forEach((card, i) => {
+        const x = 80 + (i % cols) * (cardW + gapX);
+        const y = 80 + Math.floor(i / cols) * (cardH + gapY);
+        card.style.left = x + 'px';
+        card.style.top = y + 'px';
+        positions[card.dataset.id] = { x, y };
       });
-    };
+      savePositions();
+      updateMinimap();
+      setTimeout(fitView, 50);
+    }
+    
+    // Fit view
+    function fitView() {
+      const cards = document.querySelectorAll('.card:not(.filtered-out)');
+      if (!cards.length) return;
+      
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      cards.forEach(c => {
+        const x = parseInt(c.style.left), y = parseInt(c.style.top);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + c.offsetWidth);
+        maxY = Math.max(maxY, y + c.offsetHeight);
+      });
+      
+      const cw = maxX - minX + 100, ch = maxY - minY + 100;
+      const rect = container.getBoundingClientRect();
+      scale = Math.min(rect.width / cw, rect.height / ch, 1) * 0.9;
+      offsetX = (rect.width - cw * scale) / 2 - minX * scale;
+      offsetY = (rect.height - ch * scale) / 2 - minY * scale;
+      updateTransform();
+    }
     
     // Minimap
     function updateMinimap() {
       const cards = document.querySelectorAll('.card');
-      if (cards.length === 0) return;
+      if (!cards.length) return;
       
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      cards.forEach(card => {
-        const x = parseInt(card.style.left) || 0;
-        const y = parseInt(card.style.top) || 0;
+      cards.forEach(c => {
+        const x = parseInt(c.style.left), y = parseInt(c.style.top);
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x + card.offsetWidth);
-        maxY = Math.max(maxY, y + card.offsetHeight);
+        maxX = Math.max(maxX, x + c.offsetWidth);
+        maxY = Math.max(maxY, y + c.offsetHeight);
       });
       
-      const padding = 50;
-      const contentWidth = maxX - minX + padding * 2;
-      const contentHeight = maxY - minY + padding * 2;
-      const mapScale = Math.min(160 / contentWidth, 100 / contentHeight);
+      const pad = 20;
+      const cw = maxX - minX + pad * 2, ch = maxY - minY + pad * 2;
+      const mapScale = Math.min(180 / cw, 120 / ch);
       
       let html = '';
-      cards.forEach(card => {
-        const x = (parseInt(card.style.left) - minX + padding) * mapScale;
-        const y = (parseInt(card.style.top) - minY + padding) * mapScale;
-        const w = card.offsetWidth * mapScale;
-        const h = card.offsetHeight * mapScale;
+      cards.forEach(c => {
+        const x = (parseInt(c.style.left) - minX + pad) * mapScale;
+        const y = (parseInt(c.style.top) - minY + pad) * mapScale;
+        const w = Math.max(4, c.offsetWidth * mapScale);
+        const h = Math.max(4, c.offsetHeight * mapScale);
         html += `<div class="minimap-item" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
       });
       
-      // Viewport indicator
-      const containerRect = container.getBoundingClientRect();
-      const vpX = ((-offsetX / scale) - minX + padding) * mapScale;
-      const vpY = ((-offsetY / scale) - minY + padding) * mapScale;
-      const vpW = (containerRect.width / scale) * mapScale;
-      const vpH = (containerRect.height / scale) * mapScale;
-      html += `<div class="minimap-viewport" style="left:${vpX}px;top:${vpY}px;width:${vpW}px;height:${vpH}px"></div>`;
+      const rect = container.getBoundingClientRect();
+      const vx = ((-offsetX / scale) - minX + pad) * mapScale;
+      const vy = ((-offsetY / scale) - minY + pad) * mapScale;
+      const vw = (rect.width / scale) * mapScale;
+      const vh = (rect.height / scale) * mapScale;
+      html += `<div class="minimap-viewport" style="left:${vx}px;top:${vy}px;width:${vw}px;height:${vh}px"></div>`;
       
-      minimap.innerHTML = html;
+      minimapContent.innerHTML = html;
     }
     
-    // Apply saved positions on load
-    document.querySelectorAll('.card').forEach(card => {
-      const id = card.dataset.id;
-      if (positions[id]) {
-        card.style.left = positions[id].x + 'px';
-        card.style.top = positions[id].y + 'px';
+    // Filter
+    filterTags.addEventListener('click', e => {
+      if (!e.target.classList.contains('filter-tag')) return;
+      filterTags.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      activeFilter = e.target.dataset.tag || null;
+      applyFilters();
+    });
+    
+    // Search
+    searchInput.addEventListener('input', e => {
+      searchQuery = e.target.value.toLowerCase();
+      applyFilters();
+    });
+    
+    function applyFilters() {
+      document.querySelectorAll('.card').forEach(card => {
+        const item = items.find(i => i.id == card.dataset.id);
+        if (!item) return;
+        
+        let visible = true;
+        if (activeFilter && !item.tags?.includes(activeFilter)) visible = false;
+        if (searchQuery) {
+          const text = [item.title, item.artist, item.description, item.filename].join(' ').toLowerCase();
+          if (!text.includes(searchQuery)) visible = false;
+        }
+        
+        card.classList.toggle('filtered-out', !visible);
+      });
+      updateMinimap();
+    }
+    
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT') return;
+      
+      switch(e.key.toLowerCase()) {
+        case 't': autoTile(); break;
+        case 'f': fitView(); break;
+        case 'i': infoPanel.classList.toggle('open'); break;
+        case 'escape': lightbox.classList.remove('active'); infoPanel.classList.remove('open'); break;
+        case '/': e.preventDefault(); searchInput.focus(); break;
+        case '0': scale = 1; offsetX = 0; offsetY = 0; updateTransform(); break;
+        case '-': scale = Math.max(0.1, scale / 1.2); updateTransform(); break;
+        case '=': case '+': scale = Math.min(5, scale * 1.2); updateTransform(); break;
+        case 'delete': case 'backspace':
+          if (selectedCard && confirm('Remove this card?')) {
+            selectedCard.remove();
+            delete positions[selectedCard.dataset.id];
+            savePositions();
+            selectedCard = null;
+            updateMinimap();
+          }
+          break;
       }
     });
     
-    // Initial setup
-    updateTransform();
+    // Save
+    function savePositions() {
+      localStorage.setItem(`refboard-${boardId}`, JSON.stringify(positions));
+    }
     
-    // Fit view on load if first time
+    // Drag & drop images
+    document.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+    document.addEventListener('dragleave', e => { if (e.target === dropZone) dropZone.classList.remove('active'); });
+    document.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('active');
+      // Note: File drop handling requires server-side support
+      // For now, show message
+      if (e.dataTransfer.files.length) {
+        alert('To add images, use the CLI: refboard add <image>');
+      }
+    });
+    
+    // Init
+    updateTransform();
     if (Object.keys(positions).length === 0) {
-      setTimeout(() => document.getElementById('fitViewBtn').click(), 100);
+      setTimeout(fitView, 100);
     }
   </script>
 </body>
