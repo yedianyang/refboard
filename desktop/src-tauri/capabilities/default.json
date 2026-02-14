@@ -25,6 +25,8 @@
         "$HOME/.gnupg/**/*"
       ]
     },
-    "http:default"
+    "http:default",
+    "shell:allow-open",
+    "dialog:default"
   ]
 }

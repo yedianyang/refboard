@@ -1243,6 +1243,26 @@
       font-size: 32px;
       opacity: 0.15;
     }
+    /* 2x2 thumbnail mosaic */
+    .home-thumb-mosaic {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      width: 100%;
+      height: 100%;
+      gap: 1px;
+      background: #0a1020;
+    }
+    .home-thumb-mosaic img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* Single image fills entire thumb area */
+    .home-thumb-mosaic.single {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
     .home-project-info {
       padding: 12px;
     }
@@ -1325,6 +1345,10 @@
       min-width: 48px;
       border-radius: 6px;
       margin: 6px;
+    }
+    .home-project-grid.list-view .home-thumb-mosaic {
+      border-radius: 6px;
+      overflow: hidden;
     }
     .home-project-grid.list-view .home-project-thumb-placeholder {
       font-size: 18px;

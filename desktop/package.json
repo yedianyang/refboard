@@ -11,6 +11,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-shell": "^2.3.5",
     "pixi.js": "^8.16.0"
   },
   "devDependencies": {

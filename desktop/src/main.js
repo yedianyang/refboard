@@ -1,7 +1,7 @@
 // RefBoard 2.0 — Main entry point
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport } from './canvas.js';
 import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
@@ -238,6 +238,17 @@ async function main() {
       return;
     }
 
+    // Cmd+N: New project (when on home screen)
+    if (meta && e.key === 'n' && !e.shiftKey) {
+      const homeScreen = document.getElementById('home-screen');
+      if (homeScreen && !homeScreen.classList.contains('hidden')) {
+        e.preventDefault();
+        const newBtn = document.getElementById('home-new-btn');
+        if (newBtn) newBtn.click();
+        return;
+      }
+    }
+
     // Cmd+S: Manual save
     if (meta && e.key === 's' && !e.shiftKey) {
       e.preventDefault();
@@ -376,6 +387,28 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
           openProject(path, loading);
         });
       });
+
+      // Lazy-load thumbnail mosaics for each project card
+      for (const card of gridEl.querySelectorAll('.home-project-card')) {
+        const path = card.dataset.path;
+        const thumbEl = card.querySelector('.home-project-thumb');
+        if (!thumbEl) continue;
+        invoke('scan_images', { dirPath: path }).then((images) => {
+          if (!images || images.length === 0) return;
+          const count = Math.min(images.length, 4);
+          const mosaic = document.createElement('div');
+          mosaic.className = 'home-thumb-mosaic' + (count === 1 ? ' single' : '');
+          for (let i = 0; i < count; i++) {
+            const img = document.createElement('img');
+            img.src = convertFileSrc(images[i].path);
+            img.alt = '';
+            img.loading = 'lazy';
+            mosaic.appendChild(img);
+          }
+          thumbEl.innerHTML = '';
+          thumbEl.appendChild(mosaic);
+        }).catch(() => {});
+      }
     }
   } catch (err) {
     console.warn('Could not load recent projects:', err);
@@ -458,15 +491,10 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
       openProject(path, loading);
     } else if (action === 'finder') {
       try {
-        await invoke('plugin:shell|open', { path });
-      } catch {
-        // Fallback: use Tauri shell opener
-        try {
-          const { open: shellOpen } = await import('@tauri-apps/plugin-shell');
-          await shellOpen(path);
-        } catch (err) {
-          setStatus(`Could not open Finder: ${err}`);
-        }
+        const { open: shellOpen } = await import('@tauri-apps/plugin-shell');
+        await shellOpen(path);
+      } catch (err) {
+        setStatus(`Could not open Finder: ${err}`);
       }
     } else if (action === 'rename') {
       // Inline rename: replace name element with input
