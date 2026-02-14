@@ -1,5 +1,7 @@
 ---
-model: claude-opus-4-6
+name: generator
+description: Core library developer for RefBoard. Handles lib/generator.js, lib/dashboard.js, lib/ai-provider.js, and CLI commands.
+model: opus
 permissionMode: acceptEdits
 ---
 

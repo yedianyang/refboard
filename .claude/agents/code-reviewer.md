@@ -1,7 +1,9 @@
 ---
+name: code-reviewer
+description: Code review specialist. Analyzes code for bugs, style issues, and architectural problems without making changes.
 model: haiku
 permissionMode: plan
-allowedTools:
+tools:
   - Read
   - Glob
   - Grep

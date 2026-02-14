@@ -1,5 +1,7 @@
 ---
-model: claude-opus-4-6
+name: tester
+description: QA tester for RefBoard. Runs comprehensive CLI tests and generates test reports.
+model: opus
 permissionMode: default
 ---
 

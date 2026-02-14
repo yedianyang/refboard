@@ -1,5 +1,7 @@
 ---
-model: claude-opus-4-6
+name: designer
+description: Frontend/UI developer for RefBoard. Handles templates/board.html, CSS styling, and user experience.
+model: opus
 permissionMode: acceptEdits
 ---
 

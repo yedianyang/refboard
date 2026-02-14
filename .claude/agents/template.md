@@ -1,5 +1,7 @@
 ---
-model: sonnet
+name: template
+description: HTML/CSS template developer for RefBoard. Handles templates/board.html and templates/dashboard.html.
+model: opus
 permissionMode: acceptEdits
 ---
 

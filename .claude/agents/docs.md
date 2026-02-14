@@ -1,7 +1,9 @@
 ---
+name: docs
+description: Documentation writer. Creates and maintains README, CHANGELOG, API docs, and inline comments.
 model: haiku
 permissionMode: acceptEdits
-allowedTools:
+tools:
   - Read
   - Glob
   - Grep

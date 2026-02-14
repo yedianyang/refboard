@@ -1,7 +1,9 @@
 ---
+name: researcher
+description: Research specialist. Investigates technical questions, explores APIs, and gathers information from web and codebase.
 model: haiku
 permissionMode: plan
-allowedTools:
+tools:
   - Read
   - Glob
   - Grep
