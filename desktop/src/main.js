@@ -1,7 +1,8 @@
 // RefBoard 2.0 — Main entry point
-// Initializes the PixiJS canvas and wires up the UI shell
+// Initializes the PixiJS canvas, AI panels, and wires up the UI shell
 
-import { initCanvas, loadProject, fitAll, setUIElements } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect } from './canvas.js';
+import { initPanels, showMetadata, openSettings } from './panels.js';
 
 async function main() {
   const container = document.getElementById('canvas-container');
@@ -10,10 +11,30 @@ async function main() {
   const projectPath = document.getElementById('project-path');
   const openBtn = document.getElementById('open-btn');
   const fitBtn = document.getElementById('fit-btn');
+  const settingsBtn = document.getElementById('settings-btn');
 
   // Initialize PixiJS canvas
   await initCanvas(container);
   setUIElements({ loading, zoom: zoomDisplay });
+
+  // Initialize AI panels
+  initPanels({
+    onAccept: (card, analysis) => {
+      const statusText = document.getElementById('status-text');
+      if (statusText) {
+        const tagCount = analysis.tags?.length || 0;
+        statusText.textContent = `Accepted ${tagCount} tags for ${card.data.name}`;
+      }
+    },
+  });
+
+  // Card selection -> open metadata panel
+  onCardSelect((card) => {
+    showMetadata(card);
+  });
+
+  // Settings button
+  settingsBtn.addEventListener('click', () => openSettings());
 
   // Open project button
   openBtn.addEventListener('click', async () => {

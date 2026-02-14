@@ -344,6 +344,10 @@ function finishDrag(e) {
       clearSelection();
       setCardSelected(card, true);
     }
+    // Notify panels of single-card selection
+    if (onCardSelectCallback && selection.size === 1) {
+      onCardSelectCallback(card);
+    }
   }
 
   card.data.x = card.container.x;
@@ -552,6 +556,20 @@ function updateZoomDisplay() {
     zoomEl.textContent = `${Math.round(viewport.scale * 100)}%`;
   }
 }
+
+// ============================================================
+// Selection Callbacks
+// ============================================================
+
+let onCardSelectCallback = null;
+
+/** Register a callback for when a card is selected (single-click). */
+export function onCardSelect(callback) {
+  onCardSelectCallback = callback;
+}
+
+/** Get all loaded cards. */
+export function getAllCards() { return allCards; }
 
 // ============================================================
 // Public API

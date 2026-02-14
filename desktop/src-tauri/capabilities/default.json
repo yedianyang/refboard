@@ -24,6 +24,7 @@
         "$HOME/.ssh/**/*",
         "$HOME/.gnupg/**/*"
       ]
-    }
+    },
+    "http:default"
   ]
 }

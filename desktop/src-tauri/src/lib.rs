@@ -1,3 +1,5 @@
+mod ai;
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -313,12 +315,17 @@ fn chrono_now_iso() -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             scan_images,
             read_metadata,
             write_metadata,
             create_project,
             list_projects,
+            ai::analyze_image,
+            ai::get_ai_config,
+            ai::set_ai_config,
+            ai::check_ollama,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
