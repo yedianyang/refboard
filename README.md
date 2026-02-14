@@ -52,6 +52,7 @@ refboard build
 | `refboard ask "question"` | Ask AI about your board |
 | `refboard config <key> <val>` | Manage configuration |
 | `refboard agent <action>` | External agent interface |
+| `refboard serve` | Start local dev server with livereload |
 | `refboard save-positions` | Persist card positions |
 
 ### Options

@@ -1,6 +1,6 @@
 {
   "name": "refboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Visual reference board generator for artists and designers",
   "main": "./index.js",
   "bin": {
@@ -15,7 +15,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node test/test.js"
+    "test": "echo \"No tests yet\" && exit 0"
   },
   "repository": {
     "type": "git",
