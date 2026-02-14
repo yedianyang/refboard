@@ -3,7 +3,7 @@
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, exportCanvasPNG } from './canvas.js';
 import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
@@ -297,23 +297,12 @@ async function main() {
   // Settings button
   settingsBtn.addEventListener('click', () => openSettings());
 
-  // Export button
+  // Export button — PNG export
   const exportBtn = document.getElementById('export-btn');
   if (exportBtn) {
-    exportBtn.addEventListener('click', async () => {
-      if (!currentProjectPath) return;
-      const outputPath = currentProjectPath + '/export.json';
-      try {
-        const count = await invoke('export_metadata', {
-          projectPath: currentProjectPath,
-          outputPath,
-        });
-        const statusText = document.getElementById('status-text');
-        if (statusText) statusText.textContent = `Exported ${count} images to export.json`;
-      } catch (err) {
-        const statusText = document.getElementById('status-text');
-        if (statusText) statusText.textContent = `Export failed: ${err}`;
-      }
+    exportBtn.title = 'Export board as PNG (Cmd+Shift+E)';
+    exportBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('refboard:export-png'));
     });
   }
 
@@ -402,6 +391,38 @@ async function main() {
     if (action === 'analyze') analyzeCard(card);
     else if (action === 'find-similar') findSimilar(card);
     else if (action === 'find-online') findMoreLike(card);
+  });
+
+  // Export canvas as PNG (Cmd+Shift+E or context menu)
+  window.addEventListener('refboard:export-png', async () => {
+    const statusText = document.getElementById('status-text');
+    try {
+      if (statusText) statusText.textContent = 'Exporting...';
+      const pngData = await exportCanvasPNG();
+      if (!pngData) {
+        if (statusText) statusText.textContent = 'Nothing to export';
+        return;
+      }
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const defaultName = currentProjectPath
+        ? currentProjectPath.split('/').pop() + '-board.png'
+        : 'refboard-export.png';
+      const filePath = await save({
+        title: 'Export Board as PNG',
+        defaultPath: defaultName,
+        filters: [{ name: 'PNG Image', extensions: ['png'] }],
+      });
+      if (!filePath) {
+        if (statusText) statusText.textContent = 'Export cancelled';
+        return;
+      }
+      const { writeFile } = await import('@tauri-apps/plugin-fs');
+      await writeFile(filePath, pngData);
+      if (statusText) statusText.textContent = `Exported to ${filePath.split('/').pop()}`;
+    } catch (err) {
+      console.error('Export failed:', err);
+      if (statusText) statusText.textContent = `Export failed: ${err}`;
+    }
   });
 
   // Initialize home screen — hide toolbar when on home

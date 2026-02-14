@@ -368,6 +368,13 @@ function setupKeyboard() {
     // Layout — Tidy up
     if (e.key === 't' && meta && e.shiftKey) { tidyUp(); e.preventDefault(); return; }
 
+    // Export canvas as PNG
+    if (e.key === 'e' && meta && e.shiftKey) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('refboard:export-png'));
+      return;
+    }
+
     // Arrow keys — nudge selected items
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !meta) {
       if (selection.size === 0) return;
@@ -1995,6 +2002,8 @@ function showCanvasContextMenu(clientX, clientY) {
     items.push({ icon: '\u25A1', label: `${minimapVisible ? 'Hide' : 'Show'} Minimap`, shortcut: 'M', action: 'toggle-minimap' });
     items.push({ divider: true });
     items.push({ icon: '\u2B1A', label: 'Tidy Up', shortcut: '\u2318\u21E7T', action: 'tidy-up' });
+    items.push({ divider: true });
+    items.push({ icon: '\uD83D\uDCF7', label: 'Export as PNG', shortcut: '\u2318\u21E7E', action: 'export-png' });
   }
 
   // Render menu
@@ -2067,6 +2076,9 @@ function handleContextAction(action) {
     case 'toggle-grid': toggleGrid(); break;
     case 'toggle-minimap': toggleMinimap(); break;
     case 'tidy-up': tidyUp(); break;
+    case 'export-png':
+      window.dispatchEvent(new CustomEvent('refboard:export-png'));
+      break;
     // Cross-module actions: dispatch custom events for main.js to handle
     case 'analyze':
     case 'find-similar':
@@ -2477,6 +2489,75 @@ if (typeof window !== 'undefined') {
   window.addEventListener('refboard:scroll-to-card', (e) => {
     if (e.detail?.path) scrollToCard(e.detail.path);
   });
+}
+
+// ============================================================
+// Canvas Export to PNG
+// ============================================================
+
+export async function exportCanvasPNG() {
+  if (allCards.length === 0) return null;
+
+  const PADDING = 40;
+  const MAX_DIM = 8192;
+  const bounds = getCardsBounds(allCards);
+  const bw = bounds.maxX - bounds.minX + PADDING * 2;
+  const bh = bounds.maxY - bounds.minY + PADDING * 2;
+
+  // Limit export resolution so canvas doesn't exceed GPU limits
+  let res = 1;
+  if (bw > MAX_DIM || bh > MAX_DIM) {
+    res = Math.min(MAX_DIM / bw, MAX_DIM / bh);
+  }
+
+  // Hide overlays and selection borders during export
+  const savedGuide = guideGfx.visible;
+  guideGfx.visible = false;
+  const savedSelections = [];
+  for (const card of allCards) {
+    if (card.selectionBorder) {
+      savedSelections.push({ card, visible: card.selectionBorder.visible });
+      card.selectionBorder.visible = false;
+    }
+  }
+
+  // Save and reset world transform so extract frame matches world coords
+  const savedWX = world.x, savedWY = world.y, savedWS = world.scale.x;
+  world.x = 0;
+  world.y = 0;
+  world.scale.set(1);
+
+  // Extract world container with frame covering all cards + padding
+  const frame = new Rectangle(
+    bounds.minX - PADDING,
+    bounds.minY - PADDING,
+    bw,
+    bh,
+  );
+  const canvas = app.renderer.extract.canvas({
+    target: world,
+    frame,
+    resolution: res,
+    clearColor: document.documentElement.getAttribute('data-theme') === 'light' ? '#f5f5f7' : '#1a1a2e',
+  });
+
+  // Convert to PNG bytes
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const arrayBuffer = await blob.arrayBuffer();
+  const pngData = new Uint8Array(arrayBuffer);
+
+  // Restore world transform
+  world.x = savedWX;
+  world.y = savedWY;
+  world.scale.set(savedWS);
+
+  // Restore guide lines and selection borders
+  guideGfx.visible = savedGuide;
+  for (const { card, visible } of savedSelections) {
+    card.selectionBorder.visible = visible;
+  }
+
+  return pngData;
 }
 
 // ============================================================
