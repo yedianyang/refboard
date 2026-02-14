@@ -10,9 +10,13 @@
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      font-feature-settings: 'kern' 1, 'liga' 1;
+      -webkit-font-smoothing: antialiased;
       background: #1a1a2e;
       color: #e0e0e0;
+      font-size: 13px;
+      line-height: 1.4;
     }
 
     /* ---- Layout ---- */
@@ -27,10 +31,12 @@
     #toolbar {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px 8px 80px; /* 80px left for macOS traffic lights */
-      background: #16213e;
-      border-bottom: 1px solid #2a2a4a;
+      gap: 6px;
+      padding: 6px 12px 6px 80px; /* 80px left for macOS traffic lights */
+      background: rgba(22, 33, 62, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       z-index: 10;
       flex-shrink: 0;
       -webkit-app-region: drag; /* Allow window dragging from toolbar */
@@ -38,44 +44,48 @@
     #toolbar.toolbar-hidden { display: none; }
 
     #toolbar .logo {
-      font-weight: 700;
-      font-size: 14px;
+      font-weight: 600;
+      font-size: 13px;
       color: #f0f0f0;
-      letter-spacing: -0.5px;
-      margin-right: 8px;
+      letter-spacing: -0.3px;
+      margin-right: 6px;
       -webkit-app-region: drag;
     }
 
     #toolbar input[type="text"] {
       flex: 1;
       max-width: 400px;
-      padding: 5px 10px;
-      border-radius: 5px;
-      border: 1px solid #2a2a4a;
-      background: #0f1a30;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.2);
       color: #e0e0e0;
       font-size: 12px;
       outline: none;
       -webkit-app-region: no-drag;
+      transition: border-color 0.15s ease;
     }
     #toolbar input[type="text"]:focus {
-      border-color: #4a9eff;
+      border-color: rgba(74, 158, 255, 0.5);
     }
 
     #toolbar button {
-      padding: 5px 12px;
-      border-radius: 5px;
-      border: 1px solid #2a2a4a;
-      background: #0f3460;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 52, 96, 0.6);
       color: #d0d0e0;
       cursor: pointer;
       font-size: 12px;
       white-space: nowrap;
       -webkit-app-region: no-drag;
+      transition: all 0.15s ease;
     }
     #toolbar button:hover {
-      background: #1a5276;
-      border-color: #4a9eff;
+      background: rgba(26, 82, 118, 0.8);
+      border-color: rgba(74, 158, 255, 0.3);
     }
 
     .toolbar-spacer { flex: 1; }
@@ -88,39 +98,42 @@
       position: relative;
     }
 
-    /* ---- Sidebar placeholder ---- */
+    /* ---- Sidebar ---- */
     #sidebar {
-      width: 44px;
-      background: #16213e;
-      border-right: 1px solid #2a2a4a;
+      width: 40px;
+      background: rgba(22, 33, 62, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 8px 0;
-      gap: 4px;
+      padding: 6px 0;
+      gap: 2px;
       flex-shrink: 0;
       z-index: 10;
     }
 
     .sidebar-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
       border: none;
       background: transparent;
-      color: #888899;
+      color: #777788;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 15px;
+      transition: all 0.12s ease;
     }
     .sidebar-btn:hover {
-      background: #2a2a4a;
-      color: #e0e0e0;
+      background: rgba(255, 255, 255, 0.06);
+      color: #c0c0d0;
     }
     .sidebar-btn.active {
-      background: #0f3460;
+      background: rgba(74, 158, 255, 0.15);
       color: #4a9eff;
     }
 
@@ -139,9 +152,12 @@
       display: flex;
       align-items: center;
       gap: 16px;
-      padding: 4px 12px;
-      background: #16213e;
-      border-top: 1px solid #2a2a4a;
+      height: 24px;
+      padding: 0 12px;
+      background: rgba(22, 33, 62, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       font-size: 11px;
       color: #666680;
       flex-shrink: 0;
@@ -162,11 +178,14 @@
       left: 50%;
       transform: translate(-50%, -50%);
       background: rgba(22, 33, 62, 0.92);
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 13px;
-      color: #e0e0e0;
-      border: 1px solid #2a2a4a;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: #d0d0e0;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       z-index: 20;
       display: none;
     }
@@ -196,15 +215,17 @@
 
     /* ---- Right Panel (Suggestion + Metadata) ---- */
     #right-panel {
-      width: 320px;
-      background: #16213e;
-      border-left: 1px solid #2a2a4a;
+      width: 300px;
+      background: rgba(22, 33, 62, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
       z-index: 10;
       transform: translateX(100%);
-      margin-right: -320px;
+      margin-right: -300px;
       transition: transform 0.25s ease, margin-right 0.25s ease;
       overflow: hidden;
     }
@@ -218,13 +239,14 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
-      border-bottom: 1px solid #2a2a4a;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       flex-shrink: 0;
     }
     .panel-header h3 {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      color: #e0e0e0;
+      color: #d0d0e0;
+      letter-spacing: -0.1px;
     }
     .panel-close-btn {
       width: 24px;
@@ -281,9 +303,9 @@
 
     .panel-footer {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       padding: 10px 14px;
-      border-top: 1px solid #2a2a4a;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       flex-shrink: 0;
     }
 
@@ -297,13 +319,15 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: #0f3460;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 5px;
+      background: rgba(15, 52, 96, 0.5);
       color: #b0c4e0;
       font-size: 11px;
-      border: 1px solid #2a4a7a;
+      border: 1px solid rgba(42, 74, 122, 0.4);
       cursor: default;
+      transition: all 0.12s ease;
     }
     .chip-remove {
       background: none;
@@ -358,31 +382,36 @@
 
     /* ---- Panel Buttons ---- */
     .btn-primary {
-      padding: 6px 16px;
-      border-radius: 5px;
-      border: 1px solid #4a9eff;
-      background: #0f3460;
+      height: 30px;
+      padding: 0 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(74, 158, 255, 0.3);
+      background: rgba(15, 52, 96, 0.7);
       color: #e0e0e0;
       cursor: pointer;
       font-size: 12px;
       font-weight: 500;
       flex: 1;
+      transition: all 0.15s ease;
     }
     .btn-primary:hover {
-      background: #1a5276;
+      background: rgba(26, 82, 118, 0.85);
+      border-color: rgba(74, 158, 255, 0.5);
     }
     .btn-secondary {
-      padding: 6px 16px;
-      border-radius: 5px;
-      border: 1px solid #2a2a4a;
+      height: 30px;
+      padding: 0 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       background: transparent;
       color: #888899;
       cursor: pointer;
       font-size: 12px;
+      transition: all 0.15s ease;
     }
     .btn-secondary:hover {
-      background: #2a2a4a;
-      color: #e0e0e0;
+      background: rgba(255, 255, 255, 0.06);
+      color: #d0d0e0;
     }
 
     /* ---- Analysis Spinner ---- */
@@ -512,7 +541,9 @@
     #settings-dialog {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 200;
       display: none;
       align-items: center;
@@ -522,24 +553,25 @@
       display: flex;
     }
     .settings-card {
-      background: #16213e;
-      border: 1px solid #2a2a4a;
-      border-radius: 10px;
-      width: 420px;
+      background: rgba(30, 34, 64, 0.97);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      width: 400px;
       max-height: 80vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
     .settings-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 14px 18px;
-      border-bottom: 1px solid #2a2a4a;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
     .settings-header h2 {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: #e0e0e0;
     }
@@ -563,24 +595,26 @@
     }
     .settings-select,
     .settings-input {
-      padding: 7px 10px;
-      border-radius: 5px;
-      border: 1px solid #2a2a4a;
-      background: #0f1a30;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.2);
       color: #e0e0e0;
-      font-size: 13px;
+      font-size: 12px;
       font-family: inherit;
       outline: none;
+      transition: border-color 0.15s ease;
     }
     .settings-select:focus,
     .settings-input:focus {
-      border-color: #4a9eff;
+      border-color: rgba(74, 158, 255, 0.5);
     }
     .settings-footer {
       display: flex;
       gap: 8px;
       padding: 14px 18px;
-      border-top: 1px solid #2a2a4a;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
       justify-content: flex-end;
     }
     .settings-status {
@@ -612,21 +646,23 @@
       display: flex;
       align-items: center;
       flex: 1;
-      max-width: 360px;
+      max-width: 320px;
       -webkit-app-region: no-drag;
     }
     #search-input {
       width: 100%;
-      padding: 5px 28px 5px 28px;
-      border-radius: 5px;
-      border: 1px solid #2a2a4a;
-      background: #0f1a30;
+      height: 28px;
+      padding: 0 28px 0 28px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.2);
       color: #e0e0e0;
       font-size: 12px;
       outline: none;
+      transition: border-color 0.15s ease;
     }
     #search-input:focus {
-      border-color: #4a9eff;
+      border-color: rgba(74, 158, 255, 0.5);
     }
     .search-icon {
       position: absolute;
