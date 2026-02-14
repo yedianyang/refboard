@@ -256,12 +256,62 @@
       z-index: 10;
     }
 
-    #zoom-display {
+    #selection-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+    }
+    #selection-info:empty { display: none; }
+
+    #canvas-item-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    #canvas-item-count:empty { display: none; }
+
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .zoom-btn {
+      width: 22px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .zoom-btn:hover { background: var(--btn-hover); color: var(--text); }
+    .zoom-level {
       font-variant-numeric: tabular-nums;
       color: var(--text-secondary);
-      min-width: 40px;
-      text-align: right;
+      font-size: 11px;
+      font-family: inherit;
+      min-width: 42px;
+      height: 20px;
+      text-align: center;
+      border: none;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      padding: 0 4px;
     }
+    .zoom-level:hover { background: var(--btn-hover); color: var(--text); }
 
     /* ---- Loading indicator ---- */
     #loading-indicator {
@@ -1881,8 +1931,14 @@
     <!-- Status bar -->
     <div id="statusbar">
       <span id="status-text">Ready</span>
+      <span id="selection-info"></span>
       <div class="toolbar-spacer"></div>
-      <span id="zoom-display">100%</span>
+      <span id="canvas-item-count"></span>
+      <div class="zoom-controls">
+        <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out">&#8722;</button>
+        <button id="zoom-display" class="zoom-level" title="Reset to 100%">100%</button>
+        <button id="zoom-in-btn" class="zoom-btn" title="Zoom In">&#43;</button>
+      </div>
     </div>
   </div>
 

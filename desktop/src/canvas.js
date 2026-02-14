@@ -188,6 +188,7 @@ export async function initCanvas(containerEl) {
   });
 
   initColorPalette();
+  initZoomControls();
 
   return { app, world, viewport };
 }
@@ -987,6 +988,7 @@ function clearSelection() {
   }
   selection.clear();
   updateColorPaletteVisibility();
+  updateSelectionInfo();
 }
 
 function setCardSelected(card, selected) {
@@ -1007,6 +1009,7 @@ function setCardSelected(card, selected) {
     selection.delete(card);
   }
   updateColorPaletteVisibility();
+  updateSelectionInfo();
 }
 
 /** Get current selection. */
@@ -2099,6 +2102,7 @@ export async function loadProject(dirPath) {
   }
 
   requestCull();
+  updateItemCount();
   return { loaded: total, total };
 }
 
@@ -2123,6 +2127,67 @@ function updateLoadingProgress(loaded, total) {
 
 function updateZoomDisplay() {
   if (zoomEl) zoomEl.textContent = `${Math.round(viewport.scale * 100)}%`;
+}
+
+function zoomByStep(direction) {
+  // direction: +1 = zoom in, -1 = zoom out
+  const factor = 1 + direction * 0.15;
+  const newScale = Math.max(viewport.minScale,
+    Math.min(viewport.maxScale, viewport.scale * factor));
+  // Zoom centered on canvas center
+  const cx = app.screen.width / 2;
+  const cy = app.screen.height / 2;
+  const wx = (cx - viewport.x) / viewport.scale;
+  const wy = (cy - viewport.y) / viewport.scale;
+  viewport.scale = newScale;
+  viewport.x = cx - wx * viewport.scale;
+  viewport.y = cy - wy * viewport.scale;
+  applyViewport();
+  updateZoomDisplay();
+}
+
+function initZoomControls() {
+  const zoomIn = document.getElementById('zoom-in-btn');
+  const zoomOut = document.getElementById('zoom-out-btn');
+  const zoomDisplay = document.getElementById('zoom-display');
+  if (zoomIn) zoomIn.addEventListener('click', () => zoomByStep(1));
+  if (zoomOut) zoomOut.addEventListener('click', () => zoomByStep(-1));
+  if (zoomDisplay) zoomDisplay.addEventListener('click', () => zoomTo100());
+}
+
+function updateSelectionInfo() {
+  const el = document.getElementById('selection-info');
+  if (!el) return;
+  const count = selection.size;
+  if (count === 0) {
+    el.textContent = '';
+    return;
+  }
+  if (count > 1) {
+    el.textContent = `${count} items selected`;
+    return;
+  }
+  const card = Array.from(selection)[0];
+  if (card.isText) {
+    const preview = (card.data.text || 'Empty note').slice(0, 30);
+    el.textContent = `Text: "${preview}${card.data.text?.length > 30 ? '...' : ''}"`;
+  } else if (card.isShape) {
+    const names = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line' };
+    el.textContent = `${names[card.data.shapeType] || 'Shape'} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}`;
+  } else {
+    el.textContent = `${card.data.name} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}`;
+  }
+}
+
+function updateItemCount() {
+  const el = document.getElementById('canvas-item-count');
+  if (!el) return;
+  const images = allCards.filter(c => !c.isText && !c.isShape).length;
+  const annotations = allCards.filter(c => c.isText || c.isShape).length;
+  const parts = [];
+  if (images > 0) parts.push(`${images} image${images !== 1 ? 's' : ''}`);
+  if (annotations > 0) parts.push(`${annotations} annotation${annotations !== 1 ? 's' : ''}`);
+  el.textContent = parts.length > 0 ? parts.join(', ') : '';
 }
 
 // ============================================================
@@ -2205,6 +2270,7 @@ const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
 function markDirty() {
   boardDirty = true;
   invalidateMinimapCardCache();
+  updateItemCount();
 }
 
 /**
@@ -2353,6 +2419,7 @@ export function restoreBoardState(state) {
   }
 
   requestCull();
+  updateItemCount();
   return restored > 0;
 }
 
