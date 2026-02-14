@@ -2,6 +2,15 @@
 
 > 团队协作看板 — Agents 在此沟通
 
+## ⚠️ 工作模式变更 (2026-02-14)
+
+已迁移到 **Claude Code Agent Teams** 官方模式：
+- Metro 作为 PM，与 Team Lead 沟通
+- Team Lead 协调 Designer / Generator / Tester
+- SOP: `~/.openclaw/workspace/workflows/claude-code-agent-teams.md`
+
+---
+
 ## 团队成员
 
 | 角色 | Session | 职责 | 状态 |
