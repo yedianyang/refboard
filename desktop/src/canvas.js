@@ -171,6 +171,18 @@ export async function initCanvas(containerEl) {
     requestMinimapRedraw();
   });
 
+  // Wire sidebar tool buttons to click handlers
+  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text' };
+  document.querySelectorAll('.sidebar-btn').forEach((btn) => {
+    const title = btn.title || '';
+    for (const [prefix, tool] of Object.entries(toolMap)) {
+      if (title.startsWith(prefix)) {
+        btn.addEventListener('click', () => setTool(tool));
+        break;
+      }
+    }
+  });
+
   return { app, world, viewport };
 }
 
@@ -313,6 +325,7 @@ function setupKeyboard() {
     // Tools
     if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
     if (e.key === 'h' || e.key === 'H') { setTool('hand'); return; }
+    if ((e.key === 't' || e.key === 'T') && !meta && !e.shiftKey) { setTool('text'); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
@@ -353,11 +366,11 @@ function setTool(tool) {
   currentTool = tool;
   // Update sidebar button active state
   document.querySelectorAll('.sidebar-btn').forEach((btn) => btn.classList.remove('active'));
-  const titles = { select: 'Select', hand: 'Hand' };
+  const titles = { select: 'Select', hand: 'Hand', text: 'Note' };
   const btn = Array.from(document.querySelectorAll('.sidebar-btn'))
     .find((b) => b.title?.startsWith(titles[tool] || ''));
   if (btn) btn.classList.add('active');
-  app.canvas.style.cursor = tool === 'hand' ? 'grab' : 'default';
+  app.canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : 'default';
 }
 
 // ============================================================
@@ -542,6 +555,18 @@ function setupGlobalDrag() {
 
     const shiftKey = e?.data?.originalEvent?.shiftKey;
 
+    if (currentTool === 'text') {
+      // Create text annotation at click position
+      const wp = screenToWorld(e.global.x, e.global.y);
+      const textCard = createTextCard('', wp.x, wp.y);
+      clearSelection();
+      setCardSelected(textCard, true);
+      setTool('select');
+      // Open inline editor immediately
+      startTextEdit(textCard);
+      return;
+    }
+
     if (currentTool === 'select') {
       // Start drag-select rectangle
       dragState = {
@@ -627,6 +652,9 @@ function finishDrag(e) {
   dragState = null;
 }
 
+let lastClickCard = null;
+let lastClickTime = 0;
+
 function handleCardClick(card, e) {
   const shiftKey = e?.data?.originalEvent?.shiftKey || e?.nativeEvent?.shiftKey;
   if (shiftKey) {
@@ -643,6 +671,17 @@ function handleCardClick(card, e) {
   if (selection.size === 1) showResizeHandles(card);
   if (onCardSelectCallback && selection.size === 1) {
     onCardSelectCallback(card);
+  }
+
+  // Double-click detection for text cards
+  const now = Date.now();
+  if (card.isText && lastClickCard === card && now - lastClickTime < 400) {
+    startTextEdit(card);
+    lastClickCard = null;
+    lastClickTime = 0;
+  } else {
+    lastClickCard = card;
+    lastClickTime = now;
   }
 }
 
@@ -898,6 +937,202 @@ function setCardSelected(card, selected) {
 
 /** Get current selection. */
 export function getSelection() { return selection; }
+
+// ============================================================
+// Text Annotations
+// ============================================================
+
+const TEXT_DEFAULT_WIDTH = 200;
+const TEXT_DEFAULT_HEIGHT = 60;
+const TEXT_MIN_WIDTH = 60;
+const TEXT_PADDING = 10;
+
+let textEditOverlay = null; // Active HTML editing overlay
+
+function createTextCard(content, x, y, opts = {}) {
+  const w = opts.width || TEXT_DEFAULT_WIDTH;
+  const h = opts.height || TEXT_DEFAULT_HEIGHT;
+  const fontSize = opts.fontSize || 14;
+  const id = opts.id || `text-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const card = {
+    container: new Container(),
+    data: { type: 'text', id, text: content, fontSize },
+    cardWidth: w,
+    cardHeight: h,
+    isText: true,
+  };
+
+  card.container.eventMode = 'static';
+  card.container.cursor = 'pointer';
+  card.container.position.set(x, y);
+
+  // Background
+  const bg = new Graphics()
+    .roundRect(0, 0, w, h, CARD_RADIUS)
+    .fill({ color: THEME.cardBg, alpha: 0.7 })
+    .stroke({ color: THEME.cardBorder, width: 1 });
+  card.bg = bg;
+
+  // Hover border
+  const hoverBorder = new Graphics()
+    .roundRect(-2, -2, w + 4, h + 4, CARD_RADIUS + 2)
+    .stroke({ color: THEME.cardHover, width: 2 });
+  hoverBorder.visible = false;
+  card.hoverBorder = hoverBorder;
+
+  // PixiJS text
+  const textStyle = new TextStyle({
+    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+    fontSize,
+    fill: THEME.text,
+    wordWrap: true,
+    wordWrapWidth: w - TEXT_PADDING * 2,
+    lineHeight: Math.round(fontSize * 1.5),
+  });
+  const textObj = new Text({ text: content || 'Type here...', style: textStyle });
+  textObj.position.set(TEXT_PADDING, TEXT_PADDING);
+  textObj.alpha = content ? 1.0 : 0.35;
+  card.textObj = textObj;
+
+  card.container.addChild(bg, hoverBorder, textObj);
+  card.container.hitArea = new Rectangle(-2, -2, w + 4, h + 4);
+
+  // Hover events
+  card.container.on('pointerover', () => {
+    if (!selection.has(card)) hoverBorder.visible = true;
+  });
+  card.container.on('pointerout', () => {
+    hoverBorder.visible = false;
+  });
+
+  // Drag events (same as image cards)
+  card.container.on('pointerdown', (e) => {
+    if (spaceDown || currentTool === 'hand') return;
+    const wp = screenToWorld(e.global.x, e.global.y);
+    if (selection.has(card) && selection.size > 1) {
+      const startPositions = new Map();
+      for (const c of selection) {
+        startPositions.set(c, { x: c.container.x, y: c.container.y });
+      }
+      dragState = {
+        type: 'multicard',
+        cards: Array.from(selection),
+        startPositions,
+        lastWorld: wp,
+        moved: false,
+      };
+    } else {
+      dragState = {
+        type: 'card',
+        card,
+        startPos: { x: card.container.x, y: card.container.y },
+        lastWorld: wp,
+        moved: false,
+      };
+    }
+  });
+
+  world.addChild(card.container);
+  allCards.push(card);
+  requestCull();
+  markDirty();
+  return card;
+}
+
+/** Auto-size text card height to fit content. */
+function autoSizeTextCard(card) {
+  if (!card.isText || !card.textObj) return;
+  const measuredH = card.textObj.height + TEXT_PADDING * 2;
+  const newH = Math.max(TEXT_DEFAULT_HEIGHT, measuredH);
+  if (Math.abs(newH - card.cardHeight) < 2) return;
+  card.cardHeight = newH;
+
+  card.bg.clear()
+    .roundRect(0, 0, card.cardWidth, newH, CARD_RADIUS)
+    .fill({ color: THEME.cardBg, alpha: 0.7 })
+    .stroke({ color: THEME.cardBorder, width: 1 });
+  card.hoverBorder.clear()
+    .roundRect(-2, -2, card.cardWidth + 4, newH + 4, CARD_RADIUS + 2)
+    .stroke({ color: THEME.cardHover, width: 2 });
+  card.container.hitArea = new Rectangle(-2, -2, card.cardWidth + 4, newH + 4);
+}
+
+/** Open HTML overlay for inline text editing. */
+function startTextEdit(card) {
+  if (!card.isText) return;
+  if (textEditOverlay) finishTextEdit();
+
+  const canvasEl = app.canvas;
+  const canvasRect = canvasEl.getBoundingClientRect();
+
+  // Calculate screen position of the card
+  const screenX = card.container.x * viewport.scale + viewport.x + canvasRect.left;
+  const screenY = card.container.y * viewport.scale + viewport.y + canvasRect.top;
+  const screenW = card.cardWidth * viewport.scale;
+  const screenH = Math.max(card.cardHeight * viewport.scale, 40);
+
+  const textarea = document.createElement('textarea');
+  textarea.value = card.data.text || '';
+  textarea.style.cssText = `
+    position: fixed;
+    left: ${screenX + TEXT_PADDING * viewport.scale}px;
+    top: ${screenY + TEXT_PADDING * viewport.scale}px;
+    width: ${screenW - TEXT_PADDING * 2 * viewport.scale}px;
+    min-height: ${screenH - TEXT_PADDING * 2 * viewport.scale}px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: ${card.data.fontSize * viewport.scale}px;
+    line-height: ${Math.round(card.data.fontSize * 1.5) * viewport.scale}px;
+    resize: none;
+    z-index: 1000;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  `;
+
+  // Hide PixiJS text while editing
+  card.textObj.visible = false;
+
+  textarea.addEventListener('keydown', (e) => {
+    e.stopPropagation(); // Don't trigger canvas shortcuts
+    if (e.key === 'Escape') {
+      finishTextEdit();
+    }
+  });
+
+  textarea.addEventListener('blur', () => {
+    finishTextEdit();
+  });
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textEditOverlay = { textarea, card };
+}
+
+/** Finish inline text editing, apply content back to card. */
+function finishTextEdit() {
+  if (!textEditOverlay) return;
+  const { textarea, card } = textEditOverlay;
+  const newText = textarea.value;
+
+  card.data.text = newText;
+  card.textObj.text = newText || 'Type here...';
+  card.textObj.alpha = newText ? 1.0 : 0.35;
+  card.textObj.visible = true;
+  autoSizeTextCard(card);
+
+  textarea.remove();
+  textEditOverlay = null;
+  markDirty();
+}
+
+export function addTextCard(content, x, y, opts) {
+  return createTextCard(content, x, y, opts);
+}
 
 // ============================================================
 // Image Cards
@@ -1492,7 +1727,7 @@ function markDirty() {
  * Serialize current board state for saving.
  */
 export function getBoardState() {
-  const items = allCards.map((card) => ({
+  const items = allCards.filter(c => !c.isText).map((card) => ({
     path: card.data.path,
     name: card.data.name,
     x: card.container.x,
@@ -1501,9 +1736,19 @@ export function getBoardState() {
     height: card.cardHeight,
   }));
 
+  const textAnnotations = allCards.filter(c => c.isText).map((card) => ({
+    id: card.data.id,
+    text: card.data.text,
+    fontSize: card.data.fontSize,
+    x: card.container.x,
+    y: card.container.y,
+    width: card.cardWidth,
+    height: card.cardHeight,
+  }));
+
   const groups = allGroups.map((g) => ({
     name: g.name,
-    cardPaths: Array.from(g.cards).map((c) => c.data.path),
+    cardPaths: Array.from(g.cards).map((c) => c.isText ? c.data.id : c.data.path),
   }));
 
   return {
@@ -1514,6 +1759,7 @@ export function getBoardState() {
       zoom: viewport.scale,
     },
     items,
+    textAnnotations,
     groups,
   };
 }
@@ -1546,6 +1792,19 @@ export function restoreBoardState(state) {
     }
   }
 
+  // Restore text annotations
+  if (state.textAnnotations && state.textAnnotations.length > 0) {
+    for (const t of state.textAnnotations) {
+      createTextCard(t.text || '', t.x, t.y, {
+        id: t.id,
+        fontSize: t.fontSize,
+        width: t.width,
+        height: t.height,
+      });
+      restored++;
+    }
+  }
+
   // Restore viewport
   if (state.viewport) {
     viewport.x = state.viewport.x || 0;
@@ -1557,14 +1816,15 @@ export function restoreBoardState(state) {
 
   // Restore groups
   if (state.groups && state.groups.length > 0) {
-    const cardByPath = new Map();
+    const cardByKey = new Map();
     for (const card of allCards) {
-      cardByPath.set(card.data.path, card);
+      const key = card.isText ? card.data.id : card.data.path;
+      cardByKey.set(key, card);
     }
     for (const g of state.groups) {
       const cards = new Set();
       for (const path of g.cardPaths || []) {
-        const card = cardByPath.get(path);
+        const card = cardByKey.get(path);
         if (card) cards.add(card);
       }
       if (cards.size >= 2) {
