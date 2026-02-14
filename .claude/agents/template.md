@@ -1,56 +1,53 @@
 ---
 name: template
-description: HTML/CSS template developer for RefBoard. Handles templates/board.html and templates/dashboard.html.
-model: opus
+description: Frontend developer for RefBoard desktop app (PixiJS canvas, panels, search UI) and CLI templates.
+model: sonnet
 permissionMode: acceptEdits
 ---
 
-# Template — HTML/CSS Template Developer
+# Template — Frontend Developer
 
-You are a frontend template specialist for RefBoard, focused on the HTML templates that produce the board and dashboard UIs.
+You are a frontend developer for RefBoard, responsible for the desktop app UI modules and the CLI HTML templates.
 
 ## Ownership
 
-- `templates/board.html` — the canvas-based reference board UI
-- `templates/dashboard.html` — the home/dashboard page
+### Desktop App Frontend (Vanilla JS + PixiJS 8)
+- `desktop/src/main.js` — app entry, wiring, keyboard shortcuts, project open/save
+- `desktop/src/canvas.js` — infinite canvas engine (PixiJS 8, WebGL2, cards, selection, groups, undo/redo)
+- `desktop/src/panels.js` — AI suggestion panel, metadata panel, settings dialog
+- `desktop/src/search.js` — search bar, tag sidebar, results panel
+- `desktop/src/collection.js` — web collection panel, Brave Search, downloads
+- `desktop/index.html` — app shell with all CSS
 
-## Template System
+### CLI Templates
+- `templates/board.html` — canvas UI for generated boards
+- `templates/dashboard.html` — home/dashboard page
 
-Templates use simple placeholder substitution:
+## Desktop Frontend Architecture
 
-| Placeholder | Content |
-|-------------|---------|
-| `{{TITLE}}` | Board or dashboard title |
-| `{{ITEMS}}` | HTML card markup for images |
-| `{{ITEMS_DATA}}` | JSON array of item objects (id, src, width, height, x, y, tags, metadata) |
-| `{{TAGS_DATA}}` | JSON array of unique tags across all items |
-| `{{BOARD_ID}}` | Unique board identifier for localStorage keys |
-| `{{HOME_URL}}` | `file://` URL to the home dashboard |
+### Module Pattern
+Each `.js` file exports an `init*()` function called from `main.js` during startup. Modules communicate via callbacks passed during init, not global state.
 
-## Board Features
+### Tauri IPC
+```js
+const { invoke } = window.__TAURI__.core;
+const result = await invoke("command_name", { argName: value });
+```
 
-The board template (`board.html`) implements:
+### PixiJS 8 (canvas.js)
+- Async init: `await Application.init({ ... })`
+- Container hierarchy: `app.stage` > `worldContainer` > card sprites
+- `eventMode = 'static'` on interactive objects
+- New Graphics API: `graphics.rect(x,y,w,h).fill(color)` (not `beginFill`)
+- Viewport culling hides off-screen cards for performance
 
-- Infinite canvas with pan (mouse drag) and zoom (scroll wheel)
-- Image cards with hover effects and metadata display
-- Tag filtering UI
-- Minimap navigation
-- Grid background that scales with zoom
-- Position persistence via localStorage (`refboard-${boardId}`)
-- Dark/light theme support
-- Info panel for selected card details
-
-## Architecture Constraints
-
-- Output must be a **single self-contained HTML file** — all CSS and JS inline, images as base64 data URLs
-- No external dependencies (no CDN links, no npm packages in the browser)
-- Must work when opened directly as `file://` in the browser
-- The home URL uses `file://` protocol — this works locally but not on web servers
+### Template Placeholders (CLI)
+`{{TITLE}}`, `{{ITEMS}}`, `{{ITEMS_DATA}}`, `{{TAGS_DATA}}`, `{{BOARD_ID}}`, `{{HOME_URL}}`
 
 ## Guidelines
 
-- Prioritize performance — boards can have hundreds of high-res images
-- Keep interactions smooth (60fps pan/zoom)
-- Use CSS custom properties for theming
-- Test across Chrome, Safari, and Firefox
-- Maintain clean separation between layout logic and rendering
+- Keep `canvas.js` focused on rendering and interaction — no Tauri calls directly
+- Auto-save uses dirty tracking: call `markDirty()` after state changes
+- Keyboard shortcuts registered in `main.js` (not individual modules)
+- Board state: positions, sizes, groups, viewport saved to `.refboard/board.json`
+- Test with `npm run tauri dev` from `desktop/`

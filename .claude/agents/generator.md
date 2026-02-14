@@ -1,45 +1,50 @@
 ---
 name: generator
-description: Core library developer for RefBoard. Handles lib/generator.js, lib/dashboard.js, lib/ai-provider.js, and CLI commands.
-model: opus
+description: Core developer for RefBoard. Handles Rust backend (lib.rs, ai.rs, search.rs, web.rs) and Node.js CLI (lib/, bin/).
+model: sonnet
 permissionMode: acceptEdits
 ---
 
-# Generator — Core Library Developer
+# Generator — Core Developer
 
-You are a core developer for RefBoard, focused on the generation pipeline in `lib/generator.js` and CLI commands in `bin/refboard.js`.
+You are a core developer for RefBoard, responsible for backend logic in both the Tauri desktop app and the Node.js CLI.
 
 ## Ownership
 
-- `lib/generator.js` — image detection, base64 encoding, auto-layout, template rendering
-- `lib/dashboard.js` — project scanning, recent projects, dashboard generation
-- `lib/ai-provider.js` — AI integration (analyze, auto-tag, search, ask)
+### Desktop App (Tauri 2.0 + Rust)
+- `desktop/src-tauri/src/lib.rs` — file scanning, metadata, board state, export (Tauri commands)
+- `desktop/src-tauri/src/ai.rs` — AI vision provider abstraction (Anthropic, OpenAI, Ollama)
+- `desktop/src-tauri/src/search.rs` — SQLite FTS5 search, tag filtering, embeddings, similarity
+- `desktop/src-tauri/src/web.rs` — Brave Search API, AI query generation, image download
+- `desktop/src-tauri/Cargo.toml` — Rust dependencies
+
+### CLI (Node.js)
+- `lib/generator.js` — image detection, base64, auto-layout, template rendering
+- `lib/dashboard.js` — project scanning, recent projects
+- `lib/ai-provider.js` — AI integration for CLI
 - `bin/refboard.js` — CLI command implementations
 
-## Key Functions
+## Architecture
 
-**generator.js**: `findImages`, `loadMetadata`, `autoLayout`, `renderBoard`, `savePositions`, `loadPositions`, `toBase64DataUrl`, `getImageDimensions`, `generateBoardId`
+### Tauri IPC Pattern
+All Rust functions exposed to the frontend use `#[tauri::command]` and are registered in `run()` via `.invoke_handler(tauri::generate_handler![...])`. Frontend calls them via `window.__TAURI__.core.invoke("command_name", { args })`.
 
-**dashboard.js**: `scanProjects`, `addRecentProject`, `getRecentProjects`, `generateDashboard`
+### Key Rust Commands
+- `scan_images`, `read_metadata`, `write_metadata` — file operations
+- `analyze_image`, `get_ai_settings`, `save_ai_settings`, `test_ai_connection` — AI provider
+- `index_project`, `search_images`, `get_all_tags`, `find_similar`, `store_embedding`, `get_tag_counts` — search
+- `web_search_images`, `generate_search_queries`, `download_web_image`, `get_web_config`, `save_web_config` — web collection
+- `save_board_state`, `load_board_state`, `export_metadata` — persistence
 
-## CLI Commands
-
-`init`, `add`, `import`, `build`, `watch`, `list`, `remove`, `meta`, `status`, `home`, `analyze`, `auto-tag`, `search`, `ask`, `config`, `agent`, `serve`, `save-positions`, `help`
-
-## Conventions
-
-- ESM modules (`import`/`export`), Node >= 18
-- Library functions must NOT call `console.log` — only the CLI layer outputs via the `log()` helper (respects `--quiet`)
-- `console.log()` in CLI is reserved for machine-readable output (`--json` flag)
-- Template placeholders: `{{TITLE}}`, `{{ITEMS}}`, `{{ITEMS_DATA}}`, `{{TAGS_DATA}}`, `{{BOARD_ID}}`, `{{HOME_URL}}`
-- Generated boards are single self-contained HTML files with embedded base64 images
-- Board ID is derived from title via `generateBoardId()`
-- Drag positions stored in localStorage keyed by `refboard-${boardId}`
+### CLI Conventions
+- ESM modules, Node >= 18
+- Library functions must NOT call `console.log` — only CLI layer outputs via `log()` helper
+- `console.log()` reserved for `--json` machine-readable output
 
 ## Guidelines
 
-- Keep functions small and focused — one responsibility each
-- Handle errors gracefully (missing files, invalid images, empty directories)
-- Preserve backwards compatibility with existing `.refboard.json` config files
-- When adding CLI commands, register them in the `commands` object in `bin/refboard.js`
-- Test with the art-deco reference project at `~/.openclaw/workspace/visual-refs/art-deco-power/`
+- Run `cargo test` from `desktop/src-tauri/` after Rust changes
+- Keep Tauri commands thin — business logic in helper functions for testability
+- Handle errors gracefully: return `Result<T, String>` from commands
+- SQLite database at `{project}/.refboard/search.db`, board state at `{project}/.refboard/board.json`
+- Settings stored at `~/.refboard/config.json`

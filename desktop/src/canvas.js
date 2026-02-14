@@ -167,7 +167,8 @@ export async function initCanvas(containerEl) {
   window.addEventListener('resize', () => {
     drawGrid();
     app.stage.hitArea = app.screen;
-    if (minimapVisible) drawMinimap();
+    invalidateMinimapCardCache();
+    requestMinimapRedraw();
   });
 
   return { app, world, viewport };
@@ -221,7 +222,7 @@ function applyViewport() {
   world.position.set(viewport.x, viewport.y);
   drawGrid();
   requestCull();
-  if (minimapVisible) drawMinimap();
+  requestMinimapRedraw();
 }
 
 function screenToWorld(sx, sy) {
@@ -415,8 +416,10 @@ function getCardsBounds(cards) {
 }
 
 // ============================================================
-// Viewport Culling
+// Viewport Culling + Texture Memory Management
 // ============================================================
+
+const TEXTURE_UNLOAD_PAD = 1200; // Unload sprite beyond this distance
 
 let cullRAF;
 function requestCull() {
@@ -434,6 +437,13 @@ function cullCards() {
   const vr = ((app.screen.width - viewport.x) / viewport.scale) + pad;
   const vb = ((app.screen.height - viewport.y) / viewport.scale) + pad;
 
+  // Wider zone for texture/sprite management
+  const uPad = TEXTURE_UNLOAD_PAD;
+  const uvl = (-viewport.x / viewport.scale) - uPad;
+  const uvt = (-viewport.y / viewport.scale) - uPad;
+  const uvr = ((app.screen.width - viewport.x) / viewport.scale) + uPad;
+  const uvb = ((app.screen.height - viewport.y) / viewport.scale) + uPad;
+
   for (const card of allCards) {
     const c = card.container;
     const w = card.cardWidth || 200;
@@ -441,6 +451,34 @@ function cullCards() {
     const vis = (c.x + w > vl && c.x < vr && c.y + h > vt && c.y < vb);
     c.visible = vis;
     c.eventMode = vis ? 'static' : 'none';
+
+    // Destroy sprites far off-screen to reduce scene graph size + GPU overhead
+    const inTextureZone = (c.x + w > uvl && c.x < uvr && c.y + h > uvt && c.y < uvb);
+    if (!inTextureZone && card.sprite && !card._textureUnloaded) {
+      card.container.removeChild(card.sprite);
+      card.sprite.destroy();
+      card.sprite = null;
+      card._textureUnloaded = true;
+    } else if (inTextureZone && card._textureUnloaded) {
+      reloadCardTexture(card);
+    }
+  }
+}
+
+async function reloadCardTexture(card) {
+  if (!card._textureUrl || !card._textureUnloaded) return;
+  card._textureUnloaded = false; // Prevent duplicate reloads
+  try {
+    const texture = await Assets.load(card._textureUrl);
+    if (!card.container.parent) return; // Card removed during load
+    const sprite = new Sprite(texture);
+    sprite.width = card.cardWidth - CARD_PADDING * 2;
+    sprite.height = card.cardHeight - CARD_PADDING * 2;
+    sprite.position.set(CARD_PADDING, CARD_PADDING);
+    card.sprite = sprite;
+    card.container.addChildAt(sprite, 1); // Between bg and hoverBorder
+  } catch (err) {
+    card._textureUnloaded = true; // Retry on next cull
   }
 }
 
@@ -869,50 +907,36 @@ const CARD_MAX_WIDTH = 220;
 const CARD_PADDING = 6;
 const CARD_RADIUS = 8;
 
-export async function addImageCard(imageInfo, x, y) {
-  const url = convertFileSrc(imageInfo.path);
-
-  let texture;
-  try {
-    texture = await Assets.load(url);
-  } catch (err) {
-    console.warn(`Failed to load image: ${imageInfo.name}`, err);
-    return null;
-  }
-
+/**
+ * Create a placeholder card (container + bg + events) without loading a texture.
+ * Used for instant grid display; texture loaded later via loadTextureIntoCard().
+ */
+function createPlaceholderCard(imageInfo, x, y) {
   const card = { container: new Container(), data: imageInfo };
   card.container.eventMode = 'static';
   card.container.cursor = 'pointer';
   card.container.position.set(x, y);
 
-  const sprite = new Sprite(texture);
-  const aspect = texture.width / texture.height;
-  const cardW = Math.min(CARD_MAX_WIDTH, texture.width);
-  const cardH = cardW / aspect;
-  sprite.width = cardW;
-  sprite.height = cardH;
-  sprite.position.set(CARD_PADDING, CARD_PADDING);
-
-  card.cardWidth = cardW + CARD_PADDING * 2;
-  card.cardHeight = cardH + CARD_PADDING * 2;
-  card.sprite = sprite;
-  card.texture = texture; // Keep reference for aspect ratio
+  // Estimated dimensions (updated when texture loads)
+  const estW = CARD_MAX_WIDTH + CARD_PADDING * 2;
+  const estH = Math.round(CARD_MAX_WIDTH * 0.75) + CARD_PADDING * 2;
+  card.cardWidth = estW;
+  card.cardHeight = estH;
 
   const bg = new Graphics()
-    .roundRect(0, 0, card.cardWidth, card.cardHeight, CARD_RADIUS)
+    .roundRect(0, 0, estW, estH, CARD_RADIUS)
     .fill({ color: THEME.cardBg })
     .stroke({ color: THEME.cardBorder, width: 1 });
   card.bg = bg;
 
   const hoverBorder = new Graphics()
-    .roundRect(-2, -2, card.cardWidth + 4, card.cardHeight + 4, CARD_RADIUS + 2)
+    .roundRect(-2, -2, estW + 4, estH + 4, CARD_RADIUS + 2)
     .stroke({ color: THEME.cardHover, width: 2 });
   hoverBorder.visible = false;
   card.hoverBorder = hoverBorder;
 
-  card.container.addChild(bg, sprite, hoverBorder);
-
-  card.container.hitArea = new Rectangle(-2, -2, card.cardWidth + 4, card.cardHeight + 4);
+  card.container.addChild(bg, hoverBorder);
+  card.container.hitArea = new Rectangle(-2, -2, estW + 4, estH + 4);
 
   card.container.on('pointerover', () => {
     if (!selection.has(card)) hoverBorder.visible = true;
@@ -926,7 +950,6 @@ export async function addImageCard(imageInfo, x, y) {
 
     const wp = screenToWorld(e.global.x, e.global.y);
 
-    // If clicking on an already-selected card within a multi-selection, drag all
     if (selection.has(card) && selection.size > 1) {
       const startPositions = new Map();
       for (const c of selection) {
@@ -949,7 +972,6 @@ export async function addImageCard(imageInfo, x, y) {
       };
     }
 
-    // Bring to front
     const parent = card.container.parent;
     parent.removeChild(card.container);
     parent.addChild(card.container);
@@ -957,8 +979,54 @@ export async function addImageCard(imageInfo, x, y) {
     e.stopPropagation();
   });
 
+  // Texture management state
+  card.sprite = null;
+  card.texture = null;
+  card._textureUrl = convertFileSrc(imageInfo.path);
+  card._textureUnloaded = false;
+
   world.addChild(card.container);
   allCards.push(card);
+  return card;
+}
+
+/**
+ * Load texture into an existing placeholder card. Updates sprite, dimensions, and graphics.
+ */
+async function loadTextureIntoCard(card) {
+  try {
+    const texture = await Assets.load(card._textureUrl);
+    if (!card.container.parent) return; // Card removed during loading
+
+    const aspect = texture.width / texture.height;
+    const cardW = Math.min(CARD_MAX_WIDTH, texture.width);
+    const cardH = cardW / aspect;
+
+    const sprite = new Sprite(texture);
+    sprite.width = cardW;
+    sprite.height = cardH;
+    sprite.position.set(CARD_PADDING, CARD_PADDING);
+    card.sprite = sprite;
+    card.texture = texture;
+    card._textureUnloaded = false;
+
+    // Insert sprite between bg (index 0) and hoverBorder (index 1)
+    card.container.addChildAt(sprite, 1);
+
+    // Resize card to actual texture dimensions
+    resizeCardTo(card, cardW + CARD_PADDING * 2, cardH + CARD_PADDING * 2);
+  } catch (err) {
+    console.warn(`Failed to load image: ${card.data.name}`, err);
+  }
+}
+
+/**
+ * Convenience: create card and load texture in one step.
+ * Used by duplicateSelected() and other operations that add individual cards.
+ */
+export async function addImageCard(imageInfo, x, y) {
+  const card = createPlaceholderCard(imageInfo, x, y);
+  await loadTextureIntoCard(card);
   return card;
 }
 
@@ -1150,7 +1218,7 @@ export function tidyUp() {
 
   pushUndo({ type: 'move', entries });
   requestCull();
-  if (minimapVisible) drawMinimap();
+  requestMinimapRedraw();
   markDirty();
 }
 
@@ -1166,14 +1234,34 @@ function toggleGrid() {
 function toggleMinimap() {
   minimapVisible = !minimapVisible;
   minimapGfx.visible = minimapVisible;
-  if (minimapVisible) drawMinimap();
+  if (minimapVisible) {
+    invalidateMinimapCardCache();
+    requestMinimapRedraw();
+  }
 }
 
 // ============================================================
-// Minimap
+// Minimap (with card position caching)
 // ============================================================
 
 const MINIMAP = { width: 180, height: 120, margin: 12 };
+
+// Cached minimap card data — recomputed only when cards move/resize/delete
+let minimapCardCache = null;
+
+function invalidateMinimapCardCache() {
+  minimapCardCache = null;
+}
+
+let minimapRAF = null;
+function requestMinimapRedraw() {
+  if (!minimapVisible) return;
+  if (minimapRAF) return;
+  minimapRAF = requestAnimationFrame(() => {
+    drawMinimap();
+    minimapRAF = null;
+  });
+}
 
 function drawMinimap() {
   minimapGfx.clear();
@@ -1188,32 +1276,42 @@ function drawMinimap() {
     .fill({ color: THEME.minimap.bg, alpha: 0.92 })
     .stroke({ color: THEME.minimap.border, width: 1 });
 
-  // Calculate world bounds
-  const bounds = getCardsBounds(allCards);
+  // Rebuild card position cache if invalidated
+  if (!minimapCardCache) {
+    const bounds = getCardsBounds(allCards);
+    const worldW = bounds.maxX - bounds.minX;
+    const worldH = bounds.maxY - bounds.minY;
+    if (worldW === 0 || worldH === 0) return;
+
+    const pad = 8;
+    const scaleX = (MINIMAP.width - pad * 2) / worldW;
+    const scaleY = (MINIMAP.height - pad * 2) / worldH;
+    const ms = Math.min(scaleX, scaleY);
+
+    minimapCardCache = {
+      bounds, ms, pad,
+      cards: allCards.map(card => ({
+        rx: (card.container.x - bounds.minX) * ms,
+        ry: (card.container.y - bounds.minY) * ms,
+        rw: Math.max(2, card.cardWidth * ms),
+        rh: Math.max(2, card.cardHeight * ms),
+      })),
+    };
+  }
+
+  const { bounds, ms, pad } = minimapCardCache;
   const worldW = bounds.maxX - bounds.minX;
   const worldH = bounds.maxY - bounds.minY;
-  if (worldW === 0 || worldH === 0) return;
-
-  // Scale to fit minimap (with padding)
-  const pad = 8;
-  const scaleX = (MINIMAP.width - pad * 2) / worldW;
-  const scaleY = (MINIMAP.height - pad * 2) / worldH;
-  const ms = Math.min(scaleX, scaleY);
-
   const ox = mx + pad + ((MINIMAP.width - pad * 2) - worldW * ms) / 2;
   const oy = my + pad + ((MINIMAP.height - pad * 2) - worldH * ms) / 2;
 
-  // Draw cards as dots/rects
-  for (const card of allCards) {
-    const cx = ox + (card.container.x - bounds.minX) * ms;
-    const cy = oy + (card.container.y - bounds.minY) * ms;
-    const cw = Math.max(2, card.cardWidth * ms);
-    const ch = Math.max(2, card.cardHeight * ms);
-    minimapGfx.rect(cx, cy, cw, ch);
+  // Draw cached card positions (no recalculation per card)
+  for (const c of minimapCardCache.cards) {
+    minimapGfx.rect(ox + c.rx, oy + c.ry, c.rw, c.rh);
   }
   minimapGfx.fill({ color: THEME.minimap.card, alpha: 0.5 });
 
-  // Draw viewport rectangle
+  // Viewport rectangle (always recalculated — depends on current viewport)
   const vx = ox + (-viewport.x / viewport.scale - bounds.minX) * ms;
   const vy = oy + (-viewport.y / viewport.scale - bounds.minY) * ms;
   const vw = (app.screen.width / viewport.scale) * ms;
@@ -1235,35 +1333,54 @@ export async function loadProject(dirPath) {
     return;
   }
 
-  let x = 50, y = 50, rowHeight = 0, col = 0;
-  const maxCols = Math.max(3, Math.floor(Math.sqrt(images.length)));
-  const gap = 24;
-  let loaded = 0;
   const total = images.length;
 
-  for (const img of images) {
-    const card = await addImageCard(img, x, y);
-    loaded++;
-    if (card) {
-      rowHeight = Math.max(rowHeight, card.cardHeight);
-      col++;
-      if (col >= maxCols) {
-        col = 0;
-        x = 50;
-        y += rowHeight + gap;
-        rowHeight = 0;
-      } else {
-        x += card.cardWidth + gap;
-      }
-    }
-    if (loaded % 5 === 0 || loaded === total) {
-      updateLoadingProgress(loaded, total);
+  // Pre-compute grid positions with estimated card sizes
+  const maxCols = Math.max(3, Math.floor(Math.sqrt(total)));
+  const gap = 24;
+  const estCardW = CARD_MAX_WIDTH + CARD_PADDING * 2;
+  const estCardH = Math.round(CARD_MAX_WIDTH * 0.75) + CARD_PADDING * 2;
+  const positions = [];
+  let x = 50, y = 50, col = 0;
+
+  for (let i = 0; i < total; i++) {
+    positions.push({ x, y });
+    col++;
+    if (col >= maxCols) {
+      col = 0;
+      x = 50;
+      y += estCardH + gap;
+    } else {
+      x += estCardW + gap;
     }
   }
 
+  // Step 1: Create all placeholder cards instantly (~5ms for 500)
+  const cards = [];
+  for (let i = 0; i < total; i++) {
+    cards.push(createPlaceholderCard(images[i], positions[i].x, positions[i].y));
+  }
+
+  // Show the grid layout immediately
   fitAll();
   updateZoomDisplay();
-  return { loaded, total };
+  updateLoadingProgress(0, total);
+
+  // Step 2: Load textures in parallel chunks for progressive display
+  const CHUNK_SIZE = 10;
+  let loaded = 0;
+
+  for (let i = 0; i < total; i += CHUNK_SIZE) {
+    const chunk = cards.slice(i, i + CHUNK_SIZE);
+    await Promise.allSettled(chunk.map(card => loadTextureIntoCard(card)));
+    loaded = Math.min(i + CHUNK_SIZE, total);
+    updateLoadingProgress(loaded, total);
+    // Yield to renderer so cards appear progressively
+    await new Promise(r => requestAnimationFrame(r));
+  }
+
+  requestCull();
+  return { loaded: total, total };
 }
 
 // ============================================================
@@ -1368,6 +1485,7 @@ const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
 
 function markDirty() {
   boardDirty = true;
+  invalidateMinimapCardCache();
 }
 
 /**
