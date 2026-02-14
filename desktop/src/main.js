@@ -3,12 +3,18 @@
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme } from './canvas.js';
 import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
 async function main() {
+  // Apply saved theme immediately (before canvas init) so home screen renders correctly
+  const savedTheme = localStorage.getItem('refboard-theme');
+  if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+
   const container = document.getElementById('canvas-container');
   const loading = document.getElementById('loading-indicator');
   const zoomDisplay = document.getElementById('zoom-display');
@@ -20,6 +26,9 @@ async function main() {
   // Initialize PixiJS canvas
   await initCanvas(container);
   setUIElements({ loading, zoom: zoomDisplay });
+
+  // Apply saved theme (dark/light)
+  applySavedTheme();
 
   // Shared image extension set
   const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'tiff']);

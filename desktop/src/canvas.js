@@ -329,6 +329,7 @@ function setupKeyboard() {
     if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
     if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
     if ((e.key === 'l' || e.key === 'L') && !meta && !e.shiftKey) { setTool('line'); return; }
+    if (e.key === 'd' && !meta && !e.shiftKey) { toggleTheme(); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
@@ -1143,7 +1144,7 @@ function startTextEdit(card) {
     background: transparent;
     border: none;
     outline: none;
-    color: #e0e0e0;
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: ${card.data.fontSize * viewport.scale}px;
     line-height: ${Math.round(card.data.fontSize * 1.5) * viewport.scale}px;
@@ -1656,6 +1657,88 @@ function toggleMinimap() {
   if (minimapVisible) {
     invalidateMinimapCardCache();
     requestMinimapRedraw();
+  }
+}
+
+// ============================================================
+// Theme Toggle (Dark / Light)
+// ============================================================
+
+const DARK_THEME = {
+  bg: 0x1a1a2e,
+  cardBg: 0x2a2a3e,
+  cardBorder: 0x3a3a5e,
+  cardHover: 0x4a4a6a,
+  selectBorder: 0x4a9eff,
+  selectRect: 0x4a9eff,
+  groupBorder: 0x7b68ee,
+  groupBg: 0x7b68ee,
+  gridLine: 0x262640,
+  gridLineMajor: 0x303050,
+  resizeHandle: 0x4a9eff,
+  minimap: { bg: 0x16213e, viewport: 0x4a9eff, card: 0x4a9eff, border: 0x2a2a4a },
+  text: '#e0e0e0',
+  textDim: '#888899',
+};
+
+const LIGHT_THEME = {
+  bg: 0xe8e8ef,
+  cardBg: 0xffffff,
+  cardBorder: 0xd0d0d8,
+  cardHover: 0xb0b0c0,
+  selectBorder: 0x0066dd,
+  selectRect: 0x0066dd,
+  groupBorder: 0x7b68ee,
+  groupBg: 0x7b68ee,
+  gridLine: 0xd0d0d8,
+  gridLineMajor: 0xb8b8c8,
+  resizeHandle: 0x0066dd,
+  minimap: { bg: 0xffffff, viewport: 0x0066dd, card: 0x0066dd, border: 0xd0d0d8 },
+  text: '#1a1a2e',
+  textDim: '#666680',
+};
+
+function applyThemeToCanvas(isDark) {
+  const t = isDark ? DARK_THEME : LIGHT_THEME;
+  Object.assign(THEME, t);
+  THEME.minimap = { ...t.minimap };
+
+  // Update app background
+  if (app?.renderer) {
+    app.renderer.background.color = THEME.bg;
+  }
+
+  // Redraw grid with new colors
+  drawGrid();
+
+  // Redraw minimap
+  invalidateMinimapCardCache();
+  requestMinimapRedraw();
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isCurrentlyLight = html.getAttribute('data-theme') === 'light';
+  const newTheme = isCurrentlyLight ? 'dark' : 'light';
+
+  if (newTheme === 'dark') {
+    html.removeAttribute('data-theme');
+  } else {
+    html.setAttribute('data-theme', 'light');
+  }
+
+  applyThemeToCanvas(newTheme === 'dark');
+  localStorage.setItem('refboard-theme', newTheme);
+}
+
+/**
+ * Apply saved theme on startup. Call during init.
+ */
+export function applySavedTheme() {
+  const saved = localStorage.getItem('refboard-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    applyThemeToCanvas(false);
   }
 }
 
