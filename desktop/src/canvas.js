@@ -318,8 +318,9 @@ function isInputFocused() {
 
 function setupKeyboard() {
   window.addEventListener('keydown', (e) => {
-    // Don't handle shortcuts when typing in inputs
+    // Don't handle shortcuts when typing in inputs or lightbox is open
     if (isInputFocused()) return;
+    if (lightboxOpen) return;
 
     const meta = e.metaKey || e.ctrlKey;
 
@@ -791,10 +792,14 @@ function handleCardClick(card, e) {
     onCardSelectCallback(card);
   }
 
-  // Double-click detection for text cards
+  // Double-click detection
   const now = Date.now();
-  if (card.isText && lastClickCard === card && now - lastClickTime < 400) {
-    startTextEdit(card);
+  if (lastClickCard === card && now - lastClickTime < 400) {
+    if (card.isText) {
+      startTextEdit(card);
+    } else if (!card.isShape) {
+      openLightbox(card);
+    }
     lastClickCard = null;
     lastClickTime = 0;
   } else {
@@ -2575,6 +2580,97 @@ export function scrollToCard(imagePath) {
 if (typeof window !== 'undefined') {
   window.addEventListener('refboard:scroll-to-card', (e) => {
     if (e.detail?.path) scrollToCard(e.detail.path);
+  });
+}
+
+// ============================================================
+// Image Lightbox
+// ============================================================
+
+let lightboxOpen = false;
+let lightboxIndex = -1;
+
+function getImageCards() {
+  return allCards.filter(c => !c.isText && !c.isShape);
+}
+
+function openLightbox(card) {
+  const imageCards = getImageCards();
+  const idx = imageCards.indexOf(card);
+  if (idx < 0) return;
+
+  lightboxIndex = idx;
+  lightboxOpen = true;
+  showLightboxImage(imageCards[idx]);
+
+  const lb = document.getElementById('lightbox');
+  if (lb) {
+    lb.classList.add('open');
+    requestAnimationFrame(() => lb.classList.add('visible'));
+  }
+}
+
+function closeLightbox() {
+  if (!lightboxOpen) return;
+  const lb = document.getElementById('lightbox');
+  if (lb) {
+    lb.classList.remove('visible');
+    setTimeout(() => lb.classList.remove('open'), 200);
+  }
+  lightboxOpen = false;
+  lightboxIndex = -1;
+}
+
+function showLightboxImage(card) {
+  const img = document.getElementById('lightbox-img');
+  const caption = document.getElementById('lightbox-caption');
+  if (!img) return;
+
+  img.src = card._textureUrl || convertFileSrc(card.data.path);
+  if (caption) {
+    const name = card.data.name || card.data.path.split('/').pop();
+    caption.textContent = name;
+  }
+
+  // Update nav hint with position
+  const nav = document.getElementById('lightbox-nav');
+  const imageCards = getImageCards();
+  if (nav) {
+    nav.textContent = `${lightboxIndex + 1} / ${imageCards.length} — ← → Navigate · Esc Close`;
+  }
+}
+
+function lightboxNav(dir) {
+  if (!lightboxOpen) return;
+  const imageCards = getImageCards();
+  if (imageCards.length === 0) return;
+
+  lightboxIndex = (lightboxIndex + dir + imageCards.length) % imageCards.length;
+  showLightboxImage(imageCards[lightboxIndex]);
+}
+
+// Wire lightbox events once DOM is ready
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    const lb = document.getElementById('lightbox');
+    const closeBtn = document.getElementById('lightbox-close');
+
+    if (lb) {
+      lb.addEventListener('click', (e) => {
+        // Close if clicking the backdrop (not the image)
+        if (e.target === lb) closeLightbox();
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => closeLightbox());
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') { closeLightbox(); e.preventDefault(); e.stopPropagation(); return; }
+      if (e.key === 'ArrowLeft') { lightboxNav(-1); e.preventDefault(); return; }
+      if (e.key === 'ArrowRight') { lightboxNav(1); e.preventDefault(); return; }
+    }, true); // Capture phase to intercept before canvas keyboard handler
   });
 }
 
