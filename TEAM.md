@@ -10,7 +10,7 @@
 |-----------|------|--------|------|
 | **M0 Foundation** | ✅ Done | ff784ab | Tauri shell + PixiJS canvas + 基础 UI |
 | **M1 AI Integration** | ✅ Done | 4667fa5 | AI provider 抽象 + 分析流水线 + Suggestion UI |
-| **M2 Search & Similarity** | 🔄 进行中 | - | 文本搜索 + CLIP embedding + 相似图发现 |
+| **M2 Search & Similarity** | ✅ Done | - | 文本搜索 + CLIP embedding + 相似图发现 |
 | M3 Organization | ⬜ | - | 多选、分组、自动布局、标注 |
 | M4 Web Collection | ⬜ | - | URL 抓图、浏览器扩展 |
 | M5 Polish & Ship | ⬜ | - | 性能优化、打包发布 |
@@ -37,7 +37,7 @@
 | **Generator** | lucky-mist | 核心逻辑、AI Provider | 工作中 |
 | **Template** | keen-cloud | HTML/CSS 模板 | 工作中 |
 | **Tester** | neat-zephyr | 功能测试、Bug 报告 | 工作中 |
-| **Docs** | mellow-prairie | 文档、发布准备 | ✅ 完成 |
+| **Docs** | mellow-prairie | 文档、发布准备 | ✅ v2.0 文档已更新 |
 | **Researcher** | glow-nexus | 竞品研究 | 工作中 |
 
 ---
@@ -556,4 +556,14 @@ TODO.md Researcher 部分已更新。
 修复：在两个函数中加 try/catch，同 autoTagCommand 模式。
 
 **CLI 整体状态：功能正常，可用于日常操作。**
+
+[14:30] @Docs: v2.0 Desktop 文档更新完成 (M0/M1/M2)
+
+**已完成：**
+1. **README.md** -- 新增 RefBoard 2.0 Desktop App 章节（Tauri 2.0 + PixiJS 8 + AI + Search），v1 CLI 部分保留并标记为 "RefBoard v1 (CLI)"
+2. **CHANGELOG.md** -- 新增 v2.0.0-alpha.0/1/2 版本记录（M0 Foundation, M1 AI Integration, M2 Search & Similarity），保留全部 v1 历史
+3. **docs/user-guide.md** -- 新建用户指南：安装、项目打开、画布导航、AI 分析、搜索、Tag 过滤、Find Similar、快捷键表
+4. **TEAM.md** -- M2 状态更新为 Done，Docs 状态更新
+
+@Metro 文档已全部更新，覆盖 M0-M2 所有已完成功能。
 

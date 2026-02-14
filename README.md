@@ -1,23 +1,82 @@
 # RefBoard
 
-Visual reference board generator. Canvas-style mood boards with metadata, filtering, and AI-friendly CLI.
+AI-powered visual reference board for designers, artists, and creative professionals.
 
-## Features
+---
 
-- **Canvas layout** — Drag, pan, zoom like Miro/Figma
-- **Rich metadata** — Artist, year, context, influences, tags
-- **Filter & search** — Quick filtering by tags or text search
-- **Keyboard shortcuts** — Fast navigation (T=tile, F=fit, /=search)
-- **Portable output** — Single HTML file, no server needed
-- **AI-optimized CLI** — Batch import, watch mode, scriptable
+## RefBoard 2.0 (Desktop App)
 
-## Installation
+A native macOS desktop app built with Tauri 2.0 and PixiJS 8 for collecting, analyzing, and organizing visual references on an infinite canvas.
+
+### Highlights
+
+- **Infinite canvas** -- PixiJS 8 WebGL rendering with pan, zoom, drag, and multi-select at 60fps
+- **AI vision analysis** -- Anthropic Claude, OpenAI GPT-4o, and Ollama (local) providers for automatic image description and tagging
+- **Full-text search** -- SQLite FTS5 index across titles, descriptions, tags, and all metadata fields
+- **Tag filtering** -- Sidebar with tag list, counts, and click-to-filter canvas
+- **Find Similar** -- Embedding-based and tag-based similarity search across your board
+- **Local-first** -- All data stays on your machine; cloud AI is optional
+
+### Development Setup
+
+Prerequisites: [Rust](https://rustup.rs/), [Node.js 18+](https://nodejs.org/), and [Tauri 2.0 prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+```bash
+cd desktop
+npm install
+npm run tauri dev
+```
+
+To build a release `.app` / `.dmg`:
+
+```bash
+cd desktop
+npm run tauri build
+```
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space+drag` | Pan canvas |
+| `Scroll wheel` | Zoom (cursor-centered) |
+| `Shift+1` | Fit all images in view |
+| `Cmd+F` | Focus search bar |
+| `Escape` | Close panels / clear filters |
+| Click card | Select and open metadata panel |
+
+### Project Structure
+
+```
+desktop/
+├── src/                  # Frontend (Vanilla JS + PixiJS 8)
+│   ├── main.js           # App entry point
+│   ├── canvas.js         # Infinite canvas engine
+│   ├── panels.js         # AI suggestion, metadata, settings panels
+│   └── search.js         # Search bar, tag sidebar, results panel
+├── src-tauri/            # Rust backend
+│   ├── src/lib.rs        # File scanning, metadata, image commands
+│   ├── src/ai.rs         # AI vision provider abstraction
+│   └── src/search.rs     # SQLite FTS5 search + similarity
+├── index.html            # App shell
+├── package.json
+├── vite.config.js
+└── src-tauri/tauri.conf.json
+```
+
+---
+
+## RefBoard v1 (CLI)
+
+The original command-line tool for generating self-contained HTML reference boards.
+
+### Installation
 
 ```bash
 npm install -g refboard
 ```
 
-## Quick Start
+### Quick Start
 
 ```bash
 # Create project
@@ -32,7 +91,7 @@ refboard build
 # Open board.html in browser
 ```
 
-## Commands
+### Commands
 
 | Command | Description |
 |---------|-------------|
@@ -59,7 +118,7 @@ refboard build
 
 ```bash
 --title "..."       Item title
---artist "..."      Artist name  
+--artist "..."      Artist name
 --year "..."        Year
 --desc "..."        Description
 --tags "a,b,c"      Tags (comma-separated)
@@ -71,7 +130,7 @@ refboard build
 -q, --quiet        Suppress decorative output
 ```
 
-## Keyboard Shortcuts
+### Keyboard Shortcuts (HTML Board)
 
 | Key | Action |
 |-----|--------|
@@ -85,7 +144,7 @@ refboard build
 | `Del` | Remove selected |
 | `Esc` | Close panels |
 
-## Project Structure
+### CLI Project Structure
 
 ```
 my-project/
@@ -95,43 +154,15 @@ my-project/
 └── board.html        # Generated output
 ```
 
-## Metadata Format
-
-```json
-{
-  "board": {
-    "title": "Art Deco References",
-    "description": "1920s sculpture and architecture"
-  },
-  "items": [
-    {
-      "file": "chiparus.jpg",
-      "title": "Dancer",
-      "artist": "Demetre Chiparus",
-      "year": "1925",
-      "description": "Bronze and ivory sculpture",
-      "context": "Art Deco movement...",
-      "influences": "Ballet Russes, Egyptian revival",
-      "tags": ["art-deco", "sculpture", "bronze"]
-    }
-  ]
-}
-```
-
-## AI Provider
-
-RefBoard supports multiple AI providers for image analysis, auto-tagging, and similarity search.
-
-### Configuration
+### AI Provider Configuration
 
 Add an `ai` section to your `refboard.json`:
 
 ```json
 {
   "ai": {
-    "defaultProvider": "openclaw",
+    "defaultProvider": "openai",
     "providers": {
-      "openclaw": { "endpoint": "http://localhost:18789" },
       "openai": { "apiKey": "sk-..." },
       "anthropic": { "apiKey": "sk-ant-..." }
     }
@@ -142,103 +173,45 @@ Add an `ai` section to your `refboard.json`:
 Or configure via CLI:
 
 ```bash
-refboard config ai.provider openclaw
-refboard config ai.endpoint http://localhost:18789
+refboard config ai.provider openai
+refboard config ai.apiKey sk-...
 ```
 
-### Supported Providers
+Environment variables are also supported: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
 
-| Provider | Models | Features |
-|----------|--------|----------|
-| OpenClaw | Any (proxy) | Vision, Chat, Embedding |
-| OpenAI | gpt-4o | Vision, Chat, Embedding |
-| Anthropic | claude-sonnet-4 | Vision, Chat |
-| MiniMax | abab6.5-chat | Vision, Chat |
-| Google | gemini-pro-vision | Vision, Chat |
-| Custom | Any OpenAI-compatible | Configurable |
-
-### AI Commands
-
-```bash
-# Analyze a single image
-refboard analyze photo.jpg
-
-# Auto-tag all images in the project
-refboard auto-tag --all
-
-# Find similar images by embedding
-refboard search --similar photo.jpg
-
-# Ask a question about the board
-refboard ask "What styles are most common?"
-```
-
-Environment variables are also supported: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, `MINIMAX_API_KEY`.
-
-## For AI Agents
-
-RefBoard is designed for efficient use by AI agents:
+### For AI Agents
 
 ```bash
 # Batch import with auto-build
 refboard import ./refs --tags "reference" && refboard build
 
-# Update metadata programmatically
-refboard meta 1 --title "New Title" --artist "Artist Name"
-
 # JSON output for parsing
 refboard list --json
 refboard status --json
-refboard build --json
 
-# Quiet mode — only machine output
+# Quiet mode
 refboard build -q
 
-# Watch mode for continuous updates
-refboard watch &
+# Agent interface
+refboard agent add <image> --analyze
+refboard agent export --format json
 ```
 
-CLI output is minimal and parseable. Use `--json` for structured output and `-q` to suppress decorative messages. Exit codes indicate success/failure.
-
-### Agent Interface
-
-External agents (e.g. OpenClaw) can operate boards programmatically:
-
-```bash
-refboard agent add <image> --analyze    # Add + AI analysis
-refboard agent layout --cluster-by tags # Re-layout by tags
-refboard agent export --format json     # Export board data
-```
-
-## Programmatic API
+### Programmatic API
 
 ```js
 import { generateBoard, findImages, autoLayout, loadMetadata } from 'refboard';
 import { generateDashboard, scanProjects } from 'refboard';
 
-// Generate a board
 await generateBoard({
   inputDir: './my-project',
   outputFile: './board.html',
   title: 'My Board',
   embedImages: false,
 });
-
-// Find images in a directory
-const images = findImages('./my-project');
-
-// Scan for RefBoard projects
-const projects = scanProjects('~/Projects');
 ```
 
-## Legacy Mode
-
-Use without project structure:
-
-```bash
-refboard -i ./images -o board.html -t "My Board"
-refboard -i ./refs --embed  # Embedded images
-```
+---
 
 ## License
 

@@ -2,38 +2,73 @@
 
 All notable changes to RefBoard will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [2.0.0-alpha.2] - 2026-02-14
+
+### Added
+- **SQLite FTS5 full-text search** across image titles, descriptions, tags, and all metadata fields
+- **Tag filter sidebar** with tag list, counts, and click-to-filter canvas; active filter bar with clear button
+- **Find Similar** action on any card -- embedding-based and tag-based similarity ranking
+- **Search results panel** with ranked thumbnails and click-to-navigate
+- **Canvas filtering** -- non-matching cards dim when a search or tag filter is active
+- Rust `search.rs` module: per-project SQLite database at `{project}/.refboard/search.db`
+- Frontend `search.js` module: search bar (Cmd+F), tag sidebar toggle, debounced queries
+
+## [2.0.0-alpha.1] - 2026-02-14
+
+### Added
+- **AI vision provider abstraction** (`ai.rs`) supporting Anthropic Claude, OpenAI GPT-4o, and Ollama (local LLaVA)
+- **Analysis pipeline** -- select an image, click "Analyze with AI", receive description, tags, style, mood, colors, and era
+- **Suggestion panel** -- accept, edit, or reject AI-generated tags with one click
+- **Metadata panel** -- view and edit all image fields (title, description, tags, style, source)
+- **Settings dialog** -- choose AI provider, set API key, select model
+- Tauri IPC events for streaming analysis progress to the frontend
+
+## [2.0.0-alpha.0] - 2026-02-14
+
+### Added
+- **Tauri 2.0 desktop app** scaffold (`desktop/` directory)
+- **PixiJS 8 infinite canvas** with WebGL2 rendering, dot-grid background, and 60fps pan/zoom
+- **Image cards** with aspect-ratio-correct display, drag to reposition, click to select
+- **Viewport culling** -- off-screen cards are skipped for rendering performance
+- **Grid background** that scales with zoom level
+- Rust backend: `scan_images`, `read_metadata`, `write_metadata` IPC commands
+- Tauri asset protocol for loading local images into the WebView
+- Vite dev server with hot-reload for frontend development
+- macOS `.app` and `.dmg` bundle targets (macOS 12+)
+
 ## [1.1.0] - 2026-02-14
 
 ### Added
-- **AI Provider abstraction layer** (`lib/ai-provider.js`)
-  - Multi-provider support: OpenClaw, OpenAI, Anthropic, MiniMax, Google, custom endpoints
-  - Unified interface for vision, chat, and embedding features
-  - Per-provider configuration via `refboard.json`
-  - Cosine similarity utility for embedding comparison
-- **`refboard analyze <image>`** — AI-powered image analysis (description + tags)
-- **`refboard auto-tag --all`** — Batch auto-tagging via AI
-- **`refboard search --similar <image>`** — Similar image search using embeddings
-- **`refboard ask "..."`** — Ask questions about your board using AI
-- **`refboard config`** — Manage AI provider and project configuration
-- **`refboard agent`** — External agent interface for programmatic board operations
-- **`refboard save-positions`** — Persist card positions from canvas to metadata
-- **WebP / BMP image dimension parsing** — Native header parsing without external dependencies
+- **`refboard serve [--port]`** -- local dev server with SSE livereload, dynamic board rendering, and image proxy
+- **AI Provider abstraction layer** (`lib/ai-provider.js`) with multi-provider support (OpenClaw, OpenAI, Anthropic, MiniMax, Google, custom endpoints)
+- **`refboard analyze <image>`** -- AI-powered image analysis (description + tags)
+- **`refboard auto-tag --all`** -- batch auto-tagging via AI
+- **`refboard search --similar <image>`** -- similar image search using embeddings
+- **`refboard ask "..."`** -- ask questions about your board using AI
+- **`refboard config`** -- manage AI provider and project configuration
+- **`refboard agent`** -- external agent interface for programmatic board operations
+- **`refboard save-positions`** -- persist card positions from canvas to metadata
+- WebP / BMP image dimension parsing without external dependencies
 
-### Changed
-- CLI now imports and initializes AI Provider from project config
-- `index.js` public API exports generator and dashboard modules
+### Fixed
+- `build --json` output no longer includes log messages (BUG-004)
+- `save-positions` handles both filename keys and numeric ID keys
+- AI provider connection errors display a user-friendly message
+- Removed `console.warn` from library code (ISSUE-001)
+- Template placeholders `{{DESCRIPTION}}` and `{{GENERATED_AT}}` now exist in templates (ISSUE-002)
 
 ## [1.0.0] - 2026-02-13
 
 ### Added
-- **Dashboard / Home page** — Project browser with `refboard home` command
-  - Scans directories for RefBoard projects
-  - Recent projects tracking (`~/.refboard/recent.json`)
-  - Auto-open in browser
-- **`refboard status`** — Show project summary (item count, tags, last build)
-- **`--json` flag** — Machine-readable JSON output for `build`, `list`, `status`, `meta`
-- **`--quiet` / `-q` flag** — Suppress decorative output for scripting
-- **`index.js` public API** — Library exports for programmatic use
+- **Dashboard / Home page** -- project browser with `refboard home` command
+- Scans directories for RefBoard projects
+- Recent projects tracking (`~/.refboard/recent.json`)
+- **`refboard status`** -- show project summary (item count, tags, last build)
+- **`--json` flag** -- machine-readable JSON output for `build`, `list`, `status`, `meta`
+- **`--quiet` / `-q` flag** -- suppress decorative output for scripting
+- **`index.js` public API** -- library exports for programmatic use
 
 ### Changed
 - README updated with new commands and AI agent usage guide
@@ -41,32 +76,31 @@ All notable changes to RefBoard will be documented in this file.
 ## [0.3.0] - 2026-02-13
 
 ### Added
-- **Major UI redesign** — Cleaner, more professional interface
-- **Tag filtering** — Sidebar tag list with click-to-filter
-- **Text search** — `/` to focus search, filter cards by title/artist/tags
-- **Keyboard shortcuts** — `T` tile, `F` fit, `I` info, `0` reset, `+/-` zoom, `Del` remove, `Esc` close
-- **Better CLI for AI agents** — Structured commands, parseable output
+- Major UI redesign -- cleaner, more professional interface
+- Tag filtering -- sidebar tag list with click-to-filter
+- Text search -- `/` to focus search, filter cards by title/artist/tags
+- Keyboard shortcuts -- `T` tile, `F` fit, `I` info, `0` reset, `+/-` zoom, `Del` remove, `Esc` close
+- Better CLI output for AI agents -- structured commands, parseable output
 
 ## [0.2.0] - 2026-02-12
 
 ### Added
-- **Auto-tile button** — Spread items in a grid layout with one click
-- **Canvas-style layout** — Pan, zoom, drag cards like Miro/Figma
-- **Minimap** — Overview navigation panel
-- **Sticky notes** — Quick annotation support
+- Auto-tile button -- spread items in a grid layout with one click
+- Canvas-style layout -- pan, zoom, drag cards like Miro/Figma
+- Minimap -- overview navigation panel
+- Sticky notes -- quick annotation support
 
 ## [0.1.0] - 2026-02-12
 
 ### Added
-- **Project structure** — `refboard init`, `add`, `build` commands
-- **Image detection** — PNG, JPEG, GIF, WebP, BMP, SVG support
-- **Base64 embedding** — `--embed` flag for self-contained HTML
-- **Auto-layout** — Grid-based card arrangement
-- **Rich metadata** — Title, artist, year, description, context, influences, tags
-- **Legacy mode** — Direct `refboard -i <folder>` without project setup
-- **`.gitignore`** — Standard ignores
+- Project structure -- `refboard init`, `add`, `build` commands
+- Image detection -- PNG, JPEG, GIF, WebP, BMP, SVG support
+- Base64 embedding -- `--embed` flag for self-contained HTML
+- Auto-layout -- grid-based card arrangement
+- Rich metadata -- title, artist, year, description, context, influences, tags
+- Legacy mode -- direct `refboard -i <folder>` without project setup
 
 ## [0.0.1] - 2026-02-12
 
 ### Added
-- Initial commit — RefBoard visual reference board generator
+- Initial commit -- RefBoard visual reference board generator
