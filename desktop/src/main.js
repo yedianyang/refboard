@@ -32,7 +32,92 @@ async function main() {
 
   // Shared image extension set
   const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'tiff']);
+  // Formats that should NOT be compressed (vector, animated, or already tiny)
+  const SKIP_COMPRESS_EXTS = new Set(['svg', 'gif']);
   const dropOverlay = document.getElementById('drop-overlay');
+
+  // ---- Image Compression ----
+
+  /** Get compression settings from localStorage. */
+  function getCompressionSettings() {
+    return {
+      enabled: localStorage.getItem('refboard-compress') !== 'off',
+      quality: parseFloat(localStorage.getItem('refboard-compress-quality') || '0.82'),
+      maxDimension: parseInt(localStorage.getItem('refboard-compress-maxdim') || '2048', 10),
+    };
+  }
+
+  /**
+   * Compress an image blob using OffscreenCanvas.
+   * Returns { data: Uint8Array, ext: string } or null if compression skipped.
+   */
+  async function compressImageBlob(blob, originalExt) {
+    const settings = getCompressionSettings();
+    if (!settings.enabled) return null;
+    if (SKIP_COMPRESS_EXTS.has(originalExt)) return null;
+
+    try {
+      const bitmap = await createImageBitmap(blob);
+      let { width, height } = bitmap;
+      const maxDim = settings.maxDimension;
+
+      // Downscale if larger than maxDimension
+      if (width > maxDim || height > maxDim) {
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = new OffscreenCanvas(width, height);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      // Choose output format: use WebP if supported, else JPEG
+      // Keep PNG for images with alpha (transparency)
+      const hasAlpha = originalExt === 'png' || originalExt === 'webp';
+      const outputType = hasAlpha ? 'image/webp' : 'image/jpeg';
+      const outputExt = hasAlpha ? 'webp' : 'jpg';
+
+      const compressedBlob = await canvas.convertToBlob({
+        type: outputType,
+        quality: settings.quality,
+      });
+
+      // Only use compressed version if it's actually smaller
+      if (compressedBlob.size >= blob.size * 0.95) return null;
+
+      const buffer = await compressedBlob.arrayBuffer();
+      return { data: new Uint8Array(buffer), ext: outputExt };
+    } catch {
+      return null; // Fallback to uncompressed
+    }
+  }
+
+  /**
+   * Compress an image from a file path (read via asset URL).
+   * Returns { data: Uint8Array, ext: string } or null.
+   */
+  async function compressImageFromPath(filePath) {
+    const ext = filePath.split('.').pop().toLowerCase();
+    if (SKIP_COMPRESS_EXTS.has(ext)) return null;
+
+    const settings = getCompressionSettings();
+    if (!settings.enabled) return null;
+
+    try {
+      const url = convertFileSrc(filePath);
+      const response = await fetch(url);
+      const blob = await response.blob();
+
+      // Skip small files (< 200KB)
+      if (blob.size < 200 * 1024) return null;
+
+      return await compressImageBlob(blob, ext);
+    } catch {
+      return null;
+    }
+  }
 
   // Convert a window-relative drop/paste position to world coordinates
   function dropPosToWorld(windowX, windowY) {
@@ -62,15 +147,38 @@ async function main() {
       return;
     }
     try {
-      const imported = await invoke('import_images', {
-        paths: imagePaths,
-        projectPath: currentProjectPath,
-      });
+      const imported = [];
+      let compressed = 0;
+
+      for (const filePath of imagePaths) {
+        // Try to compress the image before importing
+        const result = await compressImageFromPath(filePath);
+        if (result) {
+          // Import compressed bytes
+          const stem = filePath.split('/').pop().replace(/\.[^.]+$/, '');
+          const info = await invoke('import_clipboard_image', {
+            data: Array.from(result.data),
+            extension: result.ext,
+            projectPath: currentProjectPath,
+          });
+          imported.push(info);
+          compressed++;
+        } else {
+          // Import original file (no compression or below threshold)
+          const [info] = await invoke('import_images', {
+            paths: [filePath],
+            projectPath: currentProjectPath,
+          });
+          if (info) imported.push(info);
+        }
+      }
+
       const stagger = 220;
       for (let i = 0; i < imported.length; i++) {
         await addImageCard(imported[i], worldX + i * stagger, worldY);
       }
-      setStatus(`Imported ${imported.length} image${imported.length !== 1 ? 's' : ''}`);
+      const msg = `Imported ${imported.length} image${imported.length !== 1 ? 's' : ''}`;
+      setStatus(compressed > 0 ? `${msg} (${compressed} compressed)` : msg);
       invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
     } catch (err) {
       setStatus(`Import failed: ${err}`);
@@ -104,9 +212,20 @@ async function main() {
         }
         const blob = item.getAsFile();
         if (!blob) return;
-        const buffer = await blob.arrayBuffer();
-        const data = Array.from(new Uint8Array(buffer));
-        const ext = item.type.split('/')[1] === 'jpeg' ? 'jpg' : item.type.split('/')[1] || 'png';
+        const origExt = item.type.split('/')[1] === 'jpeg' ? 'jpg' : item.type.split('/')[1] || 'png';
+
+        // Try to compress before importing
+        const compressed = await compressImageBlob(blob, origExt);
+        let data, ext;
+        if (compressed) {
+          data = Array.from(compressed.data);
+          ext = compressed.ext;
+        } else {
+          const buffer = await blob.arrayBuffer();
+          data = Array.from(new Uint8Array(buffer));
+          ext = origExt;
+        }
+
         try {
           const info = await invoke('import_clipboard_image', {
             data,
@@ -119,7 +238,8 @@ async function main() {
           const centerX = (rect.width / 2 - vp.x) / vp.scale;
           const centerY = (rect.height / 2 - vp.y) / vp.scale;
           await addImageCard(info, centerX, centerY);
-          setStatus(`Pasted image: ${info.name}`);
+          const suffix = compressed ? ' (compressed)' : '';
+          setStatus(`Pasted image: ${info.name}${suffix}`);
           invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
         } catch (err) {
           setStatus(`Paste failed: ${err}`);

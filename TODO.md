@@ -76,7 +76,7 @@
 |------|------|------|
 | ✅ | 深色/浅色主题切换 | D 键切换，localStorage 持久化 |
 | ⬜ | 批量布局命令 | `refboard layout --grid/--cluster` (v1 CLI) |
-| ⬜ | 图片导入压缩 | 导入时自动压缩，保留透明图层 (alpha channel) |
+| ✅ | 图片导入压缩 | 导入时自动压缩，保留透明图层 (alpha channel) |
 | ⬜ | DMG 打包修复 | `bundle_dmg.sh` 签名/打包流程 |
 
 ### Bug

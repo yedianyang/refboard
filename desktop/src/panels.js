@@ -456,6 +456,9 @@ async function loadSettingsFromBackend() {
     const braveKeyInput = document.getElementById('settings-brave-key');
     if (braveKeyInput) braveKeyInput.value = webConfig.braveApiKey || '';
   } catch {}
+
+  // Load compression settings from localStorage
+  loadCompressionSettings();
 }
 
 function populateSettings(config) {
@@ -526,6 +529,18 @@ function setupSettingsEvents() {
       closeSettings();
     }
   });
+
+  // Compression toggle: show/hide quality options
+  document.getElementById('settings-compress-toggle')?.addEventListener('change', (e) => {
+    const options = document.getElementById('settings-compress-options');
+    if (options) options.style.display = e.target.checked ? '' : 'none';
+  });
+
+  // Compression quality slider: update label
+  document.getElementById('settings-compress-quality')?.addEventListener('input', (e) => {
+    const label = document.getElementById('settings-quality-label');
+    if (label) label.textContent = Math.round(e.target.value * 100) + '%';
+  });
 }
 
 async function saveSettings() {
@@ -552,6 +567,9 @@ async function saveSettings() {
     webConfig.braveApiKey = braveKey || null;
     await saveWebConfig(webConfig);
 
+    // Save compression settings
+    saveCompressionSettings();
+
     statusEl.textContent = 'Settings saved.';
     statusEl.className = 'settings-status success';
     setTimeout(() => closeSettings(), 1000);
@@ -565,6 +583,45 @@ function defaultEndpoint(provider) {
   if (provider === 'anthropic') return 'https://api.anthropic.com/v1';
   if (provider === 'openai') return 'https://api.openai.com/v1';
   return 'http://localhost:11434';
+}
+
+function loadCompressionSettings() {
+  const toggle = document.getElementById('settings-compress-toggle');
+  const quality = document.getElementById('settings-compress-quality');
+  const qualityLabel = document.getElementById('settings-quality-label');
+  const maxdim = document.getElementById('settings-compress-maxdim');
+  const options = document.getElementById('settings-compress-options');
+
+  if (toggle) {
+    toggle.checked = localStorage.getItem('refboard-compress') !== 'off';
+  }
+  if (quality) {
+    const q = parseFloat(localStorage.getItem('refboard-compress-quality') || '0.82');
+    quality.value = q;
+    if (qualityLabel) qualityLabel.textContent = Math.round(q * 100) + '%';
+  }
+  if (maxdim) {
+    maxdim.value = localStorage.getItem('refboard-compress-maxdim') || '2048';
+  }
+  if (options && toggle) {
+    options.style.display = toggle.checked ? '' : 'none';
+  }
+}
+
+function saveCompressionSettings() {
+  const toggle = document.getElementById('settings-compress-toggle');
+  const quality = document.getElementById('settings-compress-quality');
+  const maxdim = document.getElementById('settings-compress-maxdim');
+
+  if (toggle) {
+    localStorage.setItem('refboard-compress', toggle.checked ? 'on' : 'off');
+  }
+  if (quality) {
+    localStorage.setItem('refboard-compress-quality', quality.value);
+  }
+  if (maxdim) {
+    localStorage.setItem('refboard-compress-maxdim', maxdim.value);
+  }
 }
 
 async function testConnection() {
