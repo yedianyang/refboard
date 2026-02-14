@@ -14,6 +14,7 @@ let world;        // World container — holds all canvas content
 let gridGfx;      // Grid background graphics
 let minimapGfx;   // Minimap overlay graphics
 let selectRectGfx; // Drag-select rectangle graphics
+let guideGfx;      // Alignment guide lines
 
 const allCards = [];
 const allGroups = []; // { name, cards: Set, container, label, border }
@@ -152,6 +153,11 @@ export async function initCanvas(containerEl) {
   world = new Container({ isRenderGroup: true });
   world.sortableChildren = true;
   app.stage.addChild(world);
+
+  // Alignment guide lines (in world space, above cards)
+  guideGfx = new Graphics();
+  guideGfx.zIndex = 9998;
+  world.addChild(guideGfx);
 
   // Drag-select rectangle (on top of world)
   selectRectGfx = new Graphics();
@@ -533,6 +539,12 @@ function setupGlobalDrag() {
         const wp = screenToWorld(e.global.x, e.global.y);
         dragState.card.container.x = wp.x - dragState.offset.x;
         dragState.card.container.y = wp.y - dragState.offset.y;
+        // Smart alignment snap
+        if (!dragState._snapTargets) {
+          dragState._snapTargets = getSnapTargets([dragState.card]);
+        }
+        const snaps = applySnapToCard(dragState.card, dragState._snapTargets);
+        drawGuides(snaps.hSnap, snaps.vSnap);
         break;
       }
       case 'multicard': {
@@ -636,6 +648,7 @@ function setupGlobalDrag() {
 
 function finishDrag(e) {
   if (!dragState) return;
+  clearGuides();
 
   switch (dragState.type) {
     case 'card': {
@@ -1105,8 +1118,8 @@ function createTextCard(content, x, y, opts = {}) {
       dragState = {
         type: 'card',
         card,
+        offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
         startPos: { x: card.container.x, y: card.container.y },
-        lastWorld: wp,
         moved: false,
       };
     }
@@ -1289,8 +1302,8 @@ function createShapeCard(shapeType, x, y, opts = {}) {
       dragState = {
         type: 'card',
         card,
+        offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
         startPos: { x: card.container.x, y: card.container.y },
-        lastWorld: wp,
         moved: false,
       };
     }
@@ -1960,6 +1973,121 @@ function handleContextAction(action) {
       window.dispatchEvent(new CustomEvent('refboard:context-action', { detail: { action, cards: Array.from(selection) } }));
       break;
   }
+}
+
+// ============================================================
+// Smart Alignment Guides
+// ============================================================
+
+const SNAP_THRESHOLD = 5; // World-space pixels to snap within
+const GUIDE_COLOR = 0xe91e63; // Pink guide lines
+
+function getSnapTargets(excludeCards) {
+  const excluded = new Set(excludeCards);
+  const hEdges = []; // { pos, type }  — horizontal positions (x values)
+  const vEdges = []; // { pos, type }  — vertical positions (y values)
+  for (const card of allCards) {
+    if (excluded.has(card) || !card.container.visible) continue;
+    const x = card.container.x;
+    const y = card.container.y;
+    const w = card.cardWidth;
+    const h = card.cardHeight;
+    hEdges.push(x, x + w / 2, x + w);          // left, centerX, right
+    vEdges.push(y, y + h / 2, y + h);           // top, centerY, bottom
+  }
+  return { hEdges, vEdges };
+}
+
+function findSnap(value, targets) {
+  let best = null;
+  let bestDist = SNAP_THRESHOLD + 1;
+  for (const t of targets) {
+    const dist = Math.abs(value - t);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = t;
+    }
+  }
+  return best;
+}
+
+function applySnapToCard(card, targets) {
+  const x = card.container.x;
+  const y = card.container.y;
+  const w = card.cardWidth;
+  const h = card.cardHeight;
+
+  // Check left, center, right against horizontal targets
+  const snapLeft = findSnap(x, targets.hEdges);
+  const snapCenterX = findSnap(x + w / 2, targets.hEdges);
+  const snapRight = findSnap(x + w, targets.hEdges);
+
+  // Pick closest horizontal snap
+  let hSnap = null;
+  let hSnapDist = SNAP_THRESHOLD + 1;
+  if (snapLeft !== null && Math.abs(x - snapLeft) < hSnapDist) {
+    hSnap = { target: snapLeft, adjust: snapLeft - x };
+    hSnapDist = Math.abs(x - snapLeft);
+  }
+  if (snapCenterX !== null && Math.abs(x + w / 2 - snapCenterX) < hSnapDist) {
+    hSnap = { target: snapCenterX, adjust: snapCenterX - (x + w / 2) };
+    hSnapDist = Math.abs(x + w / 2 - snapCenterX);
+  }
+  if (snapRight !== null && Math.abs(x + w - snapRight) < hSnapDist) {
+    hSnap = { target: snapRight, adjust: snapRight - (x + w) };
+  }
+
+  // Check top, center, bottom against vertical targets
+  const snapTop = findSnap(y, targets.vEdges);
+  const snapCenterY = findSnap(y + h / 2, targets.vEdges);
+  const snapBottom = findSnap(y + h, targets.vEdges);
+
+  let vSnap = null;
+  let vSnapDist = SNAP_THRESHOLD + 1;
+  if (snapTop !== null && Math.abs(y - snapTop) < vSnapDist) {
+    vSnap = { target: snapTop, adjust: snapTop - y };
+    vSnapDist = Math.abs(y - snapTop);
+  }
+  if (snapCenterY !== null && Math.abs(y + h / 2 - snapCenterY) < vSnapDist) {
+    vSnap = { target: snapCenterY, adjust: snapCenterY - (y + h / 2) };
+    vSnapDist = Math.abs(y + h / 2 - snapCenterY);
+  }
+  if (snapBottom !== null && Math.abs(y + h - snapBottom) < vSnapDist) {
+    vSnap = { target: snapBottom, adjust: snapBottom - (y + h) };
+  }
+
+  // Apply snaps
+  if (hSnap) card.container.x += hSnap.adjust;
+  if (vSnap) card.container.y += vSnap.adjust;
+
+  return { hSnap, vSnap };
+}
+
+function drawGuides(hSnap, vSnap) {
+  guideGfx.clear();
+  // Determine visible world bounds for drawing full-length lines
+  const vp = viewport;
+  const worldLeft = -vp.x / vp.scale;
+  const worldTop = -vp.y / vp.scale;
+  const worldRight = worldLeft + app.screen.width / vp.scale;
+  const worldBottom = worldTop + app.screen.height / vp.scale;
+
+  if (hSnap) {
+    guideGfx
+      .moveTo(hSnap.target, worldTop)
+      .lineTo(hSnap.target, worldBottom)
+      .stroke({ color: GUIDE_COLOR, width: 1 / vp.scale, alpha: 0.7 });
+  }
+  if (vSnap) {
+    guideGfx
+      .moveTo(worldLeft, vSnap.target)
+      .lineTo(worldRight, vSnap.target)
+      .stroke({ color: GUIDE_COLOR, width: 1 / vp.scale, alpha: 0.7 });
+  }
+}
+
+function clearGuides() {
+  guideGfx.clear();
 }
 
 // ============================================================
