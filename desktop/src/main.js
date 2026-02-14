@@ -1,8 +1,9 @@
 // RefBoard 2.0 — Main entry point
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter } from './canvas.js';
-import { initPanels, showMetadata, openSettings } from './panels.js';
+import { invoke } from '@tauri-apps/api/core';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection } from './canvas.js';
+import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -67,6 +68,26 @@ async function main() {
   // Settings button
   settingsBtn.addEventListener('click', () => openSettings());
 
+  // Export button
+  const exportBtn = document.getElementById('export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', async () => {
+      if (!currentProjectPath) return;
+      const outputPath = currentProjectPath + '/export.json';
+      try {
+        const count = await invoke('export_metadata', {
+          projectPath: currentProjectPath,
+          outputPath,
+        });
+        const statusText = document.getElementById('status-text');
+        if (statusText) statusText.textContent = `Exported ${count} images to export.json`;
+      } catch (err) {
+        const statusText = document.getElementById('status-text');
+        if (statusText) statusText.textContent = `Export failed: ${err}`;
+      }
+    });
+  }
+
   // Web collection sidebar button
   const webSidebarBtn = document.getElementById('web-sidebar-btn');
   if (webSidebarBtn) {
@@ -83,12 +104,53 @@ async function main() {
   // Fit all button
   fitBtn.addEventListener('click', () => fitAll());
 
-  // Keyboard shortcut: Cmd/Ctrl+F to focus search
+  // Keyboard shortcuts
   window.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+    const meta = e.metaKey || e.ctrlKey;
+
+    // Cmd+F: focus search
+    if (meta && e.key === 'f' && !e.shiftKey) {
       e.preventDefault();
       const searchInput = document.getElementById('search-input');
       if (searchInput) searchInput.focus();
+      return;
+    }
+
+    // Cmd+Shift+A: Analyze selected image
+    if (meta && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      const sel = getSelection();
+      if (sel.size === 1) {
+        const card = Array.from(sel)[0];
+        analyzeCard(card);
+      }
+      return;
+    }
+
+    // Cmd+Shift+F: Find more like selected (online)
+    if (meta && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      const sel = getSelection();
+      if (sel.size === 1) {
+        const card = Array.from(sel)[0];
+        findMoreLike(card);
+      }
+      return;
+    }
+
+    // Cmd+S: Manual save
+    if (meta && e.key === 's' && !e.shiftKey) {
+      e.preventDefault();
+      if (currentProjectPath) {
+        invoke('save_board_state', {
+          projectPath: currentProjectPath,
+          state: getBoardState(),
+        }).then(() => {
+          const statusText = document.getElementById('status-text');
+          if (statusText) statusText.textContent = 'Board saved';
+        }).catch(() => {});
+      }
+      return;
     }
   });
 
@@ -101,6 +163,8 @@ async function main() {
   }
 }
 
+let currentProjectPath = null;
+
 async function openProject(dirPath, loading) {
   loading.style.display = 'block';
   loading.textContent = 'Scanning images...';
@@ -108,10 +172,34 @@ async function openProject(dirPath, loading) {
   try {
     const result = await loadProject(dirPath);
     if (result) {
-      loading.textContent = `Loaded ${result.loaded} images. Indexing for search...`;
+      currentProjectPath = dirPath;
+
+      // Try to restore saved board state (positions, groups, viewport)
+      loading.textContent = `Loaded ${result.loaded} images. Restoring layout...`;
+      try {
+        const savedState = await invoke('load_board_state', { projectPath: dirPath });
+        if (savedState) {
+          restoreBoardState(savedState);
+          loading.textContent = `Restored layout for ${result.loaded} images`;
+        }
+      } catch (err) {
+        // No saved state or corrupt — use default layout
+        console.warn('Board state restore skipped:', err);
+      }
+
       // Index project for search
+      loading.textContent = `Indexing ${result.loaded} images for search...`;
       await setProject(dirPath);
       setCollectionProject(dirPath);
+
+      // Start auto-save
+      startAutoSave(async (state) => {
+        await invoke('save_board_state', {
+          projectPath: dirPath,
+          state,
+        });
+      });
+
       loading.textContent = `Loaded ${result.loaded} images`;
       setTimeout(() => { loading.style.display = 'none'; }, 2000);
     }

@@ -15,8 +15,11 @@
         "title": "RefBoard",
         "width": 1400,
         "height": 900,
+        "minWidth": 800,
+        "minHeight": 600,
         "resizable": true,
-        "decorations": true
+        "decorations": true,
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {
@@ -34,6 +37,7 @@
       "icons/icon.png",
       "icons/icon.icns"
     ],
+    "category": "public.app-category.graphics-design",
     "macOS": {
       "minimumSystemVersion": "12.0"
     }

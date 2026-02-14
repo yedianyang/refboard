@@ -310,6 +310,102 @@ fn chrono_now_iso() -> String {
 }
 
 // ---------------------------------------------------------------------------
+// Board State (Auto-save / Crash Recovery)
+// ---------------------------------------------------------------------------
+
+/// Save board state (card positions, groups, viewport) to .refboard/board.json.
+#[tauri::command]
+fn save_board_state(project_path: String, state: serde_json::Value) -> Result<(), String> {
+    let refboard_dir = Path::new(&project_path).join(".refboard");
+    fs::create_dir_all(&refboard_dir)
+        .map_err(|e| format!("Cannot create .refboard dir: {}", e))?;
+
+    let board_path = refboard_dir.join("board.json");
+    let json = serde_json::to_string_pretty(&state)
+        .map_err(|e| format!("Cannot serialize board state: {}", e))?;
+    fs::write(&board_path, json)
+        .map_err(|e| format!("Cannot write board.json: {}", e))?;
+    Ok(())
+}
+
+/// Load board state from .refboard/board.json. Returns null if no saved state.
+#[tauri::command]
+fn load_board_state(project_path: String) -> Result<Option<serde_json::Value>, String> {
+    let board_path = Path::new(&project_path).join(".refboard").join("board.json");
+    if !board_path.exists() {
+        return Ok(None);
+    }
+
+    let contents = fs::read_to_string(&board_path)
+        .map_err(|e| format!("Cannot read board.json: {}", e))?;
+    let state: serde_json::Value = serde_json::from_str(&contents)
+        .map_err(|e| format!("Invalid board.json: {}", e))?;
+    Ok(Some(state))
+}
+
+/// Export all image metadata as a JSON file.
+#[tauri::command]
+fn export_metadata(project_path: String, output_path: String) -> Result<usize, String> {
+    let images = scan_images(project_path.clone())?;
+
+    // Merge with search DB metadata if available
+    let conn = search::open_db(&project_path).ok();
+    let mut export_items: Vec<serde_json::Value> = Vec::new();
+
+    for img in &images {
+        let mut item = serde_json::json!({
+            "path": img.path,
+            "name": img.name,
+            "sizeBytes": img.size_bytes,
+            "extension": img.extension,
+        });
+
+        if let Some(ref conn) = conn {
+            // Try to get metadata from search DB
+            if let Ok(row) = conn.query_row(
+                "SELECT description, tags, style, mood, colors, era FROM images WHERE path = ?1",
+                rusqlite::params![img.path],
+                |row| {
+                    Ok(serde_json::json!({
+                        "description": row.get::<_, Option<String>>(0)?,
+                        "tags": row.get::<_, String>(1)?.split_whitespace().collect::<Vec<_>>(),
+                        "style": row.get::<_, String>(2)?.split_whitespace().collect::<Vec<_>>(),
+                        "mood": row.get::<_, String>(3)?.split_whitespace().collect::<Vec<_>>(),
+                        "colors": row.get::<_, String>(4)?.split_whitespace().collect::<Vec<_>>(),
+                        "era": row.get::<_, Option<String>>(5)?,
+                    }))
+                },
+            ) {
+                if let Some(obj) = item.as_object_mut() {
+                    if let Some(meta_obj) = row.as_object() {
+                        for (k, v) in meta_obj {
+                            obj.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        export_items.push(item);
+    }
+
+    let export = serde_json::json!({
+        "version": 2,
+        "projectPath": project_path,
+        "exportedAt": chrono_now_iso(),
+        "imageCount": export_items.len(),
+        "images": export_items,
+    });
+
+    let json = serde_json::to_string_pretty(&export)
+        .map_err(|e| format!("Cannot serialize export: {}", e))?;
+    fs::write(&output_path, json)
+        .map_err(|e| format!("Cannot write export file: {}", e))?;
+
+    Ok(export_items.len())
+}
+
+// ---------------------------------------------------------------------------
 // App entry
 // ---------------------------------------------------------------------------
 
@@ -339,6 +435,9 @@ pub fn run() {
             web::cmd_download_web_image,
             web::cmd_get_web_config,
             web::cmd_set_web_config,
+            save_board_state,
+            load_board_state,
+            export_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,6 +4,20 @@ All notable changes to RefBoard will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0-beta.0] - 2026-02-14
+
+### Added
+- **Auto-save** -- board state (card positions, groups, viewport) saved to `.refboard/board.json` every 30s
+- **Board state restore** -- reopening a project restores exact layout and viewport
+- **Manual save** with Cmd+S keyboard shortcut
+- **Metadata export** -- Export button exports all image metadata with AI analysis to JSON
+- **Cmd+Shift+A** shortcut to analyze selected image with AI
+- **Cmd+Shift+F** shortcut to find more images online like selected
+- **macOS native title bar** -- overlay title bar with traffic light integration
+- **Min window size** enforced (800x600)
+- **DMG packaging** -- proper app category (Graphics & Design), macOS 12+ minimum
+- Board save/load Rust commands: `save_board_state`, `load_board_state`, `export_metadata`
+
 ## [2.0.0-alpha.4] - 2026-02-14
 
 ### Added

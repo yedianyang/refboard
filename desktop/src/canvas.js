@@ -541,6 +541,7 @@ function finishDrag(e) {
         });
         card.data.x = card.container.x;
         card.data.y = card.container.y;
+        markDirty();
       }
       hideResizeHandles();
       if (selection.size === 1) showResizeHandles(Array.from(selection)[0]);
@@ -558,6 +559,7 @@ function finishDrag(e) {
           card.data.x = card.container.x;
           card.data.y = card.container.y;
         }
+        markDirty();
       }
       break;
     }
@@ -578,6 +580,7 @@ function finishDrag(e) {
           from: dragState.startDims,
           to: { width: dragState.card.cardWidth, height: dragState.card.cardHeight },
         });
+        markDirty();
       }
       break;
     }
@@ -986,6 +989,7 @@ function deleteSelected() {
   }
   hideResizeHandles();
   requestCull();
+  markDirty();
 }
 
 function duplicateSelected() {
@@ -1147,6 +1151,7 @@ export function tidyUp() {
   pushUndo({ type: 'move', entries });
   requestCull();
   if (minimapVisible) drawMinimap();
+  markDirty();
 }
 
 // ============================================================
@@ -1352,3 +1357,131 @@ export function getViewport() { return viewport; }
 export function getCardCount() { return allCards.length; }
 export function getApp() { return app; }
 export { tidyUp as autoLayout };
+
+// ============================================================
+// Board State: Save / Load (Auto-save support)
+// ============================================================
+
+let boardDirty = false;
+let autoSaveTimer = null;
+const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+
+function markDirty() {
+  boardDirty = true;
+}
+
+/**
+ * Serialize current board state for saving.
+ */
+export function getBoardState() {
+  const items = allCards.map((card) => ({
+    path: card.data.path,
+    name: card.data.name,
+    x: card.container.x,
+    y: card.container.y,
+    width: card.cardWidth,
+    height: card.cardHeight,
+  }));
+
+  const groups = allGroups.map((g) => ({
+    name: g.name,
+    cardPaths: Array.from(g.cards).map((c) => c.data.path),
+  }));
+
+  return {
+    version: 2,
+    viewport: {
+      x: viewport.x,
+      y: viewport.y,
+      zoom: viewport.scale,
+    },
+    items,
+    groups,
+  };
+}
+
+/**
+ * Restore board state: apply saved positions to loaded cards.
+ * Call after loadProject has loaded all cards.
+ * @param {object} state - Saved board state
+ */
+export function restoreBoardState(state) {
+  if (!state || !state.items) return false;
+
+  const posMap = new Map();
+  for (const item of state.items) {
+    posMap.set(item.path, item);
+  }
+
+  let restored = 0;
+  for (const card of allCards) {
+    const saved = posMap.get(card.data.path);
+    if (saved) {
+      card.container.x = saved.x;
+      card.container.y = saved.y;
+      card.data.x = saved.x;
+      card.data.y = saved.y;
+      if (saved.width && saved.height) {
+        resizeCardTo(card, saved.width, saved.height);
+      }
+      restored++;
+    }
+  }
+
+  // Restore viewport
+  if (state.viewport) {
+    viewport.x = state.viewport.x || 0;
+    viewport.y = state.viewport.y || 0;
+    viewport.scale = state.viewport.zoom || 1;
+    applyViewport();
+    updateZoomDisplay();
+  }
+
+  // Restore groups
+  if (state.groups && state.groups.length > 0) {
+    const cardByPath = new Map();
+    for (const card of allCards) {
+      cardByPath.set(card.data.path, card);
+    }
+    for (const g of state.groups) {
+      const cards = new Set();
+      for (const path of g.cardPaths || []) {
+        const card = cardByPath.get(path);
+        if (card) cards.add(card);
+      }
+      if (cards.size >= 2) {
+        // Select those cards and create group
+        for (const card of cards) selection.add(card);
+        groupSelected();
+        clearSelection();
+        // Rename last group
+        const lastGroup = allGroups[allGroups.length - 1];
+        if (lastGroup && g.name) {
+          lastGroup.name = g.name;
+          if (lastGroup.label) lastGroup.label.text = g.name;
+        }
+      }
+    }
+  }
+
+  requestCull();
+  return restored > 0;
+}
+
+/**
+ * Start auto-save timer. Call with a save callback.
+ * @param {function} saveFn - async function to persist state
+ */
+export function startAutoSave(saveFn) {
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(async () => {
+    if (boardDirty && allCards.length > 0) {
+      boardDirty = false;
+      try {
+        await saveFn(getBoardState());
+      } catch (err) {
+        console.warn('Auto-save failed:', err);
+      }
+    }
+  }, AUTO_SAVE_INTERVAL);
+}

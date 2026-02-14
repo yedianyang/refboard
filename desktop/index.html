@@ -28,7 +28,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 8px 12px 8px 80px; /* 80px left for macOS traffic lights */
       background: #16213e;
       border-bottom: 1px solid #2a2a4a;
       z-index: 10;
@@ -1029,6 +1029,7 @@
         <button id="search-clear-btn" title="Clear search">&times;</button>
       </div>
       <div class="toolbar-spacer"></div>
+      <button id="export-btn" title="Export metadata">Export</button>
       <button id="settings-btn" title="AI Settings">&#9881;</button>
     </div>
 
@@ -1092,7 +1093,8 @@
           <kbd>Shift</kbd>+<kbd>1</kbd> fit all &nbsp; <kbd>Shift</kbd>+<kbd>2</kbd> fit selection<br>
           <kbd>Cmd</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Cmd</kbd>+<kbd>D</kbd> duplicate &nbsp; <kbd>Del</kbd> delete<br>
           <kbd>Cmd</kbd>+<kbd>G</kbd> group &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> tidy up<br>
-          <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect
+          <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> analyze &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> find online<br>
+          <kbd>Cmd</kbd>+<kbd>S</kbd> save &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect
         </div>
       </div>
 
