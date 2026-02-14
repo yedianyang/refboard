@@ -354,12 +354,16 @@ function setupKeyboard() {
     if (e.key === 'y' && meta) { redo(); e.preventDefault(); return; }
 
     // Edit — Selection operations
+    if (e.key === 'a' && meta) { selectAll(); e.preventDefault(); return; }
     if ((e.key === 'Delete' || e.key === 'Backspace') && !meta) { deleteSelected(); return; }
     if (e.key === 'd' && meta) { duplicateSelected(); e.preventDefault(); return; }
 
     // Edit — Grouping
     if (e.key === 'g' && meta && !e.shiftKey) { groupSelected(); e.preventDefault(); return; }
     if (e.key === 'g' && meta && e.shiftKey) { ungroupSelected(); e.preventDefault(); return; }
+
+    // Edit — Lock/Unlock
+    if (e.key === 'l' && meta && !e.shiftKey) { toggleLockSelected(); e.preventDefault(); return; }
 
     // Edit — Z-order
     if (e.key === ']' && meta) { bringForward(); e.preventDefault(); return; }
@@ -383,6 +387,7 @@ function setupKeyboard() {
       const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
       const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
       for (const card of selection) {
+        if (card.locked) continue;
         card.container.x += dx;
         card.container.y += dy;
         card.data.x = card.container.x;
@@ -560,6 +565,7 @@ function setupGlobalDrag() {
 
     switch (dragState.type) {
       case 'card': {
+        if (dragState.card.locked) break;
         dragState.moved = true;
         const wp = screenToWorld(e.global.x, e.global.y);
         dragState.card.container.x = wp.x - dragState.offset.x;
@@ -578,6 +584,7 @@ function setupGlobalDrag() {
         const dx = wp.x - dragState.lastWorld.x;
         const dy = wp.y - dragState.lastWorld.y;
         for (const card of dragState.cards) {
+          if (card.locked) continue;
           card.container.x += dx;
           card.container.y += dy;
         }
@@ -925,6 +932,7 @@ function getResizeCursor(corner) {
 }
 
 function startResize(card, corner, e) {
+  if (card.locked) return;
   const wp = screenToWorld(e.global.x, e.global.y);
   dragState = {
     type: 'resize',
@@ -1525,7 +1533,10 @@ function removeCardFromCanvas(card) {
 
 function deleteSelected() {
   if (selection.size === 0) return;
-  const entries = Array.from(selection).map((card) => ({
+  // Skip locked cards
+  const deletable = Array.from(selection).filter(c => !c.locked);
+  if (deletable.length === 0) return;
+  const entries = deletable.map((card) => ({
     card,
     pos: { x: card.container.x, y: card.container.y },
   }));
@@ -1558,6 +1569,57 @@ function duplicateSelected() {
         }
       });
   }
+}
+
+function selectAll() {
+  clearSelection();
+  for (const card of allCards) {
+    setCardSelected(card, true);
+  }
+  if (selection.size === 1) showResizeHandles(Array.from(selection)[0]);
+}
+
+function toggleLockSelected() {
+  if (selection.size === 0) return;
+  // If any selected item is unlocked, lock all; otherwise unlock all
+  const anyUnlocked = Array.from(selection).some(c => !c.locked);
+  for (const card of selection) {
+    setCardLocked(card, anyUnlocked);
+  }
+  markDirty();
+  updatePropsBar();
+}
+
+function setCardLocked(card, locked) {
+  card.locked = locked;
+  card.data.locked = locked;
+  // Show/hide lock indicator
+  if (locked) {
+    if (!card.lockIcon) {
+      card.lockIcon = new Text({
+        text: '\uD83D\uDD12',
+        style: new TextStyle({ fontSize: 14 }),
+      });
+      card.lockIcon.anchor = { x: 1, y: 0 };
+      card.lockIcon.x = card.cardWidth - 4;
+      card.lockIcon.y = 4;
+    }
+    card.container.addChild(card.lockIcon);
+  } else {
+    if (card.lockIcon) {
+      card.container.removeChild(card.lockIcon);
+      card.lockIcon.destroy();
+      card.lockIcon = null;
+    }
+  }
+}
+
+export function changeSelectionOpacity(value) {
+  for (const card of selection) {
+    card.container.alpha = value;
+    card.data.opacity = value;
+  }
+  markDirty();
 }
 
 function bringForward() {
@@ -1900,6 +1962,8 @@ function initColorPalette() {
 function initPropsBar() {
   const strokeSelect = document.getElementById('props-stroke-width');
   const fontSelect = document.getElementById('props-font-size');
+  const opacitySlider = document.getElementById('props-opacity-slider');
+  const opacityValue = document.getElementById('props-opacity-value');
 
   if (strokeSelect) {
     strokeSelect.addEventListener('change', () => {
@@ -1911,16 +1975,25 @@ function initPropsBar() {
       changeTextFontSize(parseInt(fontSelect.value, 10));
     });
   }
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', () => {
+      const pct = parseInt(opacitySlider.value, 10);
+      if (opacityValue) opacityValue.textContent = pct + '%';
+      changeSelectionOpacity(pct / 100);
+    });
+  }
 }
 
 function updatePropsBar() {
   const bar = document.getElementById('props-bar');
   const strokeGroup = document.getElementById('props-stroke');
   const fontGroup = document.getElementById('props-font');
+  const opacityGroup = document.getElementById('props-opacity');
   if (!bar) return;
 
   let showStroke = false;
   let showFont = false;
+  const showOpacity = selection.size > 0;
 
   if (selection.size > 0) {
     for (const card of selection) {
@@ -1944,10 +2017,19 @@ function updatePropsBar() {
       fontSelect.value = String(textCard.data.fontSize || 14);
     }
   }
+  if (showOpacity) {
+    const opacitySlider = document.getElementById('props-opacity-slider');
+    const opacityValue = document.getElementById('props-opacity-value');
+    const firstCard = Array.from(selection)[0];
+    const pct = Math.round((firstCard.data.opacity ?? 1) * 100);
+    if (opacitySlider) opacitySlider.value = pct;
+    if (opacityValue) opacityValue.textContent = pct + '%';
+  }
 
   if (strokeGroup) strokeGroup.style.display = showStroke ? 'flex' : 'none';
   if (fontGroup) fontGroup.style.display = showFont ? 'flex' : 'none';
-  bar.classList.toggle('visible', showStroke || showFont);
+  if (opacityGroup) opacityGroup.style.display = showOpacity ? 'flex' : 'none';
+  bar.classList.toggle('visible', showStroke || showFont || showOpacity);
 }
 
 // ============================================================
@@ -1992,6 +2074,8 @@ function showCanvasContextMenu(clientX, clientY) {
       items.push({ divider: true });
       items.push({ icon: '\u25A3', label: 'Group', shortcut: '\u2318G', action: 'group' });
     }
+    const anyLocked = sel.some(c => c.locked);
+    items.push({ icon: anyLocked ? '\uD83D\uDD13' : '\uD83D\uDD12', label: anyLocked ? 'Unlock' : 'Lock', shortcut: '\u2318L', action: 'toggle-lock' });
     items.push({ divider: true });
     items.push({ icon: '\u232B', label: 'Delete', shortcut: 'Del', action: 'delete', destructive: true });
   } else {
@@ -2076,6 +2160,7 @@ function handleContextAction(action) {
     case 'toggle-grid': toggleGrid(); break;
     case 'toggle-minimap': toggleMinimap(); break;
     case 'tidy-up': tidyUp(); break;
+    case 'toggle-lock': toggleLockSelected(); break;
     case 'export-png':
       window.dispatchEvent(new CustomEvent('refboard:export-png'));
       break;
@@ -2405,18 +2490,20 @@ function updateSelectionInfo() {
     return;
   }
   if (count > 1) {
-    el.textContent = `${count} items selected`;
+    const locked = Array.from(selection).filter(c => c.locked).length;
+    el.textContent = `${count} items selected${locked ? ` (${locked} locked)` : ''}`;
     return;
   }
   const card = Array.from(selection)[0];
+  const lockTag = card.locked ? ' \uD83D\uDD12' : '';
   if (card.isText) {
     const preview = (card.data.text || 'Empty note').slice(0, 30);
-    el.textContent = `Text: "${preview}${card.data.text?.length > 30 ? '...' : ''}"`;
+    el.textContent = `Text: "${preview}${card.data.text?.length > 30 ? '...' : ''}"${lockTag}`;
   } else if (card.isShape) {
     const names = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line' };
-    el.textContent = `${names[card.data.shapeType] || 'Shape'} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}`;
+    el.textContent = `${names[card.data.shapeType] || 'Shape'} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}${lockTag}`;
   } else {
-    el.textContent = `${card.data.name} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}`;
+    el.textContent = `${card.data.name} \u2014 ${Math.round(card.cardWidth)}\u00D7${Math.round(card.cardHeight)}${lockTag}`;
   }
 }
 
@@ -2594,6 +2681,8 @@ export function getBoardState() {
     y: card.container.y,
     width: card.cardWidth,
     height: card.cardHeight,
+    ...(card.locked ? { locked: true } : {}),
+    ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
   }));
 
   const textAnnotations = allCards.filter(c => c.isText).map((card) => ({
@@ -2605,6 +2694,8 @@ export function getBoardState() {
     y: card.container.y,
     width: card.cardWidth,
     height: card.cardHeight,
+    ...(card.locked ? { locked: true } : {}),
+    ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
   }));
 
   const shapeAnnotations = allCards.filter(c => c.isShape).map((card) => ({
@@ -2616,6 +2707,8 @@ export function getBoardState() {
     y: card.container.y,
     width: card.cardWidth,
     height: card.cardHeight,
+    ...(card.locked ? { locked: true } : {}),
+    ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
   }));
 
   const groups = allGroups.map((g) => ({
@@ -2661,6 +2754,11 @@ export function restoreBoardState(state) {
       if (saved.width && saved.height) {
         resizeCardTo(card, saved.width, saved.height);
       }
+      if (saved.locked) setCardLocked(card, true);
+      if (saved.opacity != null && saved.opacity !== 1) {
+        card.container.alpha = saved.opacity;
+        card.data.opacity = saved.opacity;
+      }
       restored++;
     }
   }
@@ -2668,13 +2766,18 @@ export function restoreBoardState(state) {
   // Restore text annotations
   if (state.textAnnotations && state.textAnnotations.length > 0) {
     for (const t of state.textAnnotations) {
-      createTextCard(t.text || '', t.x, t.y, {
+      const card = createTextCard(t.text || '', t.x, t.y, {
         id: t.id,
         fontSize: t.fontSize,
         color: t.color,
         width: t.width,
         height: t.height,
       });
+      if (card && t.locked) setCardLocked(card, true);
+      if (card && t.opacity != null && t.opacity !== 1) {
+        card.container.alpha = t.opacity;
+        card.data.opacity = t.opacity;
+      }
       restored++;
     }
   }
@@ -2682,13 +2785,18 @@ export function restoreBoardState(state) {
   // Restore shape annotations
   if (state.shapeAnnotations && state.shapeAnnotations.length > 0) {
     for (const s of state.shapeAnnotations) {
-      createShapeCard(s.shapeType, s.x, s.y, {
+      const card = createShapeCard(s.shapeType, s.x, s.y, {
         id: s.id,
         color: s.color,
         strokeWidth: s.strokeWidth,
         width: s.width,
         height: s.height,
       });
+      if (card && s.locked) setCardLocked(card, true);
+      if (card && s.opacity != null && s.opacity !== 1) {
+        card.container.alpha = s.opacity;
+        card.data.opacity = s.opacity;
+      }
       restored++;
     }
   }

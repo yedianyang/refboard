@@ -272,6 +272,18 @@
       outline: none;
     }
     .props-select:focus { border-color: var(--accent); }
+    .props-slider {
+      width: 60px;
+      height: 4px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+    .props-value {
+      font-size: 10px;
+      color: var(--text-muted);
+      min-width: 28px;
+      text-align: right;
+    }
 
     /* ---- Canvas container ---- */
     #canvas-container {
@@ -1871,6 +1883,11 @@
               <option value="32">32</option>
               <option value="48">48</option>
             </select>
+          </div>
+          <div id="props-opacity" class="props-group" style="display:none;">
+            <label class="props-label">Opacity</label>
+            <input type="range" id="props-opacity-slider" class="props-slider" min="10" max="100" value="100" step="5" />
+            <span id="props-opacity-value" class="props-value">100%</span>
           </div>
         </div>
         <!-- Web Collection Panel (overlays canvas) -->
