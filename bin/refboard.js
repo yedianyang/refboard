@@ -536,7 +536,7 @@ async function searchCommand(args) {
     log(`Searching for images similar to: ${basename(targetPath)}`);
     log('(Embedding-based search requires pre-computed embeddings)');
   } else {
-    const query = args.filter(a => !a.startsWith('--')).join(' ').toLowerCase();
+    const query = positionalArgs(args).join(' ').toLowerCase();
     if (!query) exit('Usage: refboard search <query> or refboard search --similar <image>');
 
     const metadata = JSON.parse(readFileSync(join(projectDir, 'metadata.json'), 'utf-8'));
@@ -563,7 +563,7 @@ async function askCommand(args) {
   const projectDir = findProject();
   if (!projectDir) exit('Not in a RefBoard project');
 
-  const question = args.filter(a => !a.startsWith('--')).join(' ');
+  const question = positionalArgs(args).join(' ');
   if (!question) exit('Usage: refboard ask "your question about the board"');
 
   const opts = parseOptions(args);
@@ -822,6 +822,19 @@ function parseOptions(args) {
     }
   }
   return opts;
+}
+
+function positionalArgs(args) {
+  const result = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--')) {
+      const val = args[i + 1];
+      if (val && !val.startsWith('--')) i++; // skip option value
+    } else {
+      result.push(args[i]);
+    }
+  }
+  return result;
 }
 
 function exit(msg) {
