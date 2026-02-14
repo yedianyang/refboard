@@ -4,35 +4,55 @@ AI-powered visual reference board for designers, artists, and creative professio
 
 ---
 
-## RefBoard 2.0 (Desktop App)
+## RefBoard 2.0 Desktop App
 
-A native macOS desktop app built with Tauri 2.0 and PixiJS 8 for collecting, analyzing, and organizing visual references on an infinite canvas.
+A native macOS desktop application built with **Tauri 2.0** and **PixiJS 8** for collecting, analyzing, and organizing visual references on an infinite canvas.
 
-### Highlights
+### Features
 
-- **Infinite canvas** -- PixiJS 8 WebGL rendering with pan, zoom, drag, and multi-select at 60fps
-- **AI vision analysis** -- Anthropic Claude, OpenAI GPT-4o, and Ollama (local) providers for automatic image description and tagging
-- **Full-text search** -- SQLite FTS5 index across titles, descriptions, tags, and all metadata fields
-- **Tag filtering** -- Sidebar with tag list, counts, and click-to-filter canvas
-- **Find Similar** -- Embedding-based and tag-based similarity search across your board
-- **Local-first** -- All data stays on your machine; cloud AI is optional
+- **Infinite canvas** -- WebGL2 rendering at 60fps with pan, zoom, drag, multi-select, resize, and groups
+- **AI vision analysis** -- Anthropic Claude, OpenAI GPT-4o, and Ollama (local LLaVA) for automatic tagging
+- **Full-text search** -- SQLite FTS5 index across all metadata fields with instant results
+- **Tag filtering** -- sidebar with tag counts and click-to-filter canvas
+- **Find Similar** -- embedding-based and tag-based similarity search
+- **Web Collection** -- search the web for reference images via Brave Search API, download directly to project
+- **Auto-save** -- board state persisted every 30 seconds and restored on reopen
+- **Export** -- metadata export as JSON with all AI analysis data
+- **Local-first** -- all data stays on your machine; cloud AI is optional
 
-### Development Setup
+### Installation
 
-Prerequisites: [Rust](https://rustup.rs/), [Node.js 18+](https://nodejs.org/), and [Tauri 2.0 prerequisites](https://v2.tauri.app/start/prerequisites/).
+#### Prerequisites
+
+1. **Rust** -- install via [rustup.rs](https://rustup.rs/)
+2. **Node.js 18+** -- install from [nodejs.org](https://nodejs.org/)
+3. **Xcode Command Line Tools** -- `xcode-select --install`
+
+#### Build from Source
 
 ```bash
 cd desktop
 npm install
-npm run tauri dev
+npm run tauri dev       # Development mode with hot-reload
+npm run tauri build     # Build release .app and .dmg
 ```
 
-To build a release `.app` / `.dmg`:
+The release build outputs to `desktop/src-tauri/target/release/bundle/`.
 
-```bash
-cd desktop
-npm run tauri build
-```
+#### System Requirements
+
+- macOS 12.0+ (Intel or Apple Silicon)
+- 4 GB RAM minimum, 8 GB recommended
+- GPU with WebGL2 support
+
+### Quick Start
+
+1. Open RefBoard
+2. Enter a folder path containing images in the toolbar, click **Open**
+3. Your images appear as cards on the canvas
+4. Click a card to select it, then click **Analyze with AI** in the metadata panel
+5. Accept the AI-generated tags, description, and style
+6. Use **Cmd+F** to search, the tag sidebar to filter, or **Find Similar** to explore
 
 ### Keyboard Shortcuts
 
@@ -41,27 +61,75 @@ npm run tauri build
 | `Space+drag` | Pan canvas |
 | `Scroll wheel` | Zoom (cursor-centered) |
 | `Shift+1` | Fit all images in view |
+| `Shift+2` | Fit selection |
+| `Cmd+0` | Zoom to 100% |
 | `Cmd+F` | Focus search bar |
-| `Escape` | Close panels / clear filters |
-| Click card | Select and open metadata panel |
+| `Cmd+S` | Save board state |
+| `Cmd+Z` | Undo |
+| `Cmd+Shift+Z` | Redo |
+| `Cmd+D` | Duplicate selected |
+| `Cmd+G` | Group selected |
+| `Cmd+Shift+G` | Ungroup |
+| `Cmd+]` / `Cmd+[` | Bring forward / Send backward |
+| `Cmd+Shift+T` | Tidy up (auto-layout) |
+| `Cmd+Shift+A` | Analyze selected with AI |
+| `Cmd+Shift+F` | Find more like selected online |
+| `Delete` / `Backspace` | Delete selected |
+| `V` | Select tool |
+| `H` | Hand (pan) tool |
+| `G` | Toggle grid |
+| `M` | Toggle minimap |
+| `Escape` | Deselect / close panel |
 
 ### Project Structure
 
 ```
 desktop/
-├── src/                  # Frontend (Vanilla JS + PixiJS 8)
-│   ├── main.js           # App entry point
-│   ├── canvas.js         # Infinite canvas engine
-│   ├── panels.js         # AI suggestion, metadata, settings panels
-│   └── search.js         # Search bar, tag sidebar, results panel
-├── src-tauri/            # Rust backend
-│   ├── src/lib.rs        # File scanning, metadata, image commands
-│   ├── src/ai.rs         # AI vision provider abstraction
-│   └── src/search.rs     # SQLite FTS5 search + similarity
-├── index.html            # App shell
+├── src/                      # Frontend (Vanilla JS + PixiJS 8)
+│   ├── main.js               # App entry, wiring, keyboard shortcuts
+│   ├── canvas.js             # Infinite canvas engine (1400+ lines)
+│   ├── panels.js             # AI suggestion, metadata, settings panels
+│   ├── search.js             # Search bar, tag sidebar, results panel
+│   └── collection.js         # Web collection, Brave Search, downloads
+├── index.html                # App shell with all CSS
+├── src-tauri/                # Rust backend (Tauri 2.0)
+│   ├── src/lib.rs            # File scanning, metadata, board state, export
+│   ├── src/ai.rs             # AI vision provider abstraction
+│   ├── src/search.rs         # SQLite FTS5 search, embeddings, similarity
+│   └── src/web.rs            # Brave Search API, web image download
 ├── package.json
 ├── vite.config.js
-└── src-tauri/tauri.conf.json
+└── src-tauri/tauri.conf.json # App config, bundling, permissions
+```
+
+### Configuration
+
+#### AI Provider
+
+Open **Settings** (gear icon) to configure:
+
+| Provider | API Key | Models |
+|----------|---------|--------|
+| Anthropic | `sk-ant-...` | claude-sonnet-4-5, claude-haiku-4-5 |
+| OpenAI | `sk-...` | gpt-4o, gpt-4o-mini |
+| Ollama | (none -- local) | llava, llava:13b, bakllava |
+
+#### Web Collection
+
+In Settings, add a **Brave Search API Key** (`BSA...`). Get a free key at [brave.com/search/api](https://brave.com/search/api).
+
+#### Data Storage
+
+```
+~/.refboard/
+├── config.json          # AI + web collection settings
+└── recent.json          # Recent projects list
+
+your-project/
+├── images/              # Image files
+└── .refboard/
+    ├── search.db        # SQLite FTS5 index + metadata + embeddings
+    └── board.json       # Saved board state (positions, groups, viewport)
 ```
 
 ---
@@ -110,11 +178,10 @@ refboard build
 | `refboard search --similar <img>` | Find similar images |
 | `refboard ask "question"` | Ask AI about your board |
 | `refboard config <key> <val>` | Manage configuration |
-| `refboard agent <action>` | External agent interface |
 | `refboard serve` | Start local dev server with livereload |
 | `refboard save-positions` | Persist card positions |
 
-### Options
+### CLI Options
 
 ```bash
 --title "..."       Item title
@@ -122,86 +189,16 @@ refboard build
 --year "..."        Year
 --desc "..."        Description
 --tags "a,b,c"      Tags (comma-separated)
---context "..."     Historical context
---influences "..."  Artistic influences
 --embed            Embed images as base64
 -o, --output       Output file
 --json             Machine-readable JSON output
 -q, --quiet        Suppress decorative output
 ```
 
-### Keyboard Shortcuts (HTML Board)
-
-| Key | Action |
-|-----|--------|
-| `T` | Auto-tile layout |
-| `F` | Fit view |
-| `I` | Toggle info panel |
-| `/` | Focus search |
-| `0` | Reset zoom |
-| `+/-` | Zoom in/out |
-| `Space+drag` | Pan |
-| `Del` | Remove selected |
-| `Esc` | Close panels |
-
-### CLI Project Structure
-
-```
-my-project/
-├── refboard.json     # Project config
-├── metadata.json     # Item metadata
-├── images/           # Image files
-└── board.html        # Generated output
-```
-
-### AI Provider Configuration
-
-Add an `ai` section to your `refboard.json`:
-
-```json
-{
-  "ai": {
-    "defaultProvider": "openai",
-    "providers": {
-      "openai": { "apiKey": "sk-..." },
-      "anthropic": { "apiKey": "sk-ant-..." }
-    }
-  }
-}
-```
-
-Or configure via CLI:
-
-```bash
-refboard config ai.provider openai
-refboard config ai.apiKey sk-...
-```
-
-Environment variables are also supported: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
-
-### For AI Agents
-
-```bash
-# Batch import with auto-build
-refboard import ./refs --tags "reference" && refboard build
-
-# JSON output for parsing
-refboard list --json
-refboard status --json
-
-# Quiet mode
-refboard build -q
-
-# Agent interface
-refboard agent add <image> --analyze
-refboard agent export --format json
-```
-
 ### Programmatic API
 
 ```js
 import { generateBoard, findImages, autoLayout, loadMetadata } from 'refboard';
-import { generateDashboard, scanProjects } from 'refboard';
 
 await generateBoard({
   inputDir: './my-project',
@@ -212,6 +209,12 @@ await generateBoard({
 ```
 
 ---
+
+## Documentation
+
+- [User Guide](docs/user-guide.md) -- detailed usage instructions
+- [API Reference](docs/api.md) -- Rust commands and IPC interface
+- [Changelog](CHANGELOG.md) -- version history
 
 ## License
 
