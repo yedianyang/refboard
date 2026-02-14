@@ -229,6 +229,50 @@
       box-shadow: 0 0 0 1px var(--bg);
     }
 
+    /* ---- Properties Bar ---- */
+    #props-bar {
+      display: none;
+      position: absolute;
+      top: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      gap: 8px;
+      align-items: center;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    }
+    #props-bar.visible { display: flex; }
+
+    .props-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .props-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .props-select {
+      height: 22px;
+      padding: 0 4px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+    .props-select:focus { border-color: var(--accent); }
+
     /* ---- Canvas container ---- */
     #canvas-container {
       flex: 1;
@@ -1802,6 +1846,33 @@
           <div class="color-swatch" data-color="0x888899" style="background:#888899;" title="Gray"></div>
           <div class="color-swatch" data-color="0x1a1a2e" style="background:#1a1a2e; border-color: var(--border-strong);" title="Dark"></div>
         </div>
+        <!-- Properties Bar (floats below color palette when annotations selected) -->
+        <div id="props-bar">
+          <div id="props-stroke" class="props-group" style="display:none;">
+            <label class="props-label">Stroke</label>
+            <select id="props-stroke-width" class="props-select">
+              <option value="1">1px</option>
+              <option value="2" selected>2px</option>
+              <option value="3">3px</option>
+              <option value="4">4px</option>
+              <option value="6">6px</option>
+              <option value="8">8px</option>
+            </select>
+          </div>
+          <div id="props-font" class="props-group" style="display:none;">
+            <label class="props-label">Size</label>
+            <select id="props-font-size" class="props-select">
+              <option value="10">10</option>
+              <option value="12">12</option>
+              <option value="14" selected>14</option>
+              <option value="16">16</option>
+              <option value="20">20</option>
+              <option value="24">24</option>
+              <option value="32">32</option>
+              <option value="48">48</option>
+            </select>
+          </div>
+        </div>
         <!-- Web Collection Panel (overlays canvas) -->
         <div id="web-panel">
           <div class="web-panel-header">
@@ -1841,7 +1912,8 @@
           <kbd>Cmd</kbd>+<kbd>G</kbd> group &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> tidy up<br>
           <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> analyze &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> find online<br>
           <kbd>Cmd</kbd>+<kbd>S</kbd> save &nbsp; <kbd>T</kbd> text &nbsp; <kbd>R</kbd> rect &nbsp; <kbd>O</kbd> ellipse &nbsp; <kbd>L</kbd> line<br>
-          <kbd>D</kbd> theme &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect
+          <kbd>D</kbd> theme &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect<br>
+          <kbd>&larr;&uarr;&darr;&rarr;</kbd> nudge 1px &nbsp; <kbd>Shift</kbd>+arrows 10px
         </div>
       </div>
 

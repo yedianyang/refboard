@@ -194,6 +194,7 @@ export async function initCanvas(containerEl) {
   });
 
   initColorPalette();
+  initPropsBar();
   initZoomControls();
 
   return { app, world, viewport };
@@ -366,6 +367,23 @@ function setupKeyboard() {
 
     // Layout — Tidy up
     if (e.key === 't' && meta && e.shiftKey) { tidyUp(); e.preventDefault(); return; }
+
+    // Arrow keys — nudge selected items
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !meta) {
+      if (selection.size === 0) return;
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+      const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+      for (const card of selection) {
+        card.container.x += dx;
+        card.container.y += dy;
+        card.data.x = card.container.x;
+        card.data.y = card.container.y;
+      }
+      markDirty();
+      return;
+    }
 
     // Escape = deselect
     if (e.key === 'Escape') { clearSelection(); return; }
@@ -1002,6 +1020,7 @@ function clearSelection() {
   selection.clear();
   updateColorPaletteVisibility();
   updateSelectionInfo();
+  updatePropsBar();
 }
 
 function setCardSelected(card, selected) {
@@ -1023,6 +1042,7 @@ function setCardSelected(card, selected) {
   }
   updateColorPaletteVisibility();
   updateSelectionInfo();
+  updatePropsBar();
 }
 
 /** Get current selection. */
@@ -1245,11 +1265,12 @@ function createShapeCard(shapeType, x, y, opts = {}) {
   const w = opts.width || 120;
   const h = opts.height || 80;
   const color = opts.color ?? SHAPE_DEFAULT_COLOR;
+  const strokeWidth = opts.strokeWidth || SHAPE_STROKE_WIDTH;
   const id = opts.id || `shape-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
   const card = {
     container: new Container(),
-    data: { type: 'shape', id, shapeType, color },
+    data: { type: 'shape', id, shapeType, color, strokeWidth },
     cardWidth: w,
     cardHeight: h,
     isShape: true,
@@ -1261,7 +1282,7 @@ function createShapeCard(shapeType, x, y, opts = {}) {
 
   // Shape graphics
   const shapeGfx = new Graphics();
-  drawShapeGraphics(shapeGfx, shapeType, w, h, color);
+  drawShapeGraphics(shapeGfx, shapeType, w, h, color, strokeWidth);
   card.shapeGfx = shapeGfx;
 
   // Hover border
@@ -1316,26 +1337,27 @@ function createShapeCard(shapeType, x, y, opts = {}) {
   return card;
 }
 
-function drawShapeGraphics(gfx, shapeType, w, h, color) {
+function drawShapeGraphics(gfx, shapeType, w, h, color, sw) {
+  const strokeW = sw || SHAPE_STROKE_WIDTH;
   gfx.clear();
   if (shapeType === 'rect') {
     gfx.roundRect(0, 0, w, h, 3)
-      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+      .stroke({ color, width: strokeW });
   } else if (shapeType === 'ellipse') {
     gfx.ellipse(w / 2, h / 2, w / 2, h / 2)
-      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+      .stroke({ color, width: strokeW });
   } else if (shapeType === 'line') {
     gfx.moveTo(0, 0).lineTo(w, h)
-      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+      .stroke({ color, width: strokeW });
     // Arrowhead
     const angle = Math.atan2(h, w);
-    const arrLen = 12;
+    const arrLen = Math.max(10, strokeW * 5);
     gfx.moveTo(w, h)
       .lineTo(w - arrLen * Math.cos(angle - 0.4), h - arrLen * Math.sin(angle - 0.4))
-      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+      .stroke({ color, width: strokeW });
     gfx.moveTo(w, h)
       .lineTo(w - arrLen * Math.cos(angle + 0.4), h - arrLen * Math.sin(angle + 0.4))
-      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+      .stroke({ color, width: strokeW });
   }
 }
 
@@ -1343,7 +1365,7 @@ function drawShapeGraphics(gfx, shapeType, w, h, color) {
 function resizeShapeCard(card, w, h) {
   card.cardWidth = w;
   card.cardHeight = h;
-  drawShapeGraphics(card.shapeGfx, card.data.shapeType, w, h, card.data.color);
+  drawShapeGraphics(card.shapeGfx, card.data.shapeType, w, h, card.data.color, card.data.strokeWidth);
   card.hoverBorder.clear()
     .roundRect(-4, -4, w + 8, h + 8, 2)
     .stroke({ color: THEME.cardHover, width: 1.5 });
@@ -1818,6 +1840,28 @@ export function changeSelectionColor(colorHex) {
   markDirty();
 }
 
+export function changeShapeStrokeWidth(width) {
+  for (const card of selection) {
+    if (card.isShape) {
+      card.data.strokeWidth = width;
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, width);
+    }
+  }
+  markDirty();
+}
+
+export function changeTextFontSize(size) {
+  for (const card of selection) {
+    if (card.isText && card.textObj) {
+      card.data.fontSize = size;
+      card.textObj.style.fontSize = size;
+      card.textObj.style.lineHeight = Math.round(size * 1.5);
+      autoSizeTextCard(card);
+    }
+  }
+  markDirty();
+}
+
 export function getAnnotationColor() {
   return activeAnnotationColor;
 }
@@ -1840,6 +1884,63 @@ function initColorPalette() {
       changeSelectionColor(color);
     }
   });
+}
+
+// ============================================================
+// Properties Bar
+// ============================================================
+
+function initPropsBar() {
+  const strokeSelect = document.getElementById('props-stroke-width');
+  const fontSelect = document.getElementById('props-font-size');
+
+  if (strokeSelect) {
+    strokeSelect.addEventListener('change', () => {
+      changeShapeStrokeWidth(parseFloat(strokeSelect.value));
+    });
+  }
+  if (fontSelect) {
+    fontSelect.addEventListener('change', () => {
+      changeTextFontSize(parseInt(fontSelect.value, 10));
+    });
+  }
+}
+
+function updatePropsBar() {
+  const bar = document.getElementById('props-bar');
+  const strokeGroup = document.getElementById('props-stroke');
+  const fontGroup = document.getElementById('props-font');
+  if (!bar) return;
+
+  let showStroke = false;
+  let showFont = false;
+
+  if (selection.size > 0) {
+    for (const card of selection) {
+      if (card.isShape) showStroke = true;
+      if (card.isText) showFont = true;
+    }
+  }
+
+  // Populate current values from first matching selected item
+  if (showStroke) {
+    const strokeSelect = document.getElementById('props-stroke-width');
+    const shapeCard = Array.from(selection).find(c => c.isShape);
+    if (strokeSelect && shapeCard) {
+      strokeSelect.value = String(shapeCard.data.strokeWidth || SHAPE_STROKE_WIDTH);
+    }
+  }
+  if (showFont) {
+    const fontSelect = document.getElementById('props-font-size');
+    const textCard = Array.from(selection).find(c => c.isText);
+    if (fontSelect && textCard) {
+      fontSelect.value = String(textCard.data.fontSize || 14);
+    }
+  }
+
+  if (strokeGroup) strokeGroup.style.display = showStroke ? 'flex' : 'none';
+  if (fontGroup) fontGroup.style.display = showFont ? 'flex' : 'none';
+  bar.classList.toggle('visible', showStroke || showFont);
 }
 
 // ============================================================
@@ -2429,6 +2530,7 @@ export function getBoardState() {
     id: card.data.id,
     shapeType: card.data.shapeType,
     color: card.data.color,
+    strokeWidth: card.data.strokeWidth,
     x: card.container.x,
     y: card.container.y,
     width: card.cardWidth,
@@ -2502,6 +2604,7 @@ export function restoreBoardState(state) {
       createShapeCard(s.shapeType, s.x, s.y, {
         id: s.id,
         color: s.color,
+        strokeWidth: s.strokeWidth,
         width: s.width,
         height: s.height,
       });
