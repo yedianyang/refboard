@@ -1265,11 +1265,154 @@
     .home-empty {
       grid-column: 1 / -1;
       text-align: center;
-      padding: 48px 16px;
+      padding: 60px 20px 48px;
       color: #555566;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.6;
     }
+    .home-empty-icon {
+      font-size: 48px;
+      opacity: 0.15;
+      margin-bottom: 12px;
+    }
+    .home-empty-title {
+      font-size: 14px;
+      color: #888899;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    /* View toggle (grid / list) */
+    .home-view-toggle {
+      display: flex;
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .home-view-btn {
+      width: 28px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: #555566;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .home-view-btn:hover { color: #888899; }
+    .home-view-btn.active {
+      background: rgba(74, 158, 255, 0.15);
+      color: #4a9eff;
+    }
+
+    /* List view for project cards */
+    .home-project-grid.list-view {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+    .home-project-grid.list-view .home-project-card {
+      flex-direction: row;
+      border-radius: 8px;
+      align-items: center;
+    }
+    .home-project-grid.list-view .home-project-thumb {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 6px;
+      margin: 6px;
+    }
+    .home-project-grid.list-view .home-project-thumb-placeholder {
+      font-size: 18px;
+    }
+    .home-project-grid.list-view .home-project-info {
+      padding: 8px 12px 8px 4px;
+      flex: 1;
+      min-width: 0;
+    }
+    .home-project-grid.list-view .home-project-name {
+      margin-bottom: 2px;
+    }
+
+    /* Home search filter */
+    .home-search-wrapper {
+      position: relative;
+      flex: 1;
+      max-width: 200px;
+    }
+    .home-search-input {
+      width: 100%;
+      padding: 4px 8px 4px 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(15, 26, 48, 0.5);
+      color: #e0e0e0;
+      font-size: 11px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .home-search-input:focus {
+      border-color: rgba(74, 158, 255, 0.4);
+    }
+    .home-search-input::placeholder { color: #444455; }
+    .home-search-icon {
+      position: absolute;
+      left: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: #444455;
+      pointer-events: none;
+    }
+
+    /* ---- Context Menu ---- */
+    #context-menu {
+      position: fixed;
+      z-index: 300;
+      display: none;
+      min-width: 200px;
+      background: rgba(30, 34, 64, 0.98);
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 4px 0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 7px 14px;
+      border: none;
+      background: transparent;
+      color: #d0d0e0;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      text-align: left;
+    }
+    .ctx-item:hover { background: rgba(74, 158, 255, 0.12); }
+    .ctx-item-icon { width: 16px; text-align: center; font-size: 13px; opacity: 0.7; }
+    .ctx-item-shortcut {
+      margin-left: auto;
+      font-size: 10px;
+      color: #555566;
+    }
+    .ctx-divider {
+      height: 1px;
+      background: #2a2a4a;
+      margin: 4px 0;
+    }
+    .ctx-item.destructive { color: #e74c3c; }
+    .ctx-item.destructive:hover { background: rgba(231, 76, 60, 0.12); }
+
     /* New Project dialog */
     #new-project-dialog {
       position: fixed;
@@ -1385,9 +1528,23 @@
           <div class="home-recent">
             <div class="home-section-header">
               <span class="home-section-title">Recent Projects</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="home-search-wrapper">
+                  <span class="home-search-icon">&#128269;</span>
+                  <input type="text" class="home-search-input" id="home-search-input" placeholder="Filter projects..." />
+                </div>
+                <div class="home-view-toggle">
+                  <button class="home-view-btn active" id="home-grid-btn" title="Grid view">&#9638;</button>
+                  <button class="home-view-btn" id="home-list-btn" title="List view">&#9776;</button>
+                </div>
+              </div>
             </div>
             <div class="home-project-grid" id="home-project-list">
-              <div class="home-empty">No recent projects yet.<br>Open a folder to get started.</div>
+              <div class="home-empty">
+                <div class="home-empty-icon">&#128444;</div>
+                <div class="home-empty-title">No recent projects</div>
+                Open an image folder or create a new project to get started.
+              </div>
             </div>
           </div>
         </div>
@@ -1583,6 +1740,24 @@
         <button class="btn-primary" id="new-project-create-btn">Create</button>
       </div>
     </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu">
+    <button class="ctx-item" data-action="open">
+      <span class="ctx-item-icon">&#9654;</span> Open
+    </button>
+    <button class="ctx-item" data-action="finder">
+      <span class="ctx-item-icon">&#128193;</span> Show in Finder
+    </button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item" data-action="rename">
+      <span class="ctx-item-icon">&#9998;</span> Rename
+    </button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item destructive" data-action="delete">
+      <span class="ctx-item-icon">&#128465;</span> Delete
+    </button>
   </div>
 
   <!-- Settings Dialog -->

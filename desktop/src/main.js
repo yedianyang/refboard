@@ -351,19 +351,22 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
   try {
     const projects = await invoke('list_projects');
     if (projects.length > 0) {
-      gridEl.innerHTML = projects.map((p) => `
-        <button class="home-project-card" data-path="${p.path}">
+      gridEl.innerHTML = projects.map((p) => {
+        const safeName = p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        const safePath = p.path.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        return `
+        <button class="home-project-card" data-path="${safePath}">
           <div class="home-project-thumb">
             <span class="home-project-thumb-placeholder">&#128444;</span>
           </div>
           <div class="home-project-info">
-            <div class="home-project-name">${p.name}</div>
+            <div class="home-project-name">${safeName}</div>
             <div class="home-project-meta">
               <span>${p.image_count} images</span>
             </div>
           </div>
-        </button>
-      `).join('');
+        </button>`;
+      }).join('');
 
       // Click card to open project
       gridEl.querySelectorAll('.home-project-card').forEach((card) => {
@@ -377,6 +380,147 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
   } catch (err) {
     console.warn('Could not load recent projects:', err);
   }
+
+  // Grid/list view toggle
+  const gridBtn = document.getElementById('home-grid-btn');
+  const listBtn = document.getElementById('home-list-btn');
+  if (gridBtn && listBtn) {
+    gridBtn.addEventListener('click', () => {
+      gridEl.classList.remove('list-view');
+      gridBtn.classList.add('active');
+      listBtn.classList.remove('active');
+    });
+    listBtn.addEventListener('click', () => {
+      gridEl.classList.add('list-view');
+      listBtn.classList.add('active');
+      gridBtn.classList.remove('active');
+    });
+  }
+
+  // Search filter for recent projects
+  const homeSearchInput = document.getElementById('home-search-input');
+  if (homeSearchInput) {
+    homeSearchInput.addEventListener('input', () => {
+      const query = homeSearchInput.value.toLowerCase().trim();
+      gridEl.querySelectorAll('.home-project-card').forEach((card) => {
+        const name = card.querySelector('.home-project-name')?.textContent.toLowerCase() || '';
+        card.style.display = name.includes(query) ? '' : 'none';
+      });
+    });
+  }
+
+  // Right-click context menu for project cards
+  const ctxMenu = document.getElementById('context-menu');
+  let ctxTargetCard = null;
+
+  function showContextMenu(x, y, card) {
+    ctxTargetCard = card;
+    ctxMenu.style.left = x + 'px';
+    ctxMenu.style.top = y + 'px';
+    ctxMenu.style.display = 'block';
+    // Adjust if menu overflows viewport
+    requestAnimationFrame(() => {
+      const rect = ctxMenu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) ctxMenu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+      if (rect.bottom > window.innerHeight) ctxMenu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+    });
+  }
+
+  function hideContextMenu() {
+    ctxMenu.style.display = 'none';
+    ctxTargetCard = null;
+  }
+
+  // Close context menu on click elsewhere or Escape
+  window.addEventListener('click', hideContextMenu);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideContextMenu();
+  });
+
+  // Attach context menu to project cards
+  gridEl.addEventListener('contextmenu', (e) => {
+    const card = e.target.closest('.home-project-card');
+    if (!card) return;
+    e.preventDefault();
+    showContextMenu(e.clientX, e.clientY, card);
+  });
+
+  // Handle context menu actions
+  ctxMenu.addEventListener('click', async (e) => {
+    const action = e.target.closest('.ctx-item')?.dataset.action;
+    if (!action || !ctxTargetCard) return;
+    e.stopPropagation();
+    const path = ctxTargetCard.dataset.path;
+    hideContextMenu();
+
+    if (action === 'open') {
+      projectPathInput.value = path;
+      openProject(path, loading);
+    } else if (action === 'finder') {
+      try {
+        await invoke('plugin:shell|open', { path });
+      } catch {
+        // Fallback: use Tauri shell opener
+        try {
+          const { open: shellOpen } = await import('@tauri-apps/plugin-shell');
+          await shellOpen(path);
+        } catch (err) {
+          setStatus(`Could not open Finder: ${err}`);
+        }
+      }
+    } else if (action === 'rename') {
+      // Inline rename: replace name element with input
+      const nameEl = ctxTargetCard.querySelector('.home-project-name');
+      if (!nameEl) return;
+      const oldName = nameEl.textContent;
+      const input = document.createElement('input');
+      input.value = oldName;
+      input.className = 'home-search-input';
+      input.style.cssText = 'width: 100%; font-size: 13px; font-weight: 500; padding: 2px 4px;';
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+      const finishRename = async () => {
+        const newName = input.value.trim() || oldName;
+        const span = document.createElement('div');
+        span.className = 'home-project-name';
+        span.textContent = newName;
+        input.replaceWith(span);
+        if (newName !== oldName) {
+          try {
+            await invoke('rename_project', { projectPath: path, newName });
+          } catch {
+            // Backend command may not exist yet — just update UI
+            span.textContent = newName;
+          }
+        }
+      };
+      input.addEventListener('blur', finishRename);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') input.blur();
+        if (ev.key === 'Escape') { input.value = oldName; input.blur(); }
+      });
+    } else if (action === 'delete') {
+      const name = ctxTargetCard.querySelector('.home-project-name')?.textContent || 'this project';
+      if (confirm(`Remove "${name}" from recent projects?`)) {
+        try {
+          await invoke('remove_from_recent', { projectPath: path });
+        } catch {
+          // Backend command may not exist yet
+        }
+        ctxTargetCard.remove();
+        // Show empty state if no cards left
+        if (gridEl.querySelectorAll('.home-project-card').length === 0) {
+          gridEl.innerHTML = `
+            <div class="home-empty">
+              <div class="home-empty-icon">&#128444;</div>
+              <div class="home-empty-title">No recent projects</div>
+              Open an image folder or create a new project to get started.
+            </div>`;
+        }
+      }
+    }
+  });
 
   // Open folder button — native directory picker
   if (openBtn) {
