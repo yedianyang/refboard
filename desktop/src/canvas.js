@@ -172,7 +172,7 @@ export async function initCanvas(containerEl) {
   });
 
   // Wire sidebar tool buttons to click handlers
-  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text' };
+  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line' };
   document.querySelectorAll('.sidebar-btn').forEach((btn) => {
     const title = btn.title || '';
     for (const [prefix, tool] of Object.entries(toolMap)) {
@@ -326,6 +326,9 @@ function setupKeyboard() {
     if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
     if (e.key === 'h' || e.key === 'H') { setTool('hand'); return; }
     if ((e.key === 't' || e.key === 'T') && !meta && !e.shiftKey) { setTool('text'); return; }
+    if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
+    if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
+    if ((e.key === 'l' || e.key === 'L') && !meta && !e.shiftKey) { setTool('line'); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
@@ -362,15 +365,17 @@ function setupKeyboard() {
   });
 }
 
+const SHAPE_TOOLS = new Set(['rect', 'ellipse', 'line']);
+
 function setTool(tool) {
   currentTool = tool;
   // Update sidebar button active state
   document.querySelectorAll('.sidebar-btn').forEach((btn) => btn.classList.remove('active'));
-  const titles = { select: 'Select', hand: 'Hand', text: 'Note' };
+  const titles = { select: 'Select', hand: 'Hand', text: 'Note', rect: 'Rect', ellipse: 'Ellipse', line: 'Line' };
   const btn = Array.from(document.querySelectorAll('.sidebar-btn'))
     .find((b) => b.title?.startsWith(titles[tool] || ''));
   if (btn) btn.classList.add('active');
-  app.canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : 'default';
+  app.canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : SHAPE_TOOLS.has(tool) ? 'crosshair' : 'default';
 }
 
 // ============================================================
@@ -542,6 +547,21 @@ function setupGlobalDrag() {
         handleResize(dragState, wp);
         break;
       }
+      case 'drawShape': {
+        const wp = screenToWorld(e.global.x, e.global.y);
+        dragState.current = wp;
+        // Draw preview
+        if (dragState.preview) {
+          const sx = Math.min(dragState.start.x, wp.x);
+          const sy = Math.min(dragState.start.y, wp.y);
+          const sw = Math.abs(wp.x - dragState.start.x);
+          const sh = Math.abs(wp.y - dragState.start.y);
+          dragState.preview.clear();
+          drawShapeGraphics(dragState.preview, dragState.shapeType, sw, sh, SHAPE_DEFAULT_COLOR);
+          dragState.preview.position.set(sx, sy);
+        }
+        break;
+      }
     }
   });
 
@@ -564,6 +584,24 @@ function setupGlobalDrag() {
       setTool('select');
       // Open inline editor immediately
       startTextEdit(textCard);
+      return;
+    }
+
+    if (SHAPE_TOOLS.has(currentTool)) {
+      // Start shape draw drag
+      const wp = screenToWorld(e.global.x, e.global.y);
+      dragState = {
+        type: 'drawShape',
+        shapeType: currentTool,
+        start: wp,
+        current: wp,
+        preview: null,
+      };
+      // Create preview graphics
+      const preview = new Graphics();
+      preview.zIndex = 9999;
+      world.addChild(preview);
+      dragState.preview = preview;
       return;
     }
 
@@ -645,6 +683,28 @@ function finishDrag(e) {
         });
         markDirty();
       }
+      break;
+    }
+    case 'drawShape': {
+      // Remove preview
+      if (dragState.preview) {
+        dragState.preview.destroy();
+      }
+      // Calculate final dimensions
+      const sx = Math.min(dragState.start.x, dragState.current.x);
+      const sy = Math.min(dragState.start.y, dragState.current.y);
+      const sw = Math.abs(dragState.current.x - dragState.start.x);
+      const sh = Math.abs(dragState.current.y - dragState.start.y);
+      // Only create shape if dragged enough
+      if (sw >= SHAPE_MIN_SIZE || sh >= SHAPE_MIN_SIZE) {
+        const shape = createShapeCard(dragState.shapeType, sx, sy, {
+          width: Math.max(sw, SHAPE_MIN_SIZE),
+          height: Math.max(sh, SHAPE_MIN_SIZE),
+        });
+        clearSelection();
+        setCardSelected(shape, true);
+      }
+      setTool('select');
       break;
     }
   }
@@ -1132,6 +1192,130 @@ function finishTextEdit() {
 
 export function addTextCard(content, x, y, opts) {
   return createTextCard(content, x, y, opts);
+}
+
+// ============================================================
+// Shape Annotations (Rectangle, Ellipse, Line)
+// ============================================================
+
+const SHAPE_STROKE_WIDTH = 2;
+const SHAPE_DEFAULT_COLOR = 0x4a9eff;
+const SHAPE_MIN_SIZE = 10;
+
+/**
+ * Create a shape card (rect, ellipse, or line).
+ * @param {'rect'|'ellipse'|'line'} shapeType
+ * @param {number} x - World X
+ * @param {number} y - World Y
+ * @param {object} opts - { width, height, color, id }
+ */
+function createShapeCard(shapeType, x, y, opts = {}) {
+  const w = opts.width || 120;
+  const h = opts.height || 80;
+  const color = opts.color ?? SHAPE_DEFAULT_COLOR;
+  const id = opts.id || `shape-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const card = {
+    container: new Container(),
+    data: { type: 'shape', id, shapeType, color },
+    cardWidth: w,
+    cardHeight: h,
+    isShape: true,
+  };
+
+  card.container.eventMode = 'static';
+  card.container.cursor = 'pointer';
+  card.container.position.set(x, y);
+
+  // Shape graphics
+  const shapeGfx = new Graphics();
+  drawShapeGraphics(shapeGfx, shapeType, w, h, color);
+  card.shapeGfx = shapeGfx;
+
+  // Hover border
+  const hoverBorder = new Graphics()
+    .roundRect(-4, -4, w + 8, h + 8, 2)
+    .stroke({ color: THEME.cardHover, width: 1.5 });
+  hoverBorder.visible = false;
+  card.hoverBorder = hoverBorder;
+
+  card.container.addChild(shapeGfx, hoverBorder);
+  card.container.hitArea = new Rectangle(-4, -4, w + 8, h + 8);
+
+  // Hover events
+  card.container.on('pointerover', () => {
+    if (!selection.has(card)) hoverBorder.visible = true;
+  });
+  card.container.on('pointerout', () => {
+    hoverBorder.visible = false;
+  });
+
+  // Drag events
+  card.container.on('pointerdown', (e) => {
+    if (spaceDown || currentTool === 'hand') return;
+    const wp = screenToWorld(e.global.x, e.global.y);
+    if (selection.has(card) && selection.size > 1) {
+      const startPositions = new Map();
+      for (const c of selection) {
+        startPositions.set(c, { x: c.container.x, y: c.container.y });
+      }
+      dragState = {
+        type: 'multicard',
+        cards: Array.from(selection),
+        startPositions,
+        lastWorld: wp,
+        moved: false,
+      };
+    } else {
+      dragState = {
+        type: 'card',
+        card,
+        startPos: { x: card.container.x, y: card.container.y },
+        lastWorld: wp,
+        moved: false,
+      };
+    }
+  });
+
+  world.addChild(card.container);
+  allCards.push(card);
+  requestCull();
+  markDirty();
+  return card;
+}
+
+function drawShapeGraphics(gfx, shapeType, w, h, color) {
+  gfx.clear();
+  if (shapeType === 'rect') {
+    gfx.roundRect(0, 0, w, h, 3)
+      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+  } else if (shapeType === 'ellipse') {
+    gfx.ellipse(w / 2, h / 2, w / 2, h / 2)
+      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+  } else if (shapeType === 'line') {
+    gfx.moveTo(0, 0).lineTo(w, h)
+      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+    // Arrowhead
+    const angle = Math.atan2(h, w);
+    const arrLen = 12;
+    gfx.moveTo(w, h)
+      .lineTo(w - arrLen * Math.cos(angle - 0.4), h - arrLen * Math.sin(angle - 0.4))
+      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+    gfx.moveTo(w, h)
+      .lineTo(w - arrLen * Math.cos(angle + 0.4), h - arrLen * Math.sin(angle + 0.4))
+      .stroke({ color, width: SHAPE_STROKE_WIDTH });
+  }
+}
+
+/** Resize a shape card and redraw its graphics. */
+function resizeShapeCard(card, w, h) {
+  card.cardWidth = w;
+  card.cardHeight = h;
+  drawShapeGraphics(card.shapeGfx, card.data.shapeType, w, h, card.data.color);
+  card.hoverBorder.clear()
+    .roundRect(-4, -4, w + 8, h + 8, 2)
+    .stroke({ color: THEME.cardHover, width: 1.5 });
+  card.container.hitArea = new Rectangle(-4, -4, w + 8, h + 8);
 }
 
 // ============================================================
@@ -1727,7 +1911,7 @@ function markDirty() {
  * Serialize current board state for saving.
  */
 export function getBoardState() {
-  const items = allCards.filter(c => !c.isText).map((card) => ({
+  const items = allCards.filter(c => !c.isText && !c.isShape).map((card) => ({
     path: card.data.path,
     name: card.data.name,
     x: card.container.x,
@@ -1746,9 +1930,19 @@ export function getBoardState() {
     height: card.cardHeight,
   }));
 
+  const shapeAnnotations = allCards.filter(c => c.isShape).map((card) => ({
+    id: card.data.id,
+    shapeType: card.data.shapeType,
+    color: card.data.color,
+    x: card.container.x,
+    y: card.container.y,
+    width: card.cardWidth,
+    height: card.cardHeight,
+  }));
+
   const groups = allGroups.map((g) => ({
     name: g.name,
-    cardPaths: Array.from(g.cards).map((c) => c.isText ? c.data.id : c.data.path),
+    cardPaths: Array.from(g.cards).map((c) => (c.isText || c.isShape) ? c.data.id : c.data.path),
   }));
 
   return {
@@ -1760,6 +1954,7 @@ export function getBoardState() {
     },
     items,
     textAnnotations,
+    shapeAnnotations,
     groups,
   };
 }
@@ -1805,6 +2000,19 @@ export function restoreBoardState(state) {
     }
   }
 
+  // Restore shape annotations
+  if (state.shapeAnnotations && state.shapeAnnotations.length > 0) {
+    for (const s of state.shapeAnnotations) {
+      createShapeCard(s.shapeType, s.x, s.y, {
+        id: s.id,
+        color: s.color,
+        width: s.width,
+        height: s.height,
+      });
+      restored++;
+    }
+  }
+
   // Restore viewport
   if (state.viewport) {
     viewport.x = state.viewport.x || 0;
@@ -1818,7 +2026,7 @@ export function restoreBoardState(state) {
   if (state.groups && state.groups.length > 0) {
     const cardByKey = new Map();
     for (const card of allCards) {
-      const key = card.isText ? card.data.id : card.data.path;
+      const key = (card.isText || card.isShape) ? card.data.id : card.data.path;
       cardByKey.set(key, card);
     }
     for (const g of state.groups) {
