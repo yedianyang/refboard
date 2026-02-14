@@ -29,6 +29,7 @@ let spaceDown = false;
 let currentTool = 'select'; // 'select' | 'hand' | 'text'
 let gridVisible = true;
 let minimapVisible = false;
+let activeAnnotationColor = parseInt(localStorage.getItem('refboard-annotation-color') || '0x4a9eff', 16) || 0x4a9eff;
 
 // Drag state
 let dragState = null;
@@ -182,6 +183,8 @@ export async function initCanvas(containerEl) {
       }
     }
   });
+
+  initColorPalette();
 
   return { app, world, viewport };
 }
@@ -368,6 +371,8 @@ function setupKeyboard() {
 
 const SHAPE_TOOLS = new Set(['rect', 'ellipse', 'line']);
 
+const ANNOTATION_TOOLS = new Set(['rect', 'ellipse', 'line', 'text']);
+
 function setTool(tool) {
   currentTool = tool;
   // Update sidebar button active state
@@ -377,6 +382,7 @@ function setTool(tool) {
     .find((b) => b.title?.startsWith(titles[tool] || ''));
   if (btn) btn.classList.add('active');
   app.canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : SHAPE_TOOLS.has(tool) ? 'crosshair' : 'default';
+  updateColorPaletteVisibility();
 }
 
 // ============================================================
@@ -558,7 +564,7 @@ function setupGlobalDrag() {
           const sw = Math.abs(wp.x - dragState.start.x);
           const sh = Math.abs(wp.y - dragState.start.y);
           dragState.preview.clear();
-          drawShapeGraphics(dragState.preview, dragState.shapeType, sw, sh, SHAPE_DEFAULT_COLOR);
+          drawShapeGraphics(dragState.preview, dragState.shapeType, sw, sh, activeAnnotationColor);
           dragState.preview.position.set(sx, sy);
         }
         break;
@@ -579,7 +585,7 @@ function setupGlobalDrag() {
     if (currentTool === 'text') {
       // Create text annotation at click position
       const wp = screenToWorld(e.global.x, e.global.y);
-      const textCard = createTextCard('', wp.x, wp.y);
+      const textCard = createTextCard('', wp.x, wp.y, { color: activeAnnotationColor });
       clearSelection();
       setCardSelected(textCard, true);
       setTool('select');
@@ -701,6 +707,7 @@ function finishDrag(e) {
         const shape = createShapeCard(dragState.shapeType, sx, sy, {
           width: Math.max(sw, SHAPE_MIN_SIZE),
           height: Math.max(sh, SHAPE_MIN_SIZE),
+          color: activeAnnotationColor,
         });
         clearSelection();
         setCardSelected(shape, true);
@@ -975,6 +982,7 @@ function clearSelection() {
     setCardSelected(card, false);
   }
   selection.clear();
+  updateColorPaletteVisibility();
 }
 
 function setCardSelected(card, selected) {
@@ -994,6 +1002,7 @@ function setCardSelected(card, selected) {
     }
     selection.delete(card);
   }
+  updateColorPaletteVisibility();
 }
 
 /** Get current selection. */
@@ -1014,11 +1023,12 @@ function createTextCard(content, x, y, opts = {}) {
   const w = opts.width || TEXT_DEFAULT_WIDTH;
   const h = opts.height || TEXT_DEFAULT_HEIGHT;
   const fontSize = opts.fontSize || 14;
+  const color = opts.color != null ? opts.color : null; // null = use theme default
   const id = opts.id || `text-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
   const card = {
     container: new Container(),
-    data: { type: 'text', id, text: content, fontSize },
+    data: { type: 'text', id, text: content, fontSize, color },
     cardWidth: w,
     cardHeight: h,
     isText: true,
@@ -1043,10 +1053,11 @@ function createTextCard(content, x, y, opts = {}) {
   card.hoverBorder = hoverBorder;
 
   // PixiJS text
+  const textFill = color != null ? '#' + color.toString(16).padStart(6, '0') : THEME.text;
   const textStyle = new TextStyle({
     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
     fontSize,
-    fill: THEME.text,
+    fill: textFill,
     wordWrap: true,
     wordWrapWidth: w - TEXT_PADDING * 2,
     lineHeight: Math.round(fontSize * 1.5),
@@ -1144,7 +1155,7 @@ function startTextEdit(card) {
     background: transparent;
     border: none;
     outline: none;
-    color: var(--text);
+    color: ${card.data.color != null ? '#' + card.data.color.toString(16).padStart(6, '0') : 'var(--text)'};
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: ${card.data.fontSize * viewport.scale}px;
     line-height: ${Math.round(card.data.fontSize * 1.5) * viewport.scale}px;
@@ -1478,6 +1489,7 @@ function deleteSelected() {
   hideResizeHandles();
   requestCull();
   markDirty();
+  updateColorPaletteVisibility();
 }
 
 function duplicateSelected() {
@@ -1740,6 +1752,74 @@ export function applySavedTheme() {
     document.documentElement.setAttribute('data-theme', 'light');
     applyThemeToCanvas(false);
   }
+}
+
+// ============================================================
+// Color Palette for Annotations
+// ============================================================
+
+function updateColorPaletteVisibility() {
+  const palette = document.getElementById('color-palette');
+  if (!palette) return;
+  // Show when an annotation tool is active OR when an annotation is selected
+  const toolActive = ANNOTATION_TOOLS.has(currentTool);
+  const annotationSelected = currentTool === 'select' && hasAnnotationSelected();
+  palette.classList.toggle('visible', toolActive || annotationSelected);
+}
+
+function hasAnnotationSelected() {
+  for (const card of selection) {
+    if (card.isShape || card.isText) return true;
+  }
+  return false;
+}
+
+export function setAnnotationColor(colorHex) {
+  activeAnnotationColor = colorHex;
+  localStorage.setItem('refboard-annotation-color', '0x' + colorHex.toString(16));
+  // Update palette swatch active state
+  document.querySelectorAll('.color-swatch').forEach((sw) => {
+    const swColor = parseInt(sw.dataset.color, 16);
+    sw.classList.toggle('active', swColor === colorHex);
+  });
+}
+
+export function changeSelectionColor(colorHex) {
+  for (const card of selection) {
+    if (card.isShape) {
+      card.data.color = colorHex;
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, colorHex);
+    } else if (card.isText) {
+      const hexStr = '#' + colorHex.toString(16).padStart(6, '0');
+      card.data.color = colorHex;
+      card.textObj.style.fill = hexStr;
+    }
+  }
+  markDirty();
+}
+
+export function getAnnotationColor() {
+  return activeAnnotationColor;
+}
+
+function initColorPalette() {
+  const palette = document.getElementById('color-palette');
+  if (!palette) return;
+  // Restore saved active swatch
+  document.querySelectorAll('.color-swatch').forEach((sw) => {
+    const swColor = parseInt(sw.dataset.color, 16);
+    sw.classList.toggle('active', swColor === activeAnnotationColor);
+  });
+  palette.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.color-swatch');
+    if (!swatch) return;
+    const color = parseInt(swatch.dataset.color, 16);
+    setAnnotationColor(color);
+    // If annotations are selected, recolor them immediately
+    if (hasAnnotationSelected()) {
+      changeSelectionColor(color);
+    }
+  });
 }
 
 // ============================================================
@@ -2007,6 +2087,7 @@ export function getBoardState() {
     id: card.data.id,
     text: card.data.text,
     fontSize: card.data.fontSize,
+    color: card.data.color,
     x: card.container.x,
     y: card.container.y,
     width: card.cardWidth,
@@ -2076,6 +2157,7 @@ export function restoreBoardState(state) {
       createTextCard(t.text || '', t.x, t.y, {
         id: t.id,
         fontSize: t.fontSize,
+        color: t.color,
         width: t.width,
         height: t.height,
       });

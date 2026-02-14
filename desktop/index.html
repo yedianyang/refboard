@@ -191,6 +191,44 @@
       color: var(--accent);
     }
 
+    /* ---- Color Palette Bar ---- */
+    #color-palette {
+      display: none;
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 6px;
+      gap: 4px;
+      align-items: center;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    }
+    #color-palette.visible { display: flex; }
+
+    .color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.1s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    .color-swatch:hover {
+      transform: scale(1.15);
+      border-color: var(--text-secondary);
+    }
+    .color-swatch.active {
+      border-color: var(--text);
+      box-shadow: 0 0 0 1px var(--bg);
+    }
+
     /* ---- Canvas container ---- */
     #canvas-container {
       flex: 1;
@@ -1687,6 +1725,19 @@
 
       <!-- Canvas -->
       <div id="canvas-container">
+        <!-- Color Palette (floats over canvas when annotation tool active) -->
+        <div id="color-palette">
+          <div class="color-swatch active" data-color="0x4a9eff" style="background:#4a9eff;" title="Blue"></div>
+          <div class="color-swatch" data-color="0xe74c3c" style="background:#e74c3c;" title="Red"></div>
+          <div class="color-swatch" data-color="0x2ecc71" style="background:#2ecc71;" title="Green"></div>
+          <div class="color-swatch" data-color="0xf39c12" style="background:#f39c12;" title="Orange"></div>
+          <div class="color-swatch" data-color="0x9b59b6" style="background:#9b59b6;" title="Purple"></div>
+          <div class="color-swatch" data-color="0x1abc9c" style="background:#1abc9c;" title="Teal"></div>
+          <div class="color-swatch" data-color="0xe91e63" style="background:#e91e63;" title="Pink"></div>
+          <div class="color-swatch" data-color="0xffffff" style="background:#ffffff; border-color: var(--border-strong);" title="White"></div>
+          <div class="color-swatch" data-color="0x888899" style="background:#888899;" title="Gray"></div>
+          <div class="color-swatch" data-color="0x1a1a2e" style="background:#1a1a2e; border-color: var(--border-strong);" title="Dark"></div>
+        </div>
         <!-- Web Collection Panel (overlays canvas) -->
         <div id="web-panel">
           <div class="web-panel-header">
