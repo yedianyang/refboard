@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RefBoard</title>
+  <style>
+    /* ---- Reset & Base ---- */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+    }
+
+    /* ---- Layout ---- */
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ---- Toolbar ---- */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4a;
+      z-index: 10;
+      flex-shrink: 0;
+      -webkit-app-region: drag; /* Allow window dragging from toolbar */
+    }
+
+    #toolbar .logo {
+      font-weight: 700;
+      font-size: 14px;
+      color: #f0f0f0;
+      letter-spacing: -0.5px;
+      margin-right: 8px;
+      -webkit-app-region: drag;
+    }
+
+    #toolbar input[type="text"] {
+      flex: 1;
+      max-width: 400px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      border: 1px solid #2a2a4a;
+      background: #0f1a30;
+      color: #e0e0e0;
+      font-size: 12px;
+      outline: none;
+      -webkit-app-region: no-drag;
+    }
+    #toolbar input[type="text"]:focus {
+      border-color: #4a9eff;
+    }
+
+    #toolbar button {
+      padding: 5px 12px;
+      border-radius: 5px;
+      border: 1px solid #2a2a4a;
+      background: #0f3460;
+      color: #d0d0e0;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+      -webkit-app-region: no-drag;
+    }
+    #toolbar button:hover {
+      background: #1a5276;
+      border-color: #4a9eff;
+    }
+
+    .toolbar-spacer { flex: 1; }
+
+    /* ---- Main content ---- */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ---- Sidebar placeholder ---- */
+    #sidebar {
+      width: 44px;
+      background: #16213e;
+      border-right: 1px solid #2a2a4a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
+      gap: 4px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .sidebar-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #888899;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .sidebar-btn:hover {
+      background: #2a2a4a;
+      color: #e0e0e0;
+    }
+    .sidebar-btn.active {
+      background: #0f3460;
+      color: #4a9eff;
+    }
+
+    /* ---- Canvas container ---- */
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #canvas-container canvas {
+      display: block;
+    }
+
+    /* ---- Status bar ---- */
+    #statusbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 4px 12px;
+      background: #16213e;
+      border-top: 1px solid #2a2a4a;
+      font-size: 11px;
+      color: #666680;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    #zoom-display {
+      font-variant-numeric: tabular-nums;
+      color: #888899;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* ---- Loading indicator ---- */
+    #loading-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(22, 33, 62, 0.92);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #e0e0e0;
+      border: 1px solid #2a2a4a;
+      z-index: 20;
+      display: none;
+    }
+
+    /* ---- Keyboard hints overlay ---- */
+    #hints {
+      position: absolute;
+      bottom: 32px;
+      right: 12px;
+      font-size: 10px;
+      color: #555566;
+      line-height: 1.6;
+      text-align: right;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0.7;
+    }
+    #hints kbd {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #333344;
+      background: #1e1e36;
+      font-family: inherit;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Toolbar -->
+    <div id="toolbar">
+      <span class="logo">RefBoard</span>
+      <input type="text" id="project-path" placeholder="Project directory path..." />
+      <button id="open-btn">Open</button>
+      <button id="fit-btn">Fit All</button>
+      <div class="toolbar-spacer"></div>
+    </div>
+
+    <!-- Main area -->
+    <div id="main">
+      <!-- Sidebar (tool palette placeholder) -->
+      <div id="sidebar">
+        <button class="sidebar-btn active" title="Select (V)">&#9654;</button>
+        <button class="sidebar-btn" title="Hand (H)">&#9995;</button>
+        <button class="sidebar-btn" title="Region (R)">&#9633;</button>
+        <button class="sidebar-btn" title="Note (N)">&#9998;</button>
+      </div>
+
+      <!-- Canvas -->
+      <div id="canvas-container">
+        <div id="loading-indicator">Loading...</div>
+        <div id="hints">
+          <kbd>Space</kbd>+drag to pan &nbsp; Scroll to zoom<br>
+          <kbd>Shift</kbd>+<kbd>1</kbd> fit all &nbsp; <kbd>Esc</kbd> deselect
+        </div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="statusbar">
+      <span id="status-text">Ready</span>
+      <div class="toolbar-spacer"></div>
+      <span id="zoom-display">100%</span>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

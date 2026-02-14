@@ -5,3 +5,9 @@ board.html
 
 # Don't ignore example board
 !examples/board.html
+
+# Desktop app build artifacts
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+docs/screenshots/
