@@ -139,7 +139,10 @@ export async function initCanvas(containerEl) {
     powerPreference: 'high-performance',
   });
   containerEl.appendChild(app.canvas);
-  app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  app.canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showCanvasContextMenu(e.clientX, e.clientY);
+  });
 
   // Grid layer
   gridGfx = new Graphics();
@@ -577,6 +580,7 @@ function setupGlobalDrag() {
 
   // Click on empty canvas = start drag-select or deselect
   app.stage.on('pointerdown', (e) => {
+    hideCanvasContextMenu();
     if (e.target !== app.stage) return;
     if (spaceDown || currentTool === 'hand') return;
 
@@ -1820,6 +1824,139 @@ function initColorPalette() {
       changeSelectionColor(color);
     }
   });
+}
+
+// ============================================================
+// Canvas Context Menu
+// ============================================================
+
+function showCanvasContextMenu(clientX, clientY) {
+  const menu = document.getElementById('canvas-context-menu');
+  if (!menu) return;
+
+  // Determine what was right-clicked
+  const wp = screenToWorld(
+    clientX - app.canvas.getBoundingClientRect().left,
+    clientY - app.canvas.getBoundingClientRect().top,
+  );
+  const clickedCard = findCardAt(wp.x, wp.y);
+
+  // If right-clicked on a card not in selection, select it
+  if (clickedCard && !selection.has(clickedCard)) {
+    clearSelection();
+    setCardSelected(clickedCard, true);
+  }
+
+  // Build menu items
+  const items = [];
+  const sel = Array.from(selection);
+  const hasSelection = sel.length > 0;
+  const singleImage = sel.length === 1 && !sel[0].isText && !sel[0].isShape;
+
+  if (hasSelection) {
+    if (singleImage) {
+      items.push({ icon: '\u2728', label: 'Analyze with AI', shortcut: '\u2318\u21E7A', action: 'analyze' });
+      items.push({ icon: '\uD83D\uDD0D', label: 'Find Similar', action: 'find-similar' });
+      items.push({ icon: '\uD83C\uDF10', label: 'Find More Online', shortcut: '\u2318\u21E7F', action: 'find-online' });
+      items.push({ divider: true });
+    }
+    items.push({ icon: '\u2398', label: 'Duplicate', shortcut: '\u2318D', action: 'duplicate' });
+    items.push({ divider: true });
+    items.push({ icon: '\u2B06', label: 'Bring to Front', shortcut: '\u2318]', action: 'bring-front' });
+    items.push({ icon: '\u2B07', label: 'Send to Back', shortcut: '\u2318[', action: 'send-back' });
+    if (sel.length >= 2) {
+      items.push({ divider: true });
+      items.push({ icon: '\u25A3', label: 'Group', shortcut: '\u2318G', action: 'group' });
+    }
+    items.push({ divider: true });
+    items.push({ icon: '\u232B', label: 'Delete', shortcut: 'Del', action: 'delete', destructive: true });
+  } else {
+    items.push({ icon: '\u2395', label: 'Fit All', shortcut: '\u21E71', action: 'fit-all' });
+    items.push({ icon: '\u2316', label: 'Zoom to 100%', shortcut: '\u23180', action: 'zoom-100' });
+    items.push({ divider: true });
+    items.push({ icon: '\u2591', label: `${gridVisible ? 'Hide' : 'Show'} Grid`, shortcut: 'G', action: 'toggle-grid' });
+    items.push({ icon: '\u25A1', label: `${minimapVisible ? 'Hide' : 'Show'} Minimap`, shortcut: 'M', action: 'toggle-minimap' });
+    items.push({ divider: true });
+    items.push({ icon: '\u2B1A', label: 'Tidy Up', shortcut: '\u2318\u21E7T', action: 'tidy-up' });
+  }
+
+  // Render menu
+  menu.innerHTML = items.map((item) => {
+    if (item.divider) return '<div class="ctx-divider"></div>';
+    const cls = item.destructive ? 'ctx-item destructive' : 'ctx-item';
+    const shortcut = item.shortcut ? `<span class="ctx-item-shortcut">${item.shortcut}</span>` : '';
+    return `<button class="${cls}" data-action="${item.action}"><span class="ctx-item-icon">${item.icon}</span>${item.label}${shortcut}</button>`;
+  }).join('');
+
+  // Position (ensure stays within viewport)
+  menu.style.display = 'block';
+  const menuRect = menu.getBoundingClientRect();
+  const mx = Math.min(clientX, window.innerWidth - menuRect.width - 8);
+  const my = Math.min(clientY, window.innerHeight - menuRect.height - 8);
+  menu.style.left = mx + 'px';
+  menu.style.top = my + 'px';
+
+  // Handle clicks
+  const handleClick = (e) => {
+    const btn = e.target.closest('.ctx-item');
+    if (!btn) return;
+    hideCanvasContextMenu();
+    handleContextAction(btn.dataset.action);
+  };
+  menu.addEventListener('click', handleClick, { once: true });
+
+  // Close on outside click or Escape
+  const close = (e) => {
+    if (e.type === 'keydown' && e.key !== 'Escape') return;
+    hideCanvasContextMenu();
+    window.removeEventListener('mousedown', close);
+    window.removeEventListener('keydown', close);
+  };
+  // Delay so the current right-click doesn't immediately close it
+  requestAnimationFrame(() => {
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', close);
+  });
+}
+
+function hideCanvasContextMenu() {
+  const menu = document.getElementById('canvas-context-menu');
+  if (menu) menu.style.display = 'none';
+}
+
+function findCardAt(worldX, worldY) {
+  // Find the topmost card at the given world position
+  for (let i = allCards.length - 1; i >= 0; i--) {
+    const card = allCards[i];
+    const cx = card.container.x;
+    const cy = card.container.y;
+    if (worldX >= cx && worldX <= cx + card.cardWidth &&
+        worldY >= cy && worldY <= cy + card.cardHeight) {
+      return card;
+    }
+  }
+  return null;
+}
+
+function handleContextAction(action) {
+  switch (action) {
+    case 'delete': deleteSelected(); break;
+    case 'duplicate': duplicateSelected(); break;
+    case 'bring-front': bringForward(); break;
+    case 'send-back': sendBackward(); break;
+    case 'group': groupSelected(); break;
+    case 'fit-all': fitAll(); break;
+    case 'zoom-100': zoomTo100(); break;
+    case 'toggle-grid': toggleGrid(); break;
+    case 'toggle-minimap': toggleMinimap(); break;
+    case 'tidy-up': tidyUp(); break;
+    // Cross-module actions: dispatch custom events for main.js to handle
+    case 'analyze':
+    case 'find-similar':
+    case 'find-online':
+      window.dispatchEvent(new CustomEvent('refboard:context-action', { detail: { action, cards: Array.from(selection) } }));
+      break;
+  }
 }
 
 // ============================================================

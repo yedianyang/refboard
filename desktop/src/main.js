@@ -394,6 +394,16 @@ async function main() {
     }
   });
 
+  // Canvas context menu actions (dispatched from canvas.js)
+  window.addEventListener('refboard:context-action', (e) => {
+    const { action, cards } = e.detail;
+    if (cards.length !== 1) return;
+    const card = cards[0];
+    if (action === 'analyze') analyzeCard(card);
+    else if (action === 'find-similar') findSimilar(card);
+    else if (action === 'find-online') findMoreLike(card);
+  });
+
   // Initialize home screen — hide toolbar when on home
   const toolbar = document.getElementById('toolbar');
   const homeScreen = document.getElementById('home-screen');

@@ -1565,6 +1565,20 @@
     .ctx-item.destructive { color: var(--destructive); }
     .ctx-item.destructive:hover { background: rgba(231, 76, 60, 0.12); }
 
+    #canvas-context-menu {
+      position: fixed;
+      z-index: 300;
+      display: none;
+      min-width: 200px;
+      background: var(--dialog-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      padding: 4px 0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
     /* New Project dialog */
     #new-project-dialog {
       position: fixed;
@@ -1926,6 +1940,11 @@
     <button class="ctx-item destructive" data-action="delete">
       <span class="ctx-item-icon">&#128465;</span> Delete
     </button>
+  </div>
+
+  <!-- Canvas Context Menu -->
+  <div id="canvas-context-menu">
+    <!-- Populated dynamically based on selection -->
   </div>
 
   <!-- Settings Dialog -->
