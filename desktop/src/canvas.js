@@ -572,6 +572,74 @@ export function onCardSelect(callback) {
 export function getAllCards() { return allCards; }
 
 // ============================================================
+// Canvas Filtering
+// ============================================================
+
+let activeFilter = null; // Set of image paths to highlight, or null
+
+/**
+ * Apply a filter to the canvas. Matching cards stay fully visible;
+ * non-matching cards are dimmed. Pass null to clear the filter.
+ * @param {string[]|null} matchingPaths - Array of image paths to highlight, or null
+ */
+export function applyFilter(matchingPaths) {
+  if (!matchingPaths) {
+    // Clear filter — restore all cards
+    activeFilter = null;
+    for (const card of allCards) {
+      card.container.alpha = 1;
+      card.container.eventMode = 'static';
+    }
+    requestCull();
+    return;
+  }
+
+  activeFilter = new Set(matchingPaths);
+
+  for (const card of allCards) {
+    if (activeFilter.has(card.data.path)) {
+      card.container.alpha = 1;
+      card.container.eventMode = 'static';
+    } else {
+      card.container.alpha = 0.15;
+      card.container.eventMode = 'static'; // Still interactive but visually dimmed
+    }
+  }
+}
+
+/**
+ * Scroll the canvas to center on a specific card by image path.
+ * @param {string} imagePath
+ */
+export function scrollToCard(imagePath) {
+  const card = allCards.find((c) => c.data.path === imagePath);
+  if (!card) return;
+
+  // Center the card in the viewport
+  const cx = card.container.x + (card.cardWidth / 2);
+  const cy = card.container.y + (card.cardHeight / 2);
+
+  viewport.x = (app.screen.width / 2) - cx * viewport.scale;
+  viewport.y = (app.screen.height / 2) - cy * viewport.scale;
+  applyViewport();
+  updateZoomDisplay();
+
+  // Flash-select the card
+  clearSelection();
+  setCardSelected(card, true);
+  if (onCardSelectCallback) {
+    onCardSelectCallback(card);
+  }
+}
+
+// Listen for scroll-to-card events from search results
+if (typeof window !== 'undefined') {
+  window.addEventListener('refboard:scroll-to-card', (e) => {
+    if (e.detail?.path) scrollToCard(e.detail.path);
+  });
+}
+
+// ============================================================
 // Public API
 // ============================================================
 

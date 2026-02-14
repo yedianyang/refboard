@@ -1,4 +1,5 @@
 mod ai;
+mod search;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -326,6 +327,12 @@ pub fn run() {
             ai::get_ai_config,
             ai::set_ai_config,
             ai::check_ollama,
+            search::cmd_index_project,
+            search::cmd_search_text,
+            search::cmd_get_all_tags,
+            search::cmd_filter_by_tag,
+            search::cmd_find_similar,
+            search::cmd_update_search_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,8 +1,9 @@
 // RefBoard 2.0 — Main entry point
-// Initializes the PixiJS canvas, AI panels, and wires up the UI shell
+// Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter } from './canvas.js';
 import { initPanels, showMetadata, openSettings } from './panels.js';
+import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 
 async function main() {
   const container = document.getElementById('canvas-container');
@@ -17,14 +18,32 @@ async function main() {
   await initCanvas(container);
   setUIElements({ loading, zoom: zoomDisplay });
 
+  // Initialize search module
+  initSearch({
+    onFilter: (matchingPaths) => {
+      applyFilter(matchingPaths);
+    },
+    onFindSimilar: (results) => {
+      const statusText = document.getElementById('status-text');
+      if (statusText) {
+        statusText.textContent = `Found ${results.length} similar images`;
+      }
+    },
+  });
+
   // Initialize AI panels
   initPanels({
-    onAccept: (card, analysis) => {
+    onAccept: async (card, analysis) => {
       const statusText = document.getElementById('status-text');
       if (statusText) {
         const tagCount = analysis.tags?.length || 0;
         statusText.textContent = `Accepted ${tagCount} tags for ${card.data.name}`;
       }
+      // Update search index with new metadata
+      await updateSearchMetadata(card);
+    },
+    onFindSimilar: (card) => {
+      findSimilar(card);
     },
   });
 
@@ -40,24 +59,20 @@ async function main() {
   openBtn.addEventListener('click', async () => {
     const dirPath = projectPath.value.trim();
     if (!dirPath) return;
-
-    loading.style.display = 'block';
-    loading.textContent = 'Scanning images...';
-
-    try {
-      const result = await loadProject(dirPath);
-      if (result) {
-        loading.textContent = `Loaded ${result.loaded} images`;
-        setTimeout(() => { loading.style.display = 'none'; }, 2000);
-      }
-    } catch (err) {
-      loading.textContent = `Error: ${err}`;
-      loading.style.color = '#e74c3c';
-    }
+    await openProject(dirPath, loading);
   });
 
   // Fit all button
   fitBtn.addEventListener('click', () => fitAll());
+
+  // Keyboard shortcut: Cmd/Ctrl+F to focus search
+  window.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      e.preventDefault();
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.focus();
+    }
+  });
 
   // Auto-load art-deco project for testing
   const testPath = '~/.openclaw/workspace/visual-refs/art-deco-power';
@@ -68,13 +83,30 @@ async function main() {
   }
 }
 
+async function openProject(dirPath, loading) {
+  loading.style.display = 'block';
+  loading.textContent = 'Scanning images...';
+
+  try {
+    const result = await loadProject(dirPath);
+    if (result) {
+      loading.textContent = `Loaded ${result.loaded} images. Indexing for search...`;
+      // Index project for search
+      await setProject(dirPath);
+      loading.textContent = `Loaded ${result.loaded} images`;
+      setTimeout(() => { loading.style.display = 'none'; }, 2000);
+    }
+  } catch (err) {
+    loading.textContent = `Error: ${err}`;
+    loading.style.color = '#e74c3c';
+  }
+}
+
 async function getHomePath() {
   try {
-    // Use Tauri's env to get home dir
     const { homeDir } = await import('@tauri-apps/api/path');
     return await homeDir();
   } catch {
-    // Fallback for dev outside Tauri
     return null;
   }
 }

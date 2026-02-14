@@ -14,6 +14,7 @@ let activePanel = null; // 'suggestion' | 'metadata' | null
 let currentCard = null; // The card object currently displayed
 let currentAnalysis = null; // Latest AI analysis result
 let onAcceptCallback = null; // Called when user accepts suggestions
+let onFindSimilarCallback = null; // Called when user clicks "Find Similar"
 
 // Provider default models
 const PROVIDER_MODELS = {
@@ -33,8 +34,9 @@ const PROVIDER_LABELS = {
 // ============================================================
 
 /** Initialize all panel DOM and event listeners. Call once at startup. */
-export function initPanels({ onAccept } = {}) {
+export function initPanels({ onAccept, onFindSimilar } = {}) {
   onAcceptCallback = onAccept || null;
+  onFindSimilarCallback = onFindSimilar || null;
   setupPanelEvents();
   setupSettingsEvents();
   setupKeyboardShortcuts();
@@ -245,6 +247,12 @@ function setupPanelEvents() {
   document.getElementById('meta-analyze-btn')?.addEventListener('click', () => {
     if (!currentCard) return;
     analyzeCard(currentCard);
+  });
+
+  // Find Similar button (metadata panel)
+  document.getElementById('meta-similar-btn')?.addEventListener('click', () => {
+    if (!currentCard || !onFindSimilarCallback) return;
+    onFindSimilarCallback(currentCard);
   });
 
   // Close panel button

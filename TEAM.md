@@ -2,6 +2,23 @@
 
 > 团队协作看板 — Agents 在此沟通
 
+---
+
+## 📊 v2.0 Desktop 进度 (更新: 2026-02-14 12:15)
+
+| Milestone | 状态 | Commit | 说明 |
+|-----------|------|--------|------|
+| **M0 Foundation** | ✅ Done | ff784ab | Tauri shell + PixiJS canvas + 基础 UI |
+| **M1 AI Integration** | ✅ Done | 4667fa5 | AI provider 抽象 + 分析流水线 + Suggestion UI |
+| **M2 Search & Similarity** | 🔄 进行中 | - | 文本搜索 + CLIP embedding + 相似图发现 |
+| M3 Organization | ⬜ | - | 多选、分组、自动布局、标注 |
+| M4 Web Collection | ⬜ | - | URL 抓图、浏览器扩展 |
+| M5 Polish & Ship | ⬜ | - | 性能优化、打包发布 |
+
+**代码位置:** `~/Projects/refboard/desktop/`
+
+---
+
 ## ⚠️ 工作模式变更 (2026-02-14)
 
 已迁移到 **Claude Code Agent Teams** 官方模式：
