@@ -4,6 +4,7 @@
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter } from './canvas.js';
 import { initPanels, showMetadata, openSettings } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
+import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
 async function main() {
   const container = document.getElementById('canvas-container');
@@ -31,6 +32,14 @@ async function main() {
     },
   });
 
+  // Initialize web collection
+  initCollection({
+    onImageAdded: (result) => {
+      const statusText = document.getElementById('status-text');
+      if (statusText) statusText.textContent = `Added: ${result.name}`;
+    },
+  });
+
   // Initialize AI panels
   initPanels({
     onAccept: async (card, analysis) => {
@@ -45,6 +54,9 @@ async function main() {
     onFindSimilar: (card) => {
       findSimilar(card);
     },
+    onFindOnline: (card) => {
+      findMoreLike(card);
+    },
   });
 
   // Card selection -> open metadata panel
@@ -54,6 +66,12 @@ async function main() {
 
   // Settings button
   settingsBtn.addEventListener('click', () => openSettings());
+
+  // Web collection sidebar button
+  const webSidebarBtn = document.getElementById('web-sidebar-btn');
+  if (webSidebarBtn) {
+    webSidebarBtn.addEventListener('click', () => toggleWebPanel());
+  }
 
   // Open project button
   openBtn.addEventListener('click', async () => {
@@ -93,6 +111,7 @@ async function openProject(dirPath, loading) {
       loading.textContent = `Loaded ${result.loaded} images. Indexing for search...`;
       // Index project for search
       await setProject(dirPath);
+      setCollectionProject(dirPath);
       loading.textContent = `Loaded ${result.loaded} images`;
       setTimeout(() => { loading.style.display = 'none'; }, 2000);
     }

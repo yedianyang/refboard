@@ -4,6 +4,30 @@ All notable changes to RefBoard will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0-alpha.4] - 2026-02-14
+
+### Added
+- **Web Collection panel** -- search the web for reference images using Brave Search API
+- **"Find More Online"** action on any analyzed card -- AI-generated search queries from image metadata
+- **Image download manager** -- download web images directly into the project with deduplication
+- **Brave Search API integration** (`web.rs`) -- image search, safe search settings, result count config
+- **Web collection settings** -- Brave API key management in Settings dialog
+- Frontend `collection.js` module: web search panel, thumbnail grid, download progress, sidebar toggle
+- "Find Online" button in metadata panel footer for quick web search from any card
+
+## [2.0.0-alpha.3] - 2026-02-14
+
+### Added
+- **Multi-select** with drag-select rectangle
+- **Multi-card drag** for moving groups of cards together
+- **Card resize** with corner handles and aspect-ratio lock
+- **Undo/redo** stack (Cmd+Z / Cmd+Shift+Z) for move, resize, delete operations
+- **Named groups** (Cmd+G) with colored borders and labels
+- **Auto-layout tidy up** (Cmd+Shift+T) -- arrange cards in an even grid
+- **Minimap** navigation overlay (M to toggle)
+- **Grid toggle** (G to toggle) with configurable snap
+- Full keyboard shortcuts per PRD Section 4.5 (delete, duplicate, z-order, fit, etc.)
+
 ## [2.0.0-alpha.2] - 2026-02-14
 
 ### Added

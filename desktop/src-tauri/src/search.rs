@@ -61,7 +61,8 @@ fn db_path(project_path: &str) -> PathBuf {
         .join("search.db")
 }
 
-fn open_db(project_path: &str) -> Result<Connection, String> {
+/// Open the search database for a project (public for cross-module use).
+pub fn open_db(project_path: &str) -> Result<Connection, String> {
     let path = db_path(project_path);
 
     // Ensure parent directory exists

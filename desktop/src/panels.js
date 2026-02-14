@@ -5,6 +5,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { loadWebConfig, saveWebConfig } from './collection.js';
 
 // ============================================================
 // State
@@ -15,6 +16,7 @@ let currentCard = null; // The card object currently displayed
 let currentAnalysis = null; // Latest AI analysis result
 let onAcceptCallback = null; // Called when user accepts suggestions
 let onFindSimilarCallback = null; // Called when user clicks "Find Similar"
+let onFindOnlineCallback = null; // Called when user clicks "Find Online"
 
 // Provider default models
 const PROVIDER_MODELS = {
@@ -34,9 +36,10 @@ const PROVIDER_LABELS = {
 // ============================================================
 
 /** Initialize all panel DOM and event listeners. Call once at startup. */
-export function initPanels({ onAccept, onFindSimilar } = {}) {
+export function initPanels({ onAccept, onFindSimilar, onFindOnline } = {}) {
   onAcceptCallback = onAccept || null;
   onFindSimilarCallback = onFindSimilar || null;
+  onFindOnlineCallback = onFindOnline || null;
   setupPanelEvents();
   setupSettingsEvents();
   setupKeyboardShortcuts();
@@ -255,6 +258,12 @@ function setupPanelEvents() {
     onFindSimilarCallback(currentCard);
   });
 
+  // Find Online button (metadata panel)
+  document.getElementById('meta-web-btn')?.addEventListener('click', () => {
+    if (!currentCard || !onFindOnlineCallback) return;
+    onFindOnlineCallback(currentCard);
+  });
+
   // Close panel button
   document.querySelectorAll('.panel-close-btn').forEach((btn) => {
     btn.addEventListener('click', closePanel);
@@ -440,6 +449,13 @@ async function loadSettingsFromBackend() {
       model: null,
     });
   }
+
+  // Load web config
+  try {
+    const webConfig = await loadWebConfig();
+    const braveKeyInput = document.getElementById('settings-brave-key');
+    if (braveKeyInput) braveKeyInput.value = webConfig.braveApiKey || '';
+  } catch {}
 }
 
 function populateSettings(config) {
@@ -529,6 +545,13 @@ async function saveSettings() {
 
   try {
     await invoke('set_ai_config', { config });
+
+    // Save Brave API key
+    const braveKey = document.getElementById('settings-brave-key')?.value.trim();
+    const webConfig = await loadWebConfig();
+    webConfig.braveApiKey = braveKey || null;
+    await saveWebConfig(webConfig);
+
     statusEl.textContent = 'Settings saved.';
     statusEl.className = 'settings-status success';
     setTimeout(() => closeSettings(), 1000);

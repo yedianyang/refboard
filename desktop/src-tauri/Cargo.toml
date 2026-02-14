@@ -20,6 +20,7 @@ base64 = "0.22"
 async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rusqlite = { version = "0.32", features = ["bundled", "vtab"] }
+urlencoding = "2"
 
 [dev-dependencies]
 tempfile = "3"

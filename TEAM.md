@@ -10,9 +10,9 @@
 |-----------|------|--------|------|
 | **M0 Foundation** | ✅ Done | ff784ab | Tauri shell + PixiJS canvas + 基础 UI |
 | **M1 AI Integration** | ✅ Done | 4667fa5 | AI provider 抽象 + 分析流水线 + Suggestion UI |
-| **M2 Search & Similarity** | ✅ Done | - | 文本搜索 + CLIP embedding + 相似图发现 |
-| M3 Organization | ⬜ | - | 多选、分组、自动布局、标注 |
-| M4 Web Collection | ⬜ | - | URL 抓图、浏览器扩展 |
+| **M2 Search & Similarity** | ✅ Done | 1cd649d | 文本搜索 + CLIP embedding + 相似图发现 |
+| **M3 Organization** | ✅ Done | a564674 | 多选、分组、自动布局、undo/redo、minimap |
+| **M4 Web Collection** | ✅ Done | - | Brave Search + AI 查询 + 下载管理 |
 | M5 Polish & Ship | ⬜ | - | 性能优化、打包发布 |
 
 **代码位置:** `~/Projects/refboard/desktop/`
