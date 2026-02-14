@@ -2,7 +2,8 @@
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
 import { invoke } from '@tauri-apps/api/core';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection } from './canvas.js';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport } from './canvas.js';
 import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
@@ -19,6 +20,105 @@ async function main() {
   // Initialize PixiJS canvas
   await initCanvas(container);
   setUIElements({ loading, zoom: zoomDisplay });
+
+  // Shared image extension set
+  const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'tiff']);
+  const dropOverlay = document.getElementById('drop-overlay');
+
+  // Convert a window-relative drop/paste position to world coordinates
+  function dropPosToWorld(windowX, windowY) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = container.getBoundingClientRect();
+    const canvasX = windowX / dpr - rect.left;
+    const canvasY = windowY / dpr - rect.top;
+    const vp = getViewport();
+    return {
+      x: (canvasX - vp.x) / vp.scale,
+      y: (canvasY - vp.y) / vp.scale,
+    };
+  }
+
+  // Import image files into the project and add cards at (worldX, worldY)
+  async function importAndAddCards(filePaths, worldX, worldY) {
+    if (!currentProjectPath) {
+      setStatus('Open a project first before importing images');
+      return;
+    }
+    const imagePaths = filePaths.filter((p) => {
+      const ext = p.split('.').pop().toLowerCase();
+      return IMAGE_EXTS.has(ext);
+    });
+    if (imagePaths.length === 0) {
+      setStatus('No supported image files found');
+      return;
+    }
+    try {
+      const imported = await invoke('import_images', {
+        paths: imagePaths,
+        projectPath: currentProjectPath,
+      });
+      const stagger = 220;
+      for (let i = 0; i < imported.length; i++) {
+        await addImageCard(imported[i], worldX + i * stagger, worldY);
+      }
+      setStatus(`Imported ${imported.length} image${imported.length !== 1 ? 's' : ''}`);
+      invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
+    } catch (err) {
+      setStatus(`Import failed: ${err}`);
+    }
+  }
+
+  // Drag-and-drop from Finder
+  getCurrentWindow().onDragDropEvent((event) => {
+    if (event.payload.type === 'enter') {
+      dropOverlay.style.display = 'flex';
+    } else if (event.payload.type === 'leave') {
+      dropOverlay.style.display = 'none';
+    } else if (event.payload.type === 'drop') {
+      dropOverlay.style.display = 'none';
+      const pos = event.payload.position || { x: 0, y: 0 };
+      const wp = dropPosToWorld(pos.x, pos.y);
+      importAndAddCards(event.payload.paths || [], wp.x, wp.y);
+    }
+  });
+
+  // Paste images from clipboard (Cmd+V)
+  window.addEventListener('paste', async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        if (!currentProjectPath) {
+          setStatus('Open a project first before pasting images');
+          return;
+        }
+        const blob = item.getAsFile();
+        if (!blob) return;
+        const buffer = await blob.arrayBuffer();
+        const data = Array.from(new Uint8Array(buffer));
+        const ext = item.type.split('/')[1] === 'jpeg' ? 'jpg' : item.type.split('/')[1] || 'png';
+        try {
+          const info = await invoke('import_clipboard_image', {
+            data,
+            extension: ext,
+            projectPath: currentProjectPath,
+          });
+          // Place at center of current viewport
+          const vp = getViewport();
+          const rect = container.getBoundingClientRect();
+          const centerX = (rect.width / 2 - vp.x) / vp.scale;
+          const centerY = (rect.height / 2 - vp.y) / vp.scale;
+          await addImageCard(info, centerX, centerY);
+          setStatus(`Pasted image: ${info.name}`);
+          invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
+        } catch (err) {
+          setStatus(`Paste failed: ${err}`);
+        }
+        return;
+      }
+    }
+  });
 
   // Initialize search module
   initSearch({
@@ -154,18 +254,27 @@ async function main() {
     }
   });
 
-  // Auto-load art-deco project for testing
-  const testPath = '~/.openclaw/workspace/visual-refs/art-deco-power';
-  const home = await getHomePath();
-  if (home) {
-    const resolved = testPath.replace('~', home);
-    projectPath.value = resolved;
-  }
+  // Initialize home screen — hide toolbar when on home
+  const toolbar = document.getElementById('toolbar');
+  const homeScreen = document.getElementById('home-screen');
+  if (toolbar) toolbar.classList.add('toolbar-hidden');
+  initHomeScreen(homeScreen, projectPath, loading);
 }
 
 let currentProjectPath = null;
 
+function setStatus(text) {
+  const el = document.getElementById('status-text');
+  if (el) el.textContent = text;
+}
+
 async function openProject(dirPath, loading) {
+  // Hide home screen, show toolbar when opening a project
+  const homeScreen = document.getElementById('home-screen');
+  const toolbar = document.getElementById('toolbar');
+  if (homeScreen) homeScreen.classList.add('hidden');
+  if (toolbar) toolbar.classList.remove('toolbar-hidden');
+
   loading.style.display = 'block';
   loading.textContent = 'Scanning images...';
 
@@ -192,6 +301,19 @@ async function openProject(dirPath, loading) {
       await setProject(dirPath);
       setCollectionProject(dirPath);
 
+      // Generate CLIP embeddings in background
+      const dlg = document.getElementById('model-download-dialog');
+      if (dlg) dlg.style.display = 'flex';
+      invoke('cmd_embed_project', { projectPath: dirPath })
+        .then((count) => {
+          if (dlg) dlg.style.display = 'none';
+          if (count > 0) setStatus(`Generated embeddings for ${count} images`);
+        })
+        .catch((err) => {
+          if (dlg) dlg.style.display = 'none';
+          console.warn('Embedding generation skipped:', err);
+        });
+
       // Start auto-save
       startAutoSave(async (state) => {
         await invoke('save_board_state', {
@@ -215,6 +337,132 @@ async function getHomePath() {
     return await homeDir();
   } catch {
     return null;
+  }
+}
+
+async function initHomeScreen(homeScreen, projectPathInput, loading) {
+  if (!homeScreen) return;
+
+  const gridEl = document.getElementById('home-project-list');
+  const openBtn = document.getElementById('home-open-btn');
+  const newBtn = document.getElementById('home-new-btn');
+
+  // Load recent projects as card grid
+  try {
+    const projects = await invoke('list_projects');
+    if (projects.length > 0) {
+      gridEl.innerHTML = projects.map((p) => `
+        <button class="home-project-card" data-path="${p.path}">
+          <div class="home-project-thumb">
+            <span class="home-project-thumb-placeholder">&#128444;</span>
+          </div>
+          <div class="home-project-info">
+            <div class="home-project-name">${p.name}</div>
+            <div class="home-project-meta">
+              <span>${p.image_count} images</span>
+            </div>
+          </div>
+        </button>
+      `).join('');
+
+      // Click card to open project
+      gridEl.querySelectorAll('.home-project-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const path = card.dataset.path;
+          projectPathInput.value = path;
+          openProject(path, loading);
+        });
+      });
+    }
+  } catch (err) {
+    console.warn('Could not load recent projects:', err);
+  }
+
+  // Open folder button — native directory picker
+  if (openBtn) {
+    openBtn.addEventListener('click', async () => {
+      try {
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const selected = await open({ directory: true, title: 'Open Image Folder' });
+        if (selected) {
+          projectPathInput.value = selected;
+          openProject(selected, loading);
+        }
+      } catch {
+        projectPathInput.focus();
+      }
+    });
+  }
+
+  // New project button — show dialog
+  const newDialog = document.getElementById('new-project-dialog');
+  const newNameInput = document.getElementById('new-project-name');
+  const newPreview = document.getElementById('new-project-path-preview');
+  const newCancelBtn = document.getElementById('new-project-cancel-btn');
+  const newCreateBtn = document.getElementById('new-project-create-btn');
+
+  if (newBtn && newDialog) {
+    newBtn.addEventListener('click', () => {
+      newDialog.classList.add('open');
+      if (newNameInput) {
+        newNameInput.value = '';
+        newNameInput.focus();
+      }
+      if (newPreview) newPreview.textContent = '~/Documents/RefBoard/';
+    });
+
+    // Update path preview as user types
+    if (newNameInput && newPreview) {
+      newNameInput.addEventListener('input', () => {
+        const name = newNameInput.value.trim() || '';
+        newPreview.textContent = name
+          ? `~/Documents/RefBoard/${name}/`
+          : '~/Documents/RefBoard/';
+      });
+    }
+
+    // Cancel
+    if (newCancelBtn) {
+      newCancelBtn.addEventListener('click', () => {
+        newDialog.classList.remove('open');
+      });
+    }
+
+    // Close on backdrop click
+    newDialog.addEventListener('click', (e) => {
+      if (e.target === newDialog) newDialog.classList.remove('open');
+    });
+
+    // Create project
+    if (newCreateBtn) {
+      newCreateBtn.addEventListener('click', async () => {
+        const name = newNameInput?.value.trim();
+        if (!name) return;
+        newDialog.classList.remove('open');
+        try {
+          const result = await invoke('cmd_create_project', { name });
+          projectPathInput.value = result.path;
+          openProject(result.path, loading);
+        } catch (err) {
+          // Fallback: create directory manually via home path
+          const home = await getHomePath();
+          if (home) {
+            const base = home.endsWith('/') ? home : home + '/';
+            const path = `${base}Documents/RefBoard/${name}`;
+            projectPathInput.value = path;
+            openProject(path, loading);
+          }
+        }
+      });
+
+      // Enter key creates project
+      if (newNameInput) {
+        newNameInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') newCreateBtn.click();
+          if (e.key === 'Escape') newDialog.classList.remove('open');
+        });
+      }
+    }
   }
 }
 

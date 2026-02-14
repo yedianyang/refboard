@@ -1,4 +1,5 @@
 mod ai;
+mod embed;
 mod search;
 mod web;
 
@@ -95,6 +96,45 @@ fn walk_for_images(dir: &Path, images: &mut Vec<ImageInfo>) -> Result<(), String
         }
     }
     Ok(())
+}
+
+/// Import a clipboard image (raw bytes) into the project's images/ directory.
+#[tauri::command]
+fn import_clipboard_image(
+    data: Vec<u8>,
+    extension: String,
+    project_path: String,
+) -> Result<ImageInfo, String> {
+    let images_dir = Path::new(&project_path).join("images");
+    fs::create_dir_all(&images_dir)
+        .map_err(|e| format!("Cannot create images dir: {}", e))?;
+
+    let ext = extension.to_lowercase();
+    if !IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+        return Err(format!("Unsupported image type: {}", ext));
+    }
+
+    // Generate unique filename with timestamp
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let stem = format!("paste-{}", ts);
+    let mut dest = images_dir.join(format!("{}.{}", stem, ext));
+    let mut counter = 2u32;
+    while dest.exists() {
+        dest = images_dir.join(format!("{}-{}.{}", stem, counter, ext));
+        counter += 1;
+    }
+
+    fs::write(&dest, &data).map_err(|e| format!("Cannot write pasted image: {}", e))?;
+
+    Ok(ImageInfo {
+        name: dest.file_name().unwrap().to_string_lossy().to_string(),
+        path: dest.to_string_lossy().to_string(),
+        size_bytes: data.len() as u64,
+        extension: ext,
+    })
 }
 
 /// Read project metadata from a directory's metadata.json file.
@@ -343,6 +383,57 @@ fn load_board_state(project_path: String) -> Result<Option<serde_json::Value>, S
     Ok(Some(state))
 }
 
+/// Import image files into a project's images/ directory.
+#[tauri::command]
+fn import_images(paths: Vec<String>, project_path: String) -> Result<Vec<ImageInfo>, String> {
+    let images_dir = Path::new(&project_path).join("images");
+    fs::create_dir_all(&images_dir)
+        .map_err(|e| format!("Cannot create images dir: {}", e))?;
+
+    let mut imported = Vec::new();
+
+    for src_path_str in &paths {
+        let src = Path::new(src_path_str);
+        if !src.is_file() {
+            continue;
+        }
+
+        // Validate extension
+        let ext = match src.extension() {
+            Some(e) => e.to_string_lossy().to_lowercase(),
+            None => continue,
+        };
+        if !IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+            continue;
+        }
+
+        // Determine destination filename, adding counter suffix if needed
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "image".to_string());
+
+        let mut dest = images_dir.join(format!("{}.{}", stem, ext));
+        let mut counter = 2u32;
+        while dest.exists() {
+            dest = images_dir.join(format!("{}-{}.{}", stem, counter, ext));
+            counter += 1;
+        }
+
+        fs::copy(src, &dest).map_err(|e| format!("Cannot copy {}: {}", src_path_str, e))?;
+
+        let metadata = fs::metadata(&dest).map_err(|e| e.to_string())?;
+        imported.push(ImageInfo {
+            name: dest.file_name().unwrap().to_string_lossy().to_string(),
+            path: dest.to_string_lossy().to_string(),
+            size_bytes: metadata.len(),
+            extension: ext,
+        });
+    }
+
+    Ok(imported)
+}
+
 /// Export all image metadata as a JSON file.
 #[tauri::command]
 fn export_metadata(project_path: String, output_path: String) -> Result<usize, String> {
@@ -416,6 +507,8 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             scan_images,
+            import_images,
+            import_clipboard_image,
             read_metadata,
             write_metadata,
             create_project,
@@ -435,6 +528,7 @@ pub fn run() {
             web::cmd_download_web_image,
             web::cmd_get_web_config,
             web::cmd_set_web_config,
+            embed::cmd_embed_project,
             save_board_state,
             load_board_state,
             export_metadata,

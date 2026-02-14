@@ -35,6 +35,7 @@
       flex-shrink: 0;
       -webkit-app-region: drag; /* Allow window dragging from toolbar */
     }
+    #toolbar.toolbar-hidden { display: none; }
 
     #toolbar .logo {
       font-weight: 700;
@@ -412,6 +413,56 @@
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* ---- Model Download Dialog ---- */
+    #model-download-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(22, 33, 62, 0.97);
+      padding: 32px 44px;
+      border-radius: 12px;
+      border: 1px solid #2a2a4a;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      color: #e0e0e0;
+      font-size: 13px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      min-width: 300px;
+    }
+    .model-dl-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .model-dl-bar {
+      width: 100%;
+      height: 4px;
+      background: #2a2a4a;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .model-dl-bar-fill {
+      height: 100%;
+      width: 30%;
+      background: #4a9eff;
+      border-radius: 2px;
+      animation: model-dl-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes model-dl-pulse {
+      0% { width: 10%; margin-left: 0; }
+      50% { width: 40%; margin-left: 30%; }
+      100% { width: 10%; margin-left: 90%; }
+    }
+    .model-dl-detail {
+      font-size: 11px;
+      color: #666680;
+      text-align: center;
+      line-height: 1.5;
     }
 
     /* ---- Analysis Error Toast ---- */
@@ -1000,6 +1051,27 @@
       font-size: 12px;
     }
 
+    /* ---- Drop Overlay ---- */
+    #drop-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(74, 158, 255, 0.1);
+      border: 3px dashed #4a9eff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #drop-overlay .drop-label {
+      font-size: 18px;
+      font-weight: 600;
+      color: #4a9eff;
+      background: rgba(22, 33, 62, 0.9);
+      padding: 12px 28px;
+      border-radius: 10px;
+    }
+
     /* ---- Settings Divider ---- */
     .settings-divider {
       height: 1px;
@@ -1011,6 +1083,252 @@
       font-weight: 600;
       color: #c0c0d0;
       margin-bottom: 4px;
+    }
+
+    /* ---- Home Screen ---- */
+    #home-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    #home-screen.hidden { display: none; }
+    .home-titlebar {
+      height: 52px;
+      flex-shrink: 0;
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      padding-left: 80px;
+      padding-right: 16px;
+    }
+    .home-titlebar-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888899;
+    }
+    .home-hero {
+      text-align: center;
+      padding: 24px 40px 28px;
+    }
+    .home-logo {
+      font-size: 32px;
+      font-weight: 700;
+      color: #f0f0f0;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .home-tagline {
+      font-size: 13px;
+      color: #666680;
+    }
+    .home-body {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 48px 48px;
+      width: 100%;
+    }
+    .home-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .home-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #666680;
+    }
+    .home-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .home-action-btn {
+      flex: 1;
+      padding: 18px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(22, 33, 62, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: #d0d0e0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .home-action-btn:hover {
+      background: rgba(30, 42, 78, 0.8);
+      border-color: rgba(74, 158, 255, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .home-action-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(74, 158, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .home-action-label {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      gap: 2px;
+    }
+    .home-action-sub {
+      font-size: 11px;
+      color: #555566;
+      font-weight: 400;
+    }
+    .home-recent {
+      margin-bottom: 36px;
+    }
+    /* Card grid layout */
+    .home-project-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .home-project-card {
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(22, 33, 62, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      color: inherit;
+      text-align: left;
+      padding: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .home-project-card:hover {
+      border-color: rgba(74, 158, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    .home-project-thumb {
+      height: 120px;
+      background: #0f1a30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .home-project-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .home-project-thumb-placeholder {
+      font-size: 32px;
+      opacity: 0.15;
+    }
+    .home-project-info {
+      padding: 12px;
+    }
+    .home-project-name {
+      font-size: 13px;
+      color: #e0e0e0;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 4px;
+    }
+    .home-project-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #555566;
+    }
+    .home-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 16px;
+      color: #555566;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    /* New Project dialog */
+    #new-project-dialog {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    #new-project-dialog.open { display: flex; }
+    .new-project-card {
+      background: #1e2240;
+      border: 1px solid #2a2a4a;
+      border-radius: 14px;
+      width: 380px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    .new-project-card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e0e0e0;
+      margin-bottom: 18px;
+    }
+    .new-project-field {
+      margin-bottom: 14px;
+    }
+    .new-project-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #888899;
+      margin-bottom: 6px;
+    }
+    .new-project-field input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a2a4a;
+      background: #0f1a30;
+      color: #e0e0e0;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .new-project-field input:focus { border-color: #4a9eff; }
+    .new-project-preview {
+      font-size: 11px;
+      color: #555566;
+      margin-top: 4px;
+    }
+    .new-project-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -1035,6 +1353,46 @@
 
     <!-- Main area -->
     <div id="main">
+      <!-- Home Screen (shown when no project is open) -->
+      <div id="home-screen">
+        <div class="home-titlebar">
+          <span class="home-titlebar-title">RefBoard</span>
+        </div>
+        <div class="home-hero">
+          <div class="home-logo">RefBoard</div>
+          <div class="home-tagline">Visual reference board for creative projects</div>
+        </div>
+        <div class="home-body">
+          <div class="home-section-header">
+            <span class="home-section-title">Get Started</span>
+          </div>
+          <div class="home-actions">
+            <button class="home-action-btn" id="home-open-btn">
+              <span class="home-action-icon">&#128193;</span>
+              <span class="home-action-label">
+                Open Folder
+                <span class="home-action-sub">Browse for an image directory</span>
+              </span>
+            </button>
+            <button class="home-action-btn" id="home-new-btn">
+              <span class="home-action-icon">&#43;</span>
+              <span class="home-action-label">
+                New Project
+                <span class="home-action-sub">Create an empty project</span>
+              </span>
+            </button>
+          </div>
+          <div class="home-recent">
+            <div class="home-section-header">
+              <span class="home-section-title">Recent Projects</span>
+            </div>
+            <div class="home-project-grid" id="home-project-list">
+              <div class="home-empty">No recent projects yet.<br>Open a folder to get started.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Sidebar (tool palette) -->
       <div id="sidebar">
         <button class="sidebar-btn active" title="Select (V)">&#9654;</button>
@@ -1189,14 +1547,43 @@
     </div>
   </div>
 
+  <!-- Drop Overlay -->
+  <div id="drop-overlay">
+    <span class="drop-label">Drop images here</span>
+  </div>
+
   <!-- Analysis Spinner -->
   <div id="analysis-spinner">
     <div class="spinner"></div>
     <span>Analyzing image...</span>
   </div>
 
+  <!-- Model Download Dialog -->
+  <div id="model-download-dialog">
+    <div class="spinner"></div>
+    <span class="model-dl-title">Setting up CLIP model</span>
+    <div class="model-dl-bar"><div class="model-dl-bar-fill"></div></div>
+    <span class="model-dl-detail">Downloading vision model (~150MB).<br>This only happens once.</span>
+  </div>
+
   <!-- Analysis Error Toast -->
   <div id="analysis-error"></div>
+
+  <!-- New Project Dialog -->
+  <div id="new-project-dialog">
+    <div class="new-project-card">
+      <h2>New Project</h2>
+      <div class="new-project-field">
+        <label>Project Name</label>
+        <input type="text" id="new-project-name" placeholder="My References" autofocus />
+        <div class="new-project-preview" id="new-project-path-preview">~/Documents/RefBoard/My References/</div>
+      </div>
+      <div class="new-project-actions">
+        <button class="btn-secondary" id="new-project-cancel-btn">Cancel</button>
+        <button class="btn-primary" id="new-project-create-btn">Create</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Settings Dialog -->
   <div id="settings-dialog">

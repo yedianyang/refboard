@@ -353,7 +353,25 @@ pub fn get_images_by_tag(project_path: &str, tag: &str) -> Result<Vec<String>, S
 // Embeddings Storage & Similarity
 // ---------------------------------------------------------------------------
 
+/// Store a CLIP embedding vector (takes an open connection).
+pub fn store_embedding_conn(
+    conn: &Connection,
+    image_path: &str,
+    model: &str,
+    embedding: &[f32],
+) -> Result<(), String> {
+    let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+    conn.execute(
+        "INSERT OR REPLACE INTO embeddings (path, model, vector, dimensions)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![image_path, model, bytes, embedding.len() as i64],
+    )
+    .map_err(|e| format!("Cannot store embedding: {e}"))?;
+    Ok(())
+}
+
 /// Store a CLIP embedding vector for an image.
+#[allow(dead_code)]
 pub fn store_embedding(
     project_path: &str,
     image_path: &str,
@@ -361,21 +379,7 @@ pub fn store_embedding(
     embedding: &[f32],
 ) -> Result<(), String> {
     let conn = open_db(project_path)?;
-
-    // Convert f32 slice to bytes
-    let bytes: Vec<u8> = embedding
-        .iter()
-        .flat_map(|f| f.to_le_bytes())
-        .collect();
-
-    conn.execute(
-        "INSERT OR REPLACE INTO embeddings (path, model, vector, dimensions)
-         VALUES (?1, ?2, ?3, ?4)",
-        params![image_path, model, bytes, embedding.len() as i64],
-    )
-    .map_err(|e| format!("Cannot store embedding: {e}"))?;
-
-    Ok(())
+    store_embedding_conn(&conn, image_path, model, embedding)
 }
 
 /// Retrieve a stored embedding vector.
@@ -593,7 +597,15 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f64 {
 #[tauri::command]
 pub fn cmd_index_project(project_path: String) -> Result<usize, String> {
     let images = crate::scan_images(project_path.clone())?;
-    index_project_images(&project_path, &images)
+    let count = index_project_images(&project_path, &images)?;
+
+    // Generate CLIP embeddings (best-effort, don't fail indexing)
+    let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
+    if let Err(e) = crate::embed::embed_and_store(&project_path, &paths) {
+        eprintln!("CLIP embedding skipped: {e}");
+    }
+
+    Ok(count)
 }
 
 /// Full-text search across all metadata fields.
