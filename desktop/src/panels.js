@@ -49,8 +49,10 @@ export function initPanels({ onAccept, onFindSimilar, onFindOnline } = {}) {
 function setupKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (document.getElementById('app-sidebar').classList.contains('open')) {
+      if (document.getElementById('settings-page').classList.contains('open')) {
         closeSettings();
+      } else if (document.getElementById('app-sidebar').classList.contains('open')) {
+        closeSidebar();
       } else if (activePanel) {
         closePanel();
       }
@@ -430,28 +432,38 @@ function listenForAIEvents() {
 // Settings Dialog
 // ============================================================
 
+/** Open the settings page dialog (centered modal with category nav). */
 export function openSettings() {
-  const sidebar = document.getElementById('app-sidebar');
-  sidebar.classList.add('open');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  if (toggleBtn) toggleBtn.classList.add('active');
+  const page = document.getElementById('settings-page');
+  page.classList.add('open');
   loadSettingsFromBackend();
 }
 
+/** Close the settings page dialog. */
 export function closeSettings() {
+  const page = document.getElementById('settings-page');
+  page.classList.remove('open');
+}
+
+/** Toggle the navigation sidebar (left slide-in). */
+export function toggleSidebar() {
+  const sidebar = document.getElementById('app-sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    if (toggleBtn) toggleBtn.classList.remove('active');
+  } else {
+    sidebar.classList.add('open');
+    if (toggleBtn) toggleBtn.classList.add('active');
+  }
+}
+
+/** Close the navigation sidebar. */
+export function closeSidebar() {
   const sidebar = document.getElementById('app-sidebar');
   sidebar.classList.remove('open');
   const toggleBtn = document.getElementById('sidebar-toggle-btn');
   if (toggleBtn) toggleBtn.classList.remove('active');
-}
-
-export function toggleSettings() {
-  const sidebar = document.getElementById('app-sidebar');
-  if (sidebar.classList.contains('open')) {
-    closeSettings();
-  } else {
-    openSettings();
-  }
 }
 
 async function loadSettingsFromBackend() {
@@ -517,6 +529,12 @@ function updateProviderFields(provider) {
   }
 }
 
+const SETTINGS_CATEGORIES = {
+  ai: 'AI Provider',
+  web: 'Web Collection',
+  compression: 'Compression',
+};
+
 function setupSettingsEvents() {
   // Provider change
   document.getElementById('settings-provider')?.addEventListener('change', (e) => {
@@ -530,9 +548,14 @@ function setupSettingsEvents() {
     await saveSettings();
   });
 
-  // Sidebar close button
-  document.getElementById('app-sidebar-close-btn')?.addEventListener('click', () => {
+  // Settings page close button
+  document.getElementById('settings-page-close')?.addEventListener('click', () => {
     closeSettings();
+  });
+
+  // Settings page backdrop click
+  document.getElementById('settings-page')?.addEventListener('click', (e) => {
+    if (e.target.id === 'settings-page') closeSettings();
   });
 
   // Test connection button
@@ -540,11 +563,20 @@ function setupSettingsEvents() {
     await testConnection();
   });
 
-  // Section collapse/expand
-  document.querySelectorAll('.app-sidebar-section-header').forEach((header) => {
-    header.addEventListener('click', () => {
-      const section = header.closest('.app-sidebar-section');
-      if (section) section.classList.toggle('collapsed');
+  // Category navigation
+  document.querySelectorAll('.settings-cat').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.cat;
+      // Update active state
+      document.querySelectorAll('.settings-cat').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Show corresponding panel
+      document.querySelectorAll('.settings-panel').forEach((p) => p.style.display = 'none');
+      const panel = document.getElementById(`settings-panel-${cat}`);
+      if (panel) panel.style.display = 'flex';
+      // Update breadcrumb
+      const breadcrumb = document.getElementById('settings-breadcrumb');
+      if (breadcrumb) breadcrumb.textContent = `Settings \u203A ${SETTINGS_CATEGORIES[cat] || cat}`;
     });
   });
 

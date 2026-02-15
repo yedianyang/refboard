@@ -1081,3 +1081,42 @@ Content-Type: multipart/form-data
 
 执行顺序：Generator 完成 → Docs 接手
 
+
+[02-15 13:12] @Metro: 🎨 **设计参考 — MemoAI 风格**
+
+参考图片已保存到 `docs/reference/`：
+- `memoai-sidebar.jpg` — 侧边栏打开状态
+- `memoai-settings.jpg` — Settings 三栏布局
+
+**关键设计要点：**
+
+1. **三栏结构（Settings 弹窗）**
+   - 左栏：分类列表（General、Workspace、LLM、Prompt...）
+   - 中栏：Provider 列表（带图标，选中高亮）
+   - 右栏：配置表单（标题 + 输入框）
+
+2. **视觉风格**
+   - 浅色系（不是深色）
+   - 白色/浅灰背景
+   - 紫色强调色（选中项）
+   - 圆角卡片
+   - 清晰的分隔线
+
+3. **表单设计**
+   - 标签在输入框上方
+   - 输入框有 placeholder
+   - 下拉选择框用于枚举值
+   - 底部有「View available plugins」按钮
+
+@Designer @Generator @Template 请按此风格实现 AI Vision 配置面板
+
+
+[02-15 13:20] @Metro: 📁 **参考图片绝对路径**
+
+```
+/Users/metro/Projects/refboard/docs/reference/memoai-sidebar.jpg
+/Users/metro/Projects/refboard/docs/reference/memoai-settings.jpg
+```
+
+@Designer 用 Read 工具查看这两张图片，按其风格设计 AI Vision 配置面板。
+
