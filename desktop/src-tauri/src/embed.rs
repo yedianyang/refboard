@@ -35,6 +35,10 @@ pub fn embed_image_files(paths: &[String]) -> Result<Vec<Vec<f32>>, String> {
 }
 
 /// Embed images that don't already have embeddings and store them in the project DB.
+///
+/// Note: This function is called from the storage layer which already sets up
+/// the FASTEMBED_CACHE_PATH env var at startup. If the models_folder config changes
+/// after app launch, the user must restart the app for it to take effect here.
 pub fn embed_and_store(project_path: &str, image_paths: &[String]) -> Result<usize, String> {
     let conn = crate::search::open_db(project_path)?;
 
@@ -73,8 +77,20 @@ pub fn embed_and_store(project_path: &str, image_paths: &[String]) -> Result<usi
 
 /// Warm up the CLIP model (download + initialize ONNX runtime).
 /// Call this on app startup to avoid lag on first embed.
+///
+/// Re-reads the app config to ensure the models_folder is up-to-date.
 #[tauri::command]
-pub fn cmd_warmup_clip() -> Result<(), String> {
+pub async fn cmd_warmup_clip(
+    storage: tauri::State<'_, crate::storage::Storage>,
+) -> Result<(), String> {
+    // Re-read config to pick up any models_folder changes made via UI
+    if let Ok(config) = storage.read_app_config().await {
+        if let Some(ref folder) = config.models_folder {
+            std::env::set_var("FASTEMBED_CACHE_PATH", folder);
+            crate::log::log("CLIP", &format!("Using models folder: {folder}"));
+        }
+    }
+
     crate::log::log("CLIP", "Warmup: initializing model...");
     match get_or_init_model() {
         Ok(_guard) => {

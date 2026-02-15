@@ -1,7 +1,7 @@
 ---
 name: docs
 description: Documentation writer. Maintains README, CHANGELOG, user guide, API docs, and team docs.
-model: haiku
+model: claude-sonnet-4-5
 permissionMode: acceptEdits
 tools:
   - Read

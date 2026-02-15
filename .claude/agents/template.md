@@ -1,7 +1,7 @@
 ---
 name: template
 description: Frontend developer for RefBoard desktop app (PixiJS canvas, panels, search UI) and CLI templates.
-model: sonnet
+model: claude-sonnet-4-5
 permissionMode: acceptEdits
 ---
 

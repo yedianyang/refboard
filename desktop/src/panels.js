@@ -445,11 +445,13 @@ export function closeSettings() {
 
 
 async function loadSettingsFromBackend() {
-  // Load app config (includes projects_folder)
+  // Load app config (includes projects_folder and models_folder)
   try {
     const appConfig = await invoke('get_app_config');
     const folderInput = document.getElementById('settings-projects-folder');
     if (folderInput) folderInput.value = appConfig.projectsFolder || '';
+    const modelsInput = document.getElementById('settings-models-folder');
+    if (modelsInput) modelsInput.value = appConfig.modelsFolder || '';
   } catch {}
 
   try {
@@ -591,6 +593,20 @@ function setupSettingsEvents() {
       console.warn('Browse folder failed:', err);
     }
   });
+
+  // Browse folder button for models folder
+  document.getElementById('settings-browse-models-btn')?.addEventListener('click', async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({ directory: true, multiple: false, title: 'Choose Models Folder' });
+      if (selected) {
+        const modelsInput = document.getElementById('settings-models-folder');
+        if (modelsInput) modelsInput.value = selected;
+      }
+    } catch (err) {
+      console.warn('Browse models folder failed:', err);
+    }
+  });
 }
 
 async function saveSettings() {
@@ -611,14 +627,17 @@ async function saveSettings() {
   try {
     await invoke('set_ai_config', { config });
 
-    // Save projects folder via app config
+    // Save projects folder and models folder via app config
     const folderInput = document.getElementById('settings-projects-folder');
+    const modelsInput = document.getElementById('settings-models-folder');
+    const appConfig = await invoke('get_app_config');
     if (folderInput) {
-      const folder = folderInput.value.trim() || null;
-      const appConfig = await invoke('get_app_config');
-      appConfig.projectsFolder = folder;
-      await invoke('set_app_config', { config: appConfig });
+      appConfig.projectsFolder = folderInput.value.trim() || null;
     }
+    if (modelsInput) {
+      appConfig.modelsFolder = modelsInput.value.trim() || null;
+    }
+    await invoke('set_app_config', { config: appConfig });
 
     // Save Brave API key
     const braveKey = document.getElementById('settings-brave-key')?.value.trim();

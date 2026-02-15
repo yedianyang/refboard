@@ -403,6 +403,16 @@ pub fn run() {
     // Initialize the unified storage backend
     let store: storage::Storage = std::sync::Arc::new(storage::LocalStorage::new());
 
+    // Set custom models folder if configured
+    let startup_storage = store.clone();
+    tauri::async_runtime::block_on(async {
+        if let Ok(config) = startup_storage.read_app_config().await {
+            if let Some(ref folder) = config.models_folder {
+                std::env::set_var("FASTEMBED_CACHE_PATH", folder);
+            }
+        }
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())

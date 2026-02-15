@@ -24,6 +24,9 @@ pub struct AppConfig {
     /// Default folder to scan for projects on startup (e.g. ~/Documents/RefBoard).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projects_folder: Option<String>,
+    /// Storage path for local AI models (CLIP, ONNX). Default: system cache.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub models_folder: Option<String>,
 }
 
 /// Recent project entry for the home screen.

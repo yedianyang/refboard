@@ -735,17 +735,17 @@ async function initHomeScreen(homeScreen, loading) {
     });
   }
 
-  // Search filter for recent projects
-  const homeSearchInput = document.getElementById('home-search-input');
-  if (homeSearchInput) {
-    homeSearchInput.addEventListener('input', () => {
-      const query = homeSearchInput.value.toLowerCase().trim();
-      gridEl.querySelectorAll('.home-project-card').forEach((card) => {
-        const name = card.querySelector('.home-project-name')?.textContent.toLowerCase() || '';
-        card.style.display = name.includes(query) ? '' : 'none';
-      });
-    });
-  }
+  // Search filter for recent projects (removed)
+  // const homeSearchInput = document.getElementById('home-search-input');
+  // if (homeSearchInput) {
+  //   homeSearchInput.addEventListener('input', () => {
+  //     const query = homeSearchInput.value.toLowerCase().trim();
+  //     gridEl.querySelectorAll('.home-project-card').forEach((card) => {
+  //       const name = card.querySelector('.home-project-name')?.textContent.toLowerCase() || '';
+  //       card.style.display = name.includes(query) ? '' : 'none';
+  //     });
+  //   });
+  // }
 
   // Right-click context menu for project cards
   const ctxMenu = document.getElementById('context-menu');

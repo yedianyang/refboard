@@ -99,7 +99,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      height: 42px;
+      height: 38px;
       padding: 0 12px 0 80px; /* 80px left for macOS traffic lights */
       background: var(--surface);
       backdrop-filter: blur(20px);
@@ -193,6 +193,9 @@
     #main.home-view > #canvas-container,
     #main.home-view > #tag-sidebar,
     #main.home-view > #right-panel {
+      display: none;
+    }
+    #main.home-view ~ #statusbar {
       display: none;
     }
 
@@ -438,7 +441,7 @@
       display: flex;
       align-items: center;
       gap: 0;
-      border: 1px solid var(--border);
+      border: none;
       border-radius: 5px;
       overflow: hidden;
     }
@@ -466,8 +469,6 @@
       height: 20px;
       text-align: center;
       border: none;
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
       background: transparent;
       cursor: pointer;
       padding: 0 4px;
@@ -2043,10 +2044,6 @@
             <div class="home-section-header">
               <span class="home-section-title">Recent Projects</span>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <div class="home-search-wrapper">
-                  <span class="home-search-icon">&#128269;</span>
-                  <input type="text" class="home-search-input" id="home-search-input" placeholder="Filter projects..." />
-                </div>
                 <div class="home-view-toggle">
                   <button class="home-view-btn active" id="home-grid-btn" title="Grid view">&#9638;</button>
                   <button class="home-view-btn" id="home-list-btn" title="List view">&#9776;</button>
@@ -2369,6 +2366,14 @@
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input id="settings-projects-folder" type="text" class="settings-input" placeholder="~/Documents/RefBoard" style="flex: 1;" />
                 <button id="settings-browse-folder-btn" class="btn-secondary" style="flex: none; white-space: nowrap;">Browse</button>
+              </div>
+            </div>
+            <div class="settings-group">
+              <label class="settings-label">Models Folder</label>
+              <div class="settings-desc">Storage path for local AI models (CLIP, ONNX). Default: system cache.</div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input id="settings-models-folder" type="text" class="settings-input" placeholder="~/.cache/huggingface" style="flex: 1;" />
+                <button id="settings-browse-models-btn" class="btn-secondary" style="flex: none; white-space: nowrap;">Browse</button>
               </div>
             </div>
           </div>
