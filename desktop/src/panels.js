@@ -850,3 +850,131 @@ async function testConnection() {
     statusEl.className = 'settings-status error';
   }
 }
+
+// ============================================================
+// Generate Image Dialog
+// ============================================================
+
+/**
+ * Open the generate image dialog with optional reference images.
+ * @param {object[]} selectedCards - Currently selected canvas cards
+ */
+export function openGenerateDialog(selectedCards = []) {
+  const overlay = document.getElementById('generate-overlay');
+  const refsContainer = document.getElementById('generate-refs');
+  const promptInput = document.getElementById('generate-prompt');
+  if (!overlay) return;
+
+  // Populate reference image thumbnails
+  refsContainer.innerHTML = '';
+  selectedCards.filter(c => !c.isText && !c.isShape).forEach(card => {
+    const img = document.createElement('img');
+    img.src = convertFileSrc(card.data.path);
+    img.className = 'generate-ref-thumb';
+    img.title = card.data.name;
+    refsContainer.appendChild(img);
+  });
+
+  // Pre-fill prompt placeholder with reference image descriptions
+  const context = selectedCards
+    .filter(c => c.data.description)
+    .map(c => c.data.description)
+    .join('; ');
+  if (context) {
+    promptInput.placeholder = `Inspired by: ${context.slice(0, 100)}...`;
+  } else {
+    promptInput.placeholder = 'Describe the image you want to generate...';
+  }
+
+  overlay.style.display = 'flex';
+  promptInput.focus();
+
+  // Store reference paths for submit
+  overlay.dataset.refPaths = JSON.stringify(
+    selectedCards.filter(c => !c.isText && !c.isShape).map(c => c.data.path)
+  );
+}
+
+/** Close the generate image dialog and clear input. */
+export function closeGenerateDialog() {
+  const overlay = document.getElementById('generate-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'none';
+  document.getElementById('generate-prompt').value = '';
+}
+
+/**
+ * Start image generation: close dialog, create placeholders, invoke backend.
+ * @param {object} callbacks
+ * @param {function} callbacks.onCreatePlaceholder - ({width, height, index, prompt}) => placeholder
+ * @param {function} callbacks.onFillPlaceholder - (placeholder, result) => void
+ * @param {function} callbacks.onFail - (placeholder, error, retryFn) => void
+ * @param {string} callbacks.projectPath - Current project path
+ */
+export async function startGenerate({ onCreatePlaceholder, onFillPlaceholder, onFail, projectPath }) {
+  const overlay = document.getElementById('generate-overlay');
+  const prompt = document.getElementById('generate-prompt').value.trim();
+  if (!prompt) return;
+
+  const model = document.getElementById('generate-model').value;
+  const size = document.getElementById('generate-size').value;
+  const count = parseInt(document.getElementById('generate-count').value);
+  const referencePaths = JSON.parse(overlay.dataset.refPaths || '[]');
+
+  // Close dialog immediately
+  closeGenerateDialog();
+
+  // Create placeholders on canvas
+  const [w, h] = size.split('x').map(Number);
+  const placeholders = [];
+  for (let i = 0; i < count; i++) {
+    const placeholder = onCreatePlaceholder({ width: w, height: h, index: i, prompt });
+    placeholders.push(placeholder);
+  }
+
+  // Call backend
+  try {
+    const results = await invoke('cmd_generate_image', {
+      prompt,
+      referencePaths,
+      projectPath,
+      model,
+      size,
+      count,
+    });
+
+    // Fill placeholders with real images
+    results.forEach((result, i) => {
+      if (placeholders[i]) {
+        onFillPlaceholder(placeholders[i], result);
+      }
+    });
+  } catch (err) {
+    // Show error + retry on all placeholders
+    placeholders.forEach(p => {
+      onFail(p, err.toString(), () => {
+        startGenerate({ onCreatePlaceholder, onFillPlaceholder, onFail, projectPath });
+      });
+    });
+  }
+}
+
+/** Initialize generate dialog event listeners. Call once at startup. */
+export function initGenerateDialog() {
+  const overlay = document.getElementById('generate-overlay');
+  if (!overlay) return;
+
+  // Close button
+  overlay.querySelector('.generate-close')?.addEventListener('click', closeGenerateDialog);
+  overlay.querySelector('.generate-cancel')?.addEventListener('click', closeGenerateDialog);
+
+  // ESC to close
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeGenerateDialog();
+  });
+
+  // Click overlay background to close
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeGenerateDialog();
+  });
+}
