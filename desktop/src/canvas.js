@@ -1717,6 +1717,56 @@ function sendBackward() {
 }
 
 // ============================================================
+// Alignment & Distribution
+// ============================================================
+
+function alignSelected(direction) {
+  const cards = Array.from(selection);
+  if (cards.length < 2) return;
+  const bounds = getCardsBounds(cards);
+
+  for (const card of cards) {
+    switch (direction) {
+      case 'left':   card.container.x = bounds.minX; break;
+      case 'center': card.container.x = bounds.minX + (bounds.maxX - bounds.minX) / 2 - card.cardWidth / 2; break;
+      case 'right':  card.container.x = bounds.maxX - card.cardWidth; break;
+      case 'top':    card.container.y = bounds.minY; break;
+      case 'middle': card.container.y = bounds.minY + (bounds.maxY - bounds.minY) / 2 - card.cardHeight / 2; break;
+      case 'bottom': card.container.y = bounds.maxY - card.cardHeight; break;
+    }
+    card.data.x = card.container.x;
+    card.data.y = card.container.y;
+  }
+  markDirty();
+}
+
+function distributeSelected(axis) {
+  const cards = Array.from(selection);
+  if (cards.length < 3) return;
+
+  if (axis === 'h') {
+    cards.sort((a, b) => a.container.x - b.container.x);
+    const first = cards[0].container.x;
+    const last = cards[cards.length - 1].container.x;
+    const step = (last - first) / (cards.length - 1);
+    cards.forEach((card, i) => {
+      card.container.x = first + step * i;
+      card.data.x = card.container.x;
+    });
+  } else {
+    cards.sort((a, b) => a.container.y - b.container.y);
+    const first = cards[0].container.y;
+    const last = cards[cards.length - 1].container.y;
+    const step = (last - first) / (cards.length - 1);
+    cards.forEach((card, i) => {
+      card.container.y = first + step * i;
+      card.data.y = card.container.y;
+    });
+  }
+  markDirty();
+}
+
+// ============================================================
 // Groups
 // ============================================================
 
@@ -2258,7 +2308,7 @@ function findCardAt(worldX, worldY) {
   return null;
 }
 
-function handleContextAction(action) {
+export function handleContextAction(action) {
   switch (action) {
     case 'copy': copySelected(); break;
     case 'paste': pasteFromClipboard(); break;
@@ -2267,12 +2317,22 @@ function handleContextAction(action) {
     case 'bring-front': bringForward(); break;
     case 'send-back': sendBackward(); break;
     case 'group': groupSelected(); break;
+    case 'ungroup': ungroupSelected(); break;
     case 'fit-all': fitAll(); break;
     case 'zoom-100': zoomTo100(); break;
     case 'toggle-grid': toggleGrid(); break;
     case 'toggle-minimap': toggleMinimap(); break;
     case 'tidy-up': tidyUp(); break;
     case 'toggle-lock': toggleLockSelected(); break;
+    // Alignment actions (from floating toolbar)
+    case 'align-left': alignSelected('left'); break;
+    case 'align-center': alignSelected('center'); break;
+    case 'align-right': alignSelected('right'); break;
+    case 'align-top': alignSelected('top'); break;
+    case 'align-middle': alignSelected('middle'); break;
+    case 'align-bottom': alignSelected('bottom'); break;
+    case 'distribute-h': distributeSelected('h'); break;
+    case 'distribute-v': distributeSelected('v'); break;
     case 'export-png':
       window.dispatchEvent(new CustomEvent('refboard:export-png'));
       break;
@@ -2859,6 +2919,20 @@ export function getViewport() { return viewport; }
 export function getCardCount() { return allCards.length; }
 export function getApp() { return app; }
 export { tidyUp as autoLayout };
+
+/** Get the screen-space bounding box of the current selection (for toolbar positioning). */
+export function getSelectionScreenBounds() {
+  if (selection.size === 0) return null;
+  const cards = Array.from(selection);
+  const bounds = getCardsBounds(cards);
+  // Convert world bounds to screen (relative to canvas container)
+  return {
+    left:   bounds.minX * viewport.scale + viewport.x,
+    top:    bounds.minY * viewport.scale + viewport.y,
+    right:  bounds.maxX * viewport.scale + viewport.x,
+    bottom: bounds.maxY * viewport.scale + viewport.y,
+  };
+}
 
 // ============================================================
 // Board State: Save / Load (Auto-save support)

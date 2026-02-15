@@ -415,7 +415,7 @@ pub fn store_embedding(
 }
 
 /// Retrieve a stored embedding vector.
-fn get_embedding(conn: &Connection, image_path: &str) -> Result<Option<Vec<f32>>, String> {
+pub fn get_embedding(conn: &Connection, image_path: &str) -> Result<Option<Vec<f32>>, String> {
     let mut stmt = conn
         .prepare("SELECT vector, dimensions FROM embeddings WHERE path = ?1")
         .map_err(|e| format!("Embedding query failed: {e}"))?;
@@ -442,6 +442,35 @@ fn get_embedding(conn: &Connection, image_path: &str) -> Result<Option<Vec<f32>>
         }
         None => Ok(None),
     }
+}
+
+/// Retrieve all stored embeddings for a project.
+/// Returns a vec of (image_path, embedding_vector) pairs.
+pub fn get_all_embeddings(project_path: &str) -> Result<Vec<(String, Vec<f32>)>, String> {
+    let conn = open_db(project_path)?;
+    let mut stmt = conn
+        .prepare("SELECT path, vector, dimensions FROM embeddings")
+        .map_err(|e| format!("Embedding query failed: {e}"))?;
+
+    let results: Vec<(String, Vec<f32>)> = stmt
+        .query_map([], |row| {
+            let path: String = row.get(0)?;
+            let bytes: Vec<u8> = row.get(1)?;
+            let _dims: i64 = row.get(2)?;
+            Ok((path, bytes))
+        })
+        .map_err(|e| format!("Embedding fetch failed: {e}"))?
+        .filter_map(|r| r.ok())
+        .map(|(path, bytes)| {
+            let floats: Vec<f32> = bytes
+                .chunks_exact(4)
+                .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect();
+            (path, floats)
+        })
+        .collect();
+
+    Ok(results)
 }
 
 /// Find similar images using cosine similarity on stored embeddings.

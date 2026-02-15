@@ -20,17 +20,15 @@ let onFindOnlineCallback = null; // Called when user clicks "Find Online"
 let _getAllCards = null; // Injected from main.js
 let batchCancelled = false; // Batch analysis cancel flag
 
-// Provider default models
-const PROVIDER_MODELS = {
-  anthropic: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'],
-  openai: ['gpt-4o', 'gpt-4o-mini'],
-  ollama: ['llava', 'llava:13b', 'llava:34b', 'bakllava'],
-};
-
-const PROVIDER_LABELS = {
-  anthropic: 'Claude (Anthropic)',
-  openai: 'GPT-4o (OpenAI)',
-  ollama: 'Ollama (Local)',
+// Provider presets — frontend dropdown value → backend provider + defaults
+const PROVIDER_PRESETS = {
+  openai:     { backend: 'openai',    baseUrl: 'https://api.openai.com/v1',                          model: 'gpt-4o-mini',                    label: 'OpenAI',            needsKey: true  },
+  openrouter: { backend: 'openai',    baseUrl: 'https://openrouter.ai/api/v1',                       model: 'google/gemini-2.0-flash',         label: 'OpenRouter',        needsKey: true  },
+  anthropic:  { backend: 'anthropic', baseUrl: 'https://api.anthropic.com',                          model: 'claude-3-5-haiku-latest',         label: 'Claude (Anthropic)', needsKey: true  },
+  ollama:     { backend: 'ollama',    baseUrl: 'http://localhost:11434/v1',                           model: 'llava:13b',                       label: 'Ollama (Local)',    needsKey: false },
+  google:     { backend: 'openai',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',   model: 'gemini-2.0-flash',                label: 'Google AI',         needsKey: true  },
+  moonshot:   { backend: 'openai',    baseUrl: 'https://api.moonshot.cn/v1',                         model: 'moonshot-v1-8k-vision-preview',   label: 'Moonshot',          needsKey: true  },
+  deepseek:   { backend: 'openai',    baseUrl: 'https://api.deepseek.com/v1',                        model: 'deepseek-chat',                   label: 'DeepSeek',          needsKey: true  },
 };
 
 // ============================================================
@@ -593,42 +591,53 @@ async function loadSettingsFromBackend() {
   loadCompressionSettings();
 }
 
+/** Detect the frontend provider key from a backend config (reverse-map by endpoint). */
+function detectFrontendProvider(config) {
+  const p = config.provider || 'openai';
+  if (p === 'anthropic') return 'anthropic';
+  if (p === 'ollama') return 'ollama';
+  // For openai backend, match by endpoint URL
+  const ep = (config.endpoint || '').toLowerCase();
+  if (ep.includes('openrouter.ai')) return 'openrouter';
+  if (ep.includes('generativelanguage.googleapis.com')) return 'google';
+  if (ep.includes('moonshot.cn')) return 'moonshot';
+  if (ep.includes('deepseek.com')) return 'deepseek';
+  return 'openai';
+}
+
 function populateSettings(config) {
+  const frontendProvider = detectFrontendProvider(config);
   const providerSelect = document.getElementById('settings-provider');
-  providerSelect.value = config.provider || 'anthropic';
+  providerSelect.value = frontendProvider;
 
   document.getElementById('settings-api-key').value = config.apiKey || '';
   document.getElementById('settings-endpoint').value = config.endpoint || '';
+  document.getElementById('settings-model').value = config.model || '';
 
-  updateModelOptions(config.provider || 'anthropic', config.model);
-  updateProviderFields(config.provider || 'anthropic');
+  updateProviderFields(frontendProvider, /* preserveValues */ true);
 }
 
-function updateModelOptions(provider, selectedModel) {
-  const modelSelect = document.getElementById('settings-model');
-  modelSelect.innerHTML = '';
-
-  const models = PROVIDER_MODELS[provider] || [];
-  models.forEach((m) => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m;
-    if (m === selectedModel) opt.selected = true;
-    modelSelect.appendChild(opt);
-  });
-}
-
-function updateProviderFields(provider) {
+/** Update UI fields visibility and placeholders for the selected frontend provider.
+ *  If preserveValues is false (default), auto-fill base URL and model with preset defaults. */
+function updateProviderFields(frontendProvider, preserveValues = false) {
+  const preset = PROVIDER_PRESETS[frontendProvider] || PROVIDER_PRESETS.openai;
   const apiKeyGroup = document.getElementById('settings-api-key-group');
   const endpointGroup = document.getElementById('settings-endpoint-group');
+  const endpointInput = document.getElementById('settings-endpoint');
+  const modelInput = document.getElementById('settings-model');
 
-  if (provider === 'ollama') {
-    apiKeyGroup.style.display = 'none';
-    endpointGroup.style.display = 'flex';
-    document.getElementById('settings-endpoint').placeholder = 'http://localhost:11434';
-  } else {
-    apiKeyGroup.style.display = 'flex';
-    endpointGroup.style.display = 'none';
+  // Show/hide API key based on provider
+  apiKeyGroup.style.display = preset.needsKey ? 'flex' : 'none';
+  endpointGroup.style.display = 'flex'; // Always show base URL
+
+  // Update placeholders
+  endpointInput.placeholder = preset.baseUrl;
+  modelInput.placeholder = preset.model;
+
+  // Auto-fill defaults when switching providers (not on initial load)
+  if (!preserveValues) {
+    endpointInput.value = preset.baseUrl;
+    modelInput.value = preset.model;
   }
 }
 
@@ -640,11 +649,24 @@ const SETTINGS_CATEGORIES = {
 };
 
 function setupSettingsEvents() {
-  // Provider change
+  // Provider change — auto-fill defaults
   document.getElementById('settings-provider')?.addEventListener('change', (e) => {
-    const provider = e.target.value;
-    updateModelOptions(provider, null);
-    updateProviderFields(provider);
+    updateProviderFields(e.target.value, /* preserveValues */ false);
+  });
+
+  // API key visibility toggle
+  document.getElementById('settings-key-toggle')?.addEventListener('click', () => {
+    const input = document.getElementById('settings-api-key');
+    const eye = document.getElementById('settings-key-eye');
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    // Swap eye icon: open eye (visible) vs crossed-out eye (hidden)
+    if (eye) {
+      eye.innerHTML = isHidden
+        ? '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>'
+        : '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>';
+    }
   });
 
   // Save button
@@ -726,16 +748,17 @@ function setupSettingsEvents() {
 }
 
 async function saveSettings() {
-  const provider = document.getElementById('settings-provider').value;
+  const frontendProvider = document.getElementById('settings-provider').value;
   const apiKey = document.getElementById('settings-api-key').value.trim();
   const endpoint = document.getElementById('settings-endpoint').value.trim();
-  const model = document.getElementById('settings-model').value;
+  const model = document.getElementById('settings-model').value.trim();
+  const preset = PROVIDER_PRESETS[frontendProvider] || PROVIDER_PRESETS.openai;
 
   const config = {
-    provider,
+    provider: preset.backend,
     apiKey: apiKey || null,
-    endpoint: endpoint || defaultEndpoint(provider),
-    model: model || null,
+    endpoint: endpoint || preset.baseUrl,
+    model: model || preset.model,
   };
 
   const statusEl = document.getElementById('settings-status');
@@ -773,11 +796,7 @@ async function saveSettings() {
   }
 }
 
-function defaultEndpoint(provider) {
-  if (provider === 'anthropic') return 'https://api.anthropic.com/v1';
-  if (provider === 'openai') return 'https://api.openai.com/v1';
-  return 'http://localhost:11434';
-}
+// defaultEndpoint removed — use PROVIDER_PRESETS[provider].baseUrl instead
 
 function loadCompressionSettings() {
   const toggle = document.getElementById('settings-compress-toggle');
@@ -819,35 +838,35 @@ function saveCompressionSettings() {
 }
 
 async function testConnection() {
-  const provider = document.getElementById('settings-provider').value;
+  const frontendProvider = document.getElementById('settings-provider').value;
+  const preset = PROVIDER_PRESETS[frontendProvider] || PROVIDER_PRESETS.openai;
   const statusEl = document.getElementById('settings-status');
-  statusEl.textContent = 'Testing...';
+  const testBtn = document.getElementById('settings-test-btn');
+  statusEl.textContent = 'Testing connection...';
   statusEl.className = 'settings-status';
+  if (testBtn) testBtn.disabled = true;
+
+  const apiKey = document.getElementById('settings-api-key').value.trim();
+  const endpoint = document.getElementById('settings-endpoint').value.trim();
+  const model = document.getElementById('settings-model').value.trim();
+
+  // Build a provider config matching the backend struct
+  const providerConfig = {
+    provider: preset.backend,
+    apiKey: apiKey || null,
+    endpoint: endpoint || preset.baseUrl,
+    model: model || preset.model,
+  };
 
   try {
-    if (provider === 'ollama') {
-      const ok = await invoke('check_ollama');
-      if (ok) {
-        statusEl.textContent = 'Ollama is running.';
-        statusEl.className = 'settings-status success';
-      } else {
-        statusEl.textContent = 'Ollama not reachable at localhost:11434.';
-        statusEl.className = 'settings-status error';
-      }
-    } else {
-      // For cloud providers, just verify the API key is set
-      const apiKey = document.getElementById('settings-api-key').value.trim();
-      if (apiKey) {
-        statusEl.textContent = `API key set for ${PROVIDER_LABELS[provider]}.`;
-        statusEl.className = 'settings-status success';
-      } else {
-        statusEl.textContent = 'No API key provided.';
-        statusEl.className = 'settings-status error';
-      }
-    }
+    const reply = await invoke('cmd_test_ai_vision', { providerConfig });
+    statusEl.textContent = `Connected — ${reply}`;
+    statusEl.className = 'settings-status success';
   } catch (err) {
-    statusEl.textContent = `Error: ${err}`;
+    statusEl.textContent = `${err}`;
     statusEl.className = 'settings-status error';
+  } finally {
+    if (testBtn) testBtn.disabled = false;
   }
 }
 

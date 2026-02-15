@@ -61,10 +61,10 @@
 | ✅ | **AI 分析填充元数据** | 批量分析 + 进度条 + 自动填充 description/tags/style/colors/mood (804dd09) |
 | ✅ | **AI 图片生成** | Cmd+G Generate 对话框 + DALL-E 3 后端 + 参考图上下文 (804dd09) |
 | ⬜ | **图形框缩放优化** | 框图放大缩小时只改变外框尺寸，内部图像保持原始大小 |
-| ⬜ | **选中弹出工具栏** | 选中图片/图标/文字后弹出小工具栏（参考 Figma），支持常用操作 |
-| ⬜ | **顶部导航栏重构** | Home 按钮移到左上角 + Sidebar 开关按钮，不放在 sidebar 内 |
+| ✅ | **选中弹出工具栏** | 浮动工具栏 (Lock/Align/Copy/Delete/More) + 对齐子菜单 + Lucide Icons |
+| ✅ | **顶部导航栏重构** | Home 按钮左上角 + Sidebar toggle (Cmd+\\) + 折叠动画 + localStorage |
 | ⬜ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互（@Docs 调研） |
-| ⬜ | **CLIP API 扩展** | /api/embed, /api/similar, /api/search-semantic, /api/cluster |
+| ✅ | **CLIP API 扩展** | /api/embed, /api/embed-batch, /api/similar, /api/search-semantic, /api/cluster |
 | 🔄 | **AI Vision 模型扩展** | 调研更多支持图片分析的模型，加入 Settings 页面 (@Researcher) |
 
 ### P1 短期
@@ -76,7 +76,7 @@
 | ✅ | macOS 设计适配 | SF Pro 字体、vibrancy 磨砂玻璃、紧凑间距 |
 | ✅ | HTTP API 完整套件 | `/api/import` + `/api/delete` + `/api/move` + `/api/item` |
 | ✅ | 统一项目存储 | StorageProvider trait + 默认项目文件夹 + auto-scan |
-| 🔄 | **AI Vision 配置面板** | Settings > AI Vision，配置图片分析的 AI Provider |
+| ✅ | **AI Vision 配置面板** | Settings > AI Vision，7 Provider 预设 + 真实连接测试 + Save/Load |
 | 🔄 | **导入后自动 index + embed** | 所有导入路径后端一条龙完成 SQLite indexing + CLIP embedding |
 | ⬜ | **图标矢量化** | 所有 emoji/HTML 实体替换为 Lucide Icons 开源矢量图标 (SVG) |
 | ⬜ | 截图/GIF | README 视觉演示素材 |

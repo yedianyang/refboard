@@ -9,6 +9,11 @@
 //! - `DELETE /api/delete` - Delete an image from the project
 //! - `POST /api/move` - Move an item's position on the board
 //! - `PATCH /api/item` - Update item metadata (tags, description, etc.)
+//! - `POST /api/embed` - Generate CLIP embedding for a single image
+//! - `POST /api/embed-batch` - Batch-generate CLIP embeddings
+//! - `POST /api/similar` - Find visually similar images (top-N)
+//! - `POST /api/search-semantic` - Text-to-image semantic search (FTS5)
+//! - `POST /api/cluster` - Auto-cluster images by visual similarity
 
 use axum::{
     extract::{Multipart, State},
@@ -559,6 +564,359 @@ fn api_error(status: StatusCode, message: String) -> (StatusCode, Json<ErrorResp
 }
 
 // ---------------------------------------------------------------------------
+// CLIP API — Embedding & Similarity Endpoints
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbedRequest {
+    project_path: String,
+    image_path: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbedResponse {
+    image_path: String,
+    dimensions: usize,
+    embedding: Vec<f32>,
+}
+
+/// Generate (or retrieve cached) CLIP embedding for a single image.
+async fn handle_embed(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<EmbedRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let image_path = payload.image_path;
+
+    crate::log::log("API", &format!("POST /api/embed → {image_path}"));
+
+    // Ensure image is indexed
+    let img_path = image_path.clone();
+    let proj = project_path.clone();
+    let has = state.storage.has_embedding(&proj, &img_path).await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    if !has {
+        // Generate embedding via CLIP
+        let proj2 = project_path.clone();
+        let img2 = image_path.clone();
+        tokio::task::spawn_blocking(move || {
+            crate::embed::embed_and_store(&proj2, &[img2])
+        })
+        .await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Task join: {e}")))?
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    }
+
+    // Retrieve the embedding
+    let proj3 = project_path.clone();
+    let img3 = image_path.clone();
+    let embedding = tokio::task::spawn_blocking(move || {
+        let conn = crate::search::open_db(&proj3)?;
+        crate::search::get_embedding(&conn, &img3)
+    })
+    .await
+    .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Task join: {e}")))?
+    .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?
+    .ok_or_else(|| api_error(StatusCode::INTERNAL_SERVER_ERROR, "Embedding not found after generation".to_string()))?;
+
+    let response = EmbedResponse {
+        image_path,
+        dimensions: embedding.len(),
+        embedding,
+    };
+
+    crate::log::log("API", &format!("Embed complete: {} dims", response.dimensions));
+    Ok(Json(response))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbedBatchRequest {
+    project_path: String,
+    /// Optional list of image paths. If empty/omitted, embeds the entire project.
+    #[serde(default)]
+    image_paths: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbedBatchResponse {
+    embedded: usize,
+    total_images: usize,
+}
+
+/// Batch-generate CLIP embeddings for multiple images (or entire project).
+async fn handle_embed_batch(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<EmbedBatchRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+
+    crate::log::log("API", &format!("POST /api/embed-batch → project: {project_path}"));
+
+    let result = match payload.image_paths {
+        Some(paths) if !paths.is_empty() => {
+            let total = paths.len();
+            let proj = project_path.clone();
+            let embedded = tokio::task::spawn_blocking(move || {
+                crate::embed::embed_and_store(&proj, &paths)
+            })
+            .await
+            .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Task join: {e}")))?
+            .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+            EmbedBatchResponse { embedded, total_images: total }
+        }
+        _ => {
+            // Embed entire project
+            let proj = project_path.clone();
+            let embedded = state.storage.embed_project(&proj).await
+                .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+            let images = crate::scan_images_in(&project_path)
+                .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+            EmbedBatchResponse { embedded, total_images: images.len() }
+        }
+    };
+
+    crate::log::log("API", &format!("Batch embed: {}/{} new", result.embedded, result.total_images));
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SimilarRequest {
+    project_path: String,
+    image_path: String,
+    #[serde(default = "default_limit")]
+    limit: usize,
+}
+
+fn default_limit() -> usize { 10 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SimilarResponse {
+    query: String,
+    results: Vec<SimilarItem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SimilarItem {
+    image_path: String,
+    name: String,
+    score: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    tags: Vec<String>,
+}
+
+/// Find visually similar images using CLIP embeddings (falls back to tag similarity).
+async fn handle_similar(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<SimilarRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let image_path = payload.image_path;
+    let limit = payload.limit;
+
+    crate::log::log("API", &format!("POST /api/similar → {image_path} (top {limit})"));
+
+    let results = state.storage.find_similar(&project_path, &image_path, limit).await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let items: Vec<SimilarItem> = results
+        .into_iter()
+        .map(|r| SimilarItem {
+            image_path: r.image_path,
+            name: r.name,
+            score: r.score,
+            description: r.description,
+            tags: r.tags,
+        })
+        .collect();
+
+    crate::log::log("API", &format!("Similar: {} results", items.len()));
+    Ok(Json(SimilarResponse { query: image_path, results: items }))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SemanticSearchRequest {
+    project_path: String,
+    query: String,
+    #[serde(default = "default_limit")]
+    limit: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SemanticSearchResponse {
+    query: String,
+    results: Vec<SimilarItem>,
+}
+
+/// Text-to-image semantic search.
+///
+/// Uses FTS5 full-text search over image metadata (description, tags, style, mood).
+/// A future version could use CLIP text encoder for true cross-modal search.
+async fn handle_search_semantic(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<SemanticSearchRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let query = payload.query;
+    let limit = payload.limit;
+
+    crate::log::log("API", &format!("POST /api/search-semantic → \"{query}\" (top {limit})"));
+
+    let results = state.storage.search_text(&project_path, &query, limit).await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let items: Vec<SimilarItem> = results
+        .into_iter()
+        .map(|r| SimilarItem {
+            image_path: r.image_path,
+            name: r.name,
+            score: r.score,
+            description: r.description,
+            tags: r.tags,
+        })
+        .collect();
+
+    crate::log::log("API", &format!("Semantic search: {} results", items.len()));
+    Ok(Json(SemanticSearchResponse { query, results: items }))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClusterRequest {
+    project_path: String,
+    /// Cosine similarity threshold for grouping (0.0–1.0). Default 0.7.
+    #[serde(default = "default_threshold")]
+    threshold: f64,
+}
+
+fn default_threshold() -> f64 { 0.7 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClusterResponse {
+    cluster_count: usize,
+    ungrouped: usize,
+    clusters: Vec<Cluster>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Cluster {
+    id: usize,
+    size: usize,
+    images: Vec<String>,
+}
+
+/// Auto-cluster images by visual similarity using CLIP embeddings.
+///
+/// Uses greedy agglomerative clustering: picks the first unassigned image as
+/// a seed, groups all images within the cosine similarity `threshold`, repeats.
+async fn handle_cluster(
+    State(_state): State<Arc<ApiState>>,
+    Json(payload): Json<ClusterRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let threshold = payload.threshold.clamp(0.0, 1.0);
+
+    crate::log::log("API", &format!("POST /api/cluster → threshold: {threshold}"));
+
+    let all_embeddings = tokio::task::spawn_blocking(move || {
+        crate::search::get_all_embeddings(&project_path)
+    })
+    .await
+    .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Task join: {e}")))?
+    .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    if all_embeddings.is_empty() {
+        return Ok(Json(ClusterResponse {
+            cluster_count: 0,
+            ungrouped: 0,
+            clusters: Vec::new(),
+        }));
+    }
+
+    // Greedy clustering
+    let mut assigned = vec![false; all_embeddings.len()];
+    let mut clusters: Vec<Cluster> = Vec::new();
+
+    for i in 0..all_embeddings.len() {
+        if assigned[i] {
+            continue;
+        }
+        assigned[i] = true;
+
+        let mut group = vec![all_embeddings[i].0.clone()];
+        let seed = &all_embeddings[i].1;
+
+        for j in (i + 1)..all_embeddings.len() {
+            if assigned[j] {
+                continue;
+            }
+            let sim = cosine_sim(seed, &all_embeddings[j].1);
+            if sim >= threshold {
+                assigned[j] = true;
+                group.push(all_embeddings[j].0.clone());
+            }
+        }
+
+        clusters.push(Cluster {
+            id: clusters.len(),
+            size: group.len(),
+            images: group,
+        });
+    }
+
+    // Separate singletons as "ungrouped"
+    let ungrouped = clusters.iter().filter(|c| c.size == 1).count();
+    // Only return clusters with 2+ images
+    let multi_clusters: Vec<Cluster> = clusters
+        .into_iter()
+        .filter(|c| c.size >= 2)
+        .enumerate()
+        .map(|(i, mut c)| { c.id = i; c })
+        .collect();
+
+    crate::log::log("API", &format!("Cluster: {} groups, {} ungrouped", multi_clusters.len(), ungrouped));
+    Ok(Json(ClusterResponse {
+        cluster_count: multi_clusters.len(),
+        ungrouped,
+        clusters: multi_clusters,
+    }))
+}
+
+/// Cosine similarity between two f32 vectors.
+fn cosine_sim(a: &[f32], b: &[f32]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    let mut dot = 0.0f64;
+    let mut na = 0.0f64;
+    let mut nb = 0.0f64;
+    for (x, y) in a.iter().zip(b.iter()) {
+        let x = *x as f64;
+        let y = *y as f64;
+        dot += x * y;
+        na += x * x;
+        nb += y * y;
+    }
+    let denom = na.sqrt() * nb.sqrt();
+    if denom == 0.0 { 0.0 } else { dot / denom }
+}
+
+// ---------------------------------------------------------------------------
 // Server Lifecycle
 // ---------------------------------------------------------------------------
 
@@ -574,6 +932,12 @@ pub async fn start_server(app: AppHandle, storage: crate::storage::Storage) {
         .route("/api/delete", delete(handle_delete))
         .route("/api/move", post(handle_move))
         .route("/api/item", patch(handle_update_item))
+        // CLIP embedding & similarity endpoints
+        .route("/api/embed", post(handle_embed))
+        .route("/api/embed-batch", post(handle_embed_batch))
+        .route("/api/similar", post(handle_similar))
+        .route("/api/search-semantic", post(handle_search_semantic))
+        .route("/api/cluster", post(handle_cluster))
         .with_state(state);
 
     let addr = format!("127.0.0.1:{port}");

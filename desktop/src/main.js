@@ -4,7 +4,7 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction } from './canvas.js';
 import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
@@ -360,15 +360,35 @@ async function main() {
     }
   });
 
-  // Sidebar nav: Home button — show home screen, update active state
-  const sidebarHomeBtn = document.getElementById('sidebar-home-btn');
-  if (sidebarHomeBtn) {
-    sidebarHomeBtn.addEventListener('click', () => {
+  // ---- Floating Selection Toolbar ----
+  initFloatingToolbar();
+
+  // Toolbar: Home button — show home screen, update active state
+  const toolbarHomeBtn = document.getElementById('toolbar-home-btn');
+  if (toolbarHomeBtn) {
+    toolbarHomeBtn.addEventListener('click', () => {
       const homeScreen = document.getElementById('home-screen');
       const main = document.getElementById('main');
       if (homeScreen) homeScreen.classList.remove('hidden');
       if (main) main.classList.add('home-view');
       updateSidebarActive('home');
+    });
+  }
+
+  // Toolbar: Sidebar toggle button
+  const sidebarToggleBtn = document.getElementById('toolbar-sidebar-toggle');
+  const appSidebar = document.getElementById('app-sidebar');
+  if (sidebarToggleBtn && appSidebar) {
+    // Restore sidebar state from localStorage
+    const sidebarHidden = localStorage.getItem('refboard-sidebar-hidden') === 'true';
+    if (sidebarHidden) {
+      appSidebar.classList.add('collapsed');
+      sidebarToggleBtn.classList.add('active');
+    }
+    sidebarToggleBtn.addEventListener('click', () => {
+      const isCollapsed = appSidebar.classList.toggle('collapsed');
+      sidebarToggleBtn.classList.toggle('active', isCollapsed);
+      localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
     });
   }
 
@@ -404,6 +424,19 @@ async function main() {
     if (meta && e.key === ',') {
       e.preventDefault();
       openSettings();
+      return;
+    }
+
+    // Cmd+\: toggle sidebar
+    if (meta && e.key === '\\') {
+      e.preventDefault();
+      const sidebar = document.getElementById('app-sidebar');
+      const toggleBtn = document.getElementById('toolbar-sidebar-toggle');
+      if (sidebar) {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        if (toggleBtn) toggleBtn.classList.toggle('active', isCollapsed);
+        localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
+      }
       return;
     }
 
@@ -554,12 +587,11 @@ async function main() {
   initHomeScreen(homeScreen, loading);
 }
 
-/** Update sidebar nav active state based on current view. */
+/** Update active state based on current view. */
 function updateSidebarActive(view) {
-  const homeBtn = document.getElementById('sidebar-home-btn');
+  const toolbarHomeBtn = document.getElementById('toolbar-home-btn');
   const settingsBtn = document.getElementById('sidebar-settings-btn');
-  // Remove active from all nav items
-  if (homeBtn) homeBtn.classList.toggle('active', view === 'home');
+  if (toolbarHomeBtn) toolbarHomeBtn.classList.toggle('current', view === 'home');
   if (settingsBtn) settingsBtn.classList.remove('active');
 }
 
@@ -1095,6 +1127,202 @@ function showGeneratePlaceholderError(placeholder, error, retryFn) {
   setTimeout(() => {
     if (el.parentElement) el.remove();
   }, 15000);
+}
+
+// ============================================================
+// Floating Selection Toolbar
+// ============================================================
+
+function initFloatingToolbar() {
+  const toolbar = document.getElementById('floating-toolbar');
+  const canvasContainer = document.getElementById('canvas-container');
+  if (!toolbar || !canvasContainer) return;
+
+  let isVisible = false;
+  let positionRAF = null;
+  const TOOLBAR_GAP = 10; // Gap between toolbar and selection top edge
+
+  // --- Show / Hide ---
+
+  function showToolbar() {
+    if (isVisible) return;
+    isVisible = true;
+    toolbar.classList.add('visible');
+    updateToolbarPosition();
+  }
+
+  function hideToolbar() {
+    if (!isVisible) return;
+    isVisible = false;
+    toolbar.classList.remove('visible');
+    closeSubmenus();
+  }
+
+  function closeSubmenus() {
+    toolbar.querySelectorAll('.ftb-submenu.open').forEach(m => m.classList.remove('open'));
+    toolbar.querySelectorAll('.ftb-btn.active').forEach(b => b.classList.remove('active'));
+  }
+
+  // --- Position Calculation ---
+
+  function updateToolbarPosition() {
+    if (!isVisible) return;
+    const screenBounds = getSelectionScreenBounds();
+    if (!screenBounds) { hideToolbar(); return; }
+
+    const containerRect = canvasContainer.getBoundingClientRect();
+    const tbRect = toolbar.getBoundingClientRect();
+    const tbWidth = tbRect.width || 200;
+    const tbHeight = tbRect.height || 40;
+
+    // Center horizontally above selection
+    let left = (screenBounds.left + screenBounds.right) / 2 - tbWidth / 2;
+    let top = screenBounds.top - tbHeight - TOOLBAR_GAP;
+
+    // Clamp to container edges
+    left = Math.max(4, Math.min(left, containerRect.width - tbWidth - 4));
+    top = Math.max(4, top);
+
+    // If above doesn't fit (selection near top), place below
+    if (top < 4) {
+      top = screenBounds.bottom + TOOLBAR_GAP;
+    }
+
+    toolbar.style.left = `${Math.round(left)}px`;
+    toolbar.style.top = `${Math.round(top)}px`;
+  }
+
+  function requestPositionUpdate() {
+    if (positionRAF) return;
+    positionRAF = requestAnimationFrame(() => {
+      positionRAF = null;
+      updateToolbarPosition();
+    });
+  }
+
+  // --- Selection Change Detection ---
+  // Poll selection state since canvas.js doesn't fire a custom event for selection changes.
+  // We hook into the existing MutationObserver approach or use a lightweight poller.
+
+  let lastSelectionSize = 0;
+
+  function checkSelection() {
+    const sel = getSelection();
+    const count = sel.size;
+
+    if (count > 0 && count !== lastSelectionSize) {
+      showToolbar();
+      updateLockButtonState();
+    } else if (count === 0 && lastSelectionSize > 0) {
+      hideToolbar();
+    } else if (count > 0) {
+      requestPositionUpdate();
+    }
+    lastSelectionSize = count;
+  }
+
+  // Observe selection changes via requestAnimationFrame loop
+  function selectionWatcher() {
+    checkSelection();
+    requestAnimationFrame(selectionWatcher);
+  }
+  requestAnimationFrame(selectionWatcher);
+
+  // Also update on pan/zoom (viewport changes)
+  canvasContainer.addEventListener('wheel', () => requestPositionUpdate(), { passive: true });
+  canvasContainer.addEventListener('pointermove', () => {
+    if (isVisible) requestPositionUpdate();
+  }, { passive: true });
+
+  // --- Lock Button State ---
+
+  function updateLockButtonState() {
+    const lockBtn = document.getElementById('ftb-lock');
+    if (!lockBtn) return;
+    const sel = getSelection();
+    const allLocked = sel.size > 0 && Array.from(sel).every(c => c.locked);
+    lockBtn.title = allLocked ? 'Unlock' : 'Lock';
+    lockBtn.classList.toggle('active', allLocked);
+    // Swap icon: locked vs unlocked
+    lockBtn.innerHTML = allLocked
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+  }
+
+  // --- Button Handlers ---
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    e.stopPropagation();
+    const action = btn.dataset.action;
+
+    switch (action) {
+      case 'lock':
+        handleContextAction('toggle-lock');
+        updateLockButtonState();
+        break;
+      case 'copy':
+        handleContextAction('duplicate');
+        break;
+      case 'delete':
+        handleContextAction('delete');
+        hideToolbar();
+        break;
+      case 'align':
+        // Toggle alignment submenu
+        toggleSubmenu('ftb-align-submenu', btn);
+        break;
+      case 'more':
+        // Show context menu with more options
+        showMoreMenu(btn);
+        break;
+      case 'fill':
+        // Fill button — could cycle colors or open color picker; for now no-op
+        break;
+      // Alignment submenu actions
+      case 'align-left':
+      case 'align-center':
+      case 'align-right':
+      case 'align-top':
+      case 'align-middle':
+      case 'align-bottom':
+      case 'distribute-h':
+      case 'distribute-v':
+        handleContextAction(action);
+        closeSubmenus();
+        requestPositionUpdate();
+        break;
+    }
+  });
+
+  function toggleSubmenu(submenuId, triggerBtn) {
+    const sub = document.getElementById(submenuId);
+    if (!sub) return;
+    const wasOpen = sub.classList.contains('open');
+    closeSubmenus();
+    if (!wasOpen) {
+      sub.classList.add('open');
+      triggerBtn.classList.add('active');
+    }
+  }
+
+  function showMoreMenu(triggerBtn) {
+    // Dispatch the analyze-batch action for selected images
+    const sel = getSelection();
+    const imageCards = Array.from(sel).filter(c => !c.isText && !c.isShape);
+    if (imageCards.length > 0) {
+      handleContextAction('analyze-batch');
+    }
+    closeSubmenus();
+  }
+
+  // Close submenus when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!toolbar.contains(e.target)) {
+      closeSubmenus();
+    }
+  });
 }
 
 main().catch(console.error);
