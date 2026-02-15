@@ -49,7 +49,7 @@ export function initPanels({ onAccept, onFindSimilar, onFindOnline } = {}) {
 function setupKeyboardShortcuts() {
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (document.getElementById('settings-dialog').classList.contains('open')) {
+      if (document.getElementById('app-sidebar').classList.contains('open')) {
         closeSettings();
       } else if (activePanel) {
         closePanel();
@@ -431,14 +431,27 @@ function listenForAIEvents() {
 // ============================================================
 
 export function openSettings() {
-  const dialog = document.getElementById('settings-dialog');
-  dialog.classList.add('open');
+  const sidebar = document.getElementById('app-sidebar');
+  sidebar.classList.add('open');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (toggleBtn) toggleBtn.classList.add('active');
   loadSettingsFromBackend();
 }
 
 export function closeSettings() {
-  const dialog = document.getElementById('settings-dialog');
-  dialog.classList.remove('open');
+  const sidebar = document.getElementById('app-sidebar');
+  sidebar.classList.remove('open');
+  const toggleBtn = document.getElementById('sidebar-toggle-btn');
+  if (toggleBtn) toggleBtn.classList.remove('active');
+}
+
+export function toggleSettings() {
+  const sidebar = document.getElementById('app-sidebar');
+  if (sidebar.classList.contains('open')) {
+    closeSettings();
+  } else {
+    openSettings();
+  }
 }
 
 async function loadSettingsFromBackend() {
@@ -517,8 +530,8 @@ function setupSettingsEvents() {
     await saveSettings();
   });
 
-  // Cancel button
-  document.getElementById('settings-cancel-btn')?.addEventListener('click', () => {
+  // Sidebar close button
+  document.getElementById('app-sidebar-close-btn')?.addEventListener('click', () => {
     closeSettings();
   });
 
@@ -527,11 +540,12 @@ function setupSettingsEvents() {
     await testConnection();
   });
 
-  // Backdrop click closes dialog
-  document.getElementById('settings-dialog')?.addEventListener('click', (e) => {
-    if (e.target.id === 'settings-dialog') {
-      closeSettings();
-    }
+  // Section collapse/expand
+  document.querySelectorAll('.app-sidebar-section-header').forEach((header) => {
+    header.addEventListener('click', () => {
+      const section = header.closest('.app-sidebar-section');
+      if (section) section.classList.toggle('collapsed');
+    });
   });
 
   // Compression toggle: show/hide quality options
@@ -576,7 +590,7 @@ async function saveSettings() {
 
     statusEl.textContent = 'Settings saved.';
     statusEl.className = 'settings-status success';
-    setTimeout(() => closeSettings(), 1000);
+    setTimeout(() => { statusEl.textContent = ''; }, 2000);
   } catch (err) {
     statusEl.textContent = `Error: ${err}`;
     statusEl.className = 'settings-status error';

@@ -4,7 +4,7 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, exportCanvasPNG } from './canvas.js';
-import { initPanels, showMetadata, openSettings, analyzeCard } from './panels.js';
+import { initPanels, showMetadata, openSettings, closeSettings, toggleSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -21,7 +21,7 @@ async function main() {
   const projectPath = document.getElementById('project-path');
   const openBtn = document.getElementById('open-btn');
   const fitBtn = document.getElementById('fit-btn');
-  const settingsBtn = document.getElementById('settings-btn');
+  const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
 
   // Initialize PixiJS canvas
   await initCanvas(container);
@@ -319,8 +319,20 @@ async function main() {
     showMetadata(card);
   });
 
-  // Settings button
-  settingsBtn.addEventListener('click', () => openSettings());
+  // Sidebar toggle button
+  sidebarToggleBtn.addEventListener('click', () => toggleSettings());
+
+  // Back to Home button in sidebar
+  const sidebarHomeBtn = document.getElementById('sidebar-home-btn');
+  if (sidebarHomeBtn) {
+    sidebarHomeBtn.addEventListener('click', () => {
+      closeSettings();
+      const homeScreen = document.getElementById('home-screen');
+      const toolbar = document.getElementById('toolbar');
+      if (homeScreen) homeScreen.classList.remove('hidden');
+      if (toolbar) toolbar.classList.add('toolbar-hidden');
+    });
+  }
 
   // Export button — PNG export
   const exportBtn = document.getElementById('export-btn');
@@ -350,6 +362,13 @@ async function main() {
   // Keyboard shortcuts
   window.addEventListener('keydown', (e) => {
     const meta = e.metaKey || e.ctrlKey;
+
+    // Cmd+,: toggle settings sidebar
+    if (meta && e.key === ',') {
+      e.preventDefault();
+      toggleSettings();
+      return;
+    }
 
     // Cmd+F: focus search
     if (meta && e.key === 'f' && !e.shiftKey) {

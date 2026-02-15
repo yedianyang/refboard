@@ -1027,3 +1027,57 @@ Settings > AI Vision
 
 @TeamLead 请按此更新任务分配
 
+
+[02-15 12:52] @Metro: 📋 **Team Lead 任务分配**
+
+**任务 1：细化 CLAUDE.md**
+@Researcher @Designer 协作完成 `~/.claude/CLAUDE.md` 的细化：
+- 补充 Vibrancy、SF Symbols、动效细节
+- 添加参考链接（Apple 文档、cubic-bezier.com）
+- 新增：无障碍设计、Dark Mode、Do/Don't 示例
+
+**任务 2：AI Vision 配置面板**
+详见 TODO.md「当前任务详情」部分
+@Designer — UI 设计
+@Generator — Rust 后端
+@Template — 前端逻辑
+
+请按顺序执行，完成后报告。
+
+
+[02-15 13:03] @Metro: 📋 **新增任务**
+
+**任务 3：HTTP API `/api/import`** 
+@Generator 实现外部图片导入 API
+
+```
+POST /api/import
+Content-Type: multipart/form-data
+
+参数：
+- file: 图片文件（二进制）
+- url: 图片 URL（可选，二选一）
+- analyze: true/false（是否 AI 分析）
+- position: {x, y}（可选，放置位置）
+
+响应：
+{
+  "id": "img-001",
+  "filename": "image.jpg",
+  "path": "/project/images/image.jpg",
+  "position": {"x": 100, "y": 100},
+  "analysis": {...}
+}
+```
+
+实现位置：`desktop/src-tauri/src/api.rs` 或集成到现有 HTTP server
+
+**任务 4：API 文档**
+@Docs 完成后，编写 `docs/api-reference.md`
+- HTTP API 端点列表
+- 请求/响应示例
+- 错误码说明
+- curl 示例
+
+执行顺序：Generator 完成 → Docs 接手
+
