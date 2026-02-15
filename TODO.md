@@ -60,7 +60,7 @@
 | ✅ | **删除 v1 CLI** | 移除 bin/, lib/, index.js 等 CLI 代码，Desktop 不受影响 (8c02855) |
 | ✅ | **AI 分析填充元数据** | 批量分析 + 进度条 + 自动填充 description/tags/style/colors/mood (804dd09) |
 | ✅ | **AI 图片生成** | Cmd+G Generate 对话框 + DALL-E 3 后端 + 参考图上下文 (804dd09) |
-| ⬜ | **图形框缩放优化** | 框图放大缩小时只改变外框尺寸，内部图像保持原始大小 |
+| ✅ | **图形框缩放优化** | Frame resize: mask clipping，图像保持原始大小，只改变可见区域 |
 | ✅ | **选中弹出工具栏** | 浮动工具栏 (Lock/Align/Copy/Delete/More) + 对齐子菜单 + Lucide Icons |
 | ✅ | **顶部导航栏重构** | Home 按钮左上角 + Sidebar toggle (Cmd+\\) + 折叠动画 + localStorage |
 | ⬜ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互（@Docs 调研） |
@@ -78,7 +78,7 @@
 | ✅ | 统一项目存储 | StorageProvider trait + 默认项目文件夹 + auto-scan |
 | ✅ | **AI Vision 配置面板** | Settings > AI Vision，7 Provider 预设 + 真实连接测试 + Save/Load |
 | 🔄 | **导入后自动 index + embed** | 所有导入路径后端一条龙完成 SQLite indexing + CLIP embedding |
-| ⬜ | **图标矢量化** | 所有 emoji/HTML 实体替换为 Lucide Icons 开源矢量图标 (SVG) |
+| ✅ | **图标矢量化** | 所有 close/remove 按钮 + download 按钮替换为 Lucide Icons SVG |
 | ⬜ | 截图/GIF | README 视觉演示素材 |
 | ❌ | ~~npm 发布准备~~ | v1 CLI 已删除，不再需要 |
 

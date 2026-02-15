@@ -553,11 +553,21 @@ async function reloadCardTexture(card) {
     const texture = await Assets.load(card._textureUrl);
     if (!card.container.parent) return; // Card removed during load
     const sprite = new Sprite(texture);
-    sprite.width = card.cardWidth - CARD_PADDING * 2;
-    sprite.height = card.cardHeight - CARD_PADDING * 2;
+    // Use original sprite dimensions if available (frame-resize preserves image size)
+    if (card._originalSpriteWidth) {
+      sprite.width = card._originalSpriteWidth;
+      sprite.height = card._originalSpriteHeight;
+    } else {
+      sprite.width = card.cardWidth - CARD_PADDING * 2;
+      sprite.height = card.cardHeight - CARD_PADDING * 2;
+    }
     sprite.position.set(CARD_PADDING, CARD_PADDING);
     card.sprite = sprite;
     card.container.addChildAt(sprite, 1); // Between bg and hoverBorder
+    // Reapply frame mask if it exists
+    if (card._frameMask) {
+      sprite.mask = card._frameMask;
+    }
   } catch (err) {
     card._textureUnloaded = true; // Retry on next cull
   }
@@ -1004,8 +1014,13 @@ function resizeCardTo(card, w, h) {
   card.cardWidth = w;
   card.cardHeight = h;
 
-  // Resize sprite
-  if (card.sprite) {
+  // Image cards: update frame mask (sprite keeps original size — Figma-like crop)
+  if (card._frameMask) {
+    card._frameMask.clear()
+      .rect(CARD_PADDING, CARD_PADDING, w - CARD_PADDING * 2, h - CARD_PADDING * 2)
+      .fill(0xffffff);
+  } else if (card.sprite) {
+    // Fallback for cards without mask (e.g. during initial placeholder stage)
     card.sprite.width = w - CARD_PADDING * 2;
     card.sprite.height = h - CARD_PADDING * 2;
   }
@@ -1518,8 +1533,20 @@ async function loadTextureIntoCard(card) {
     card.texture = texture;
     card._textureUnloaded = false;
 
+    // Store original sprite display dimensions for frame-resize behavior
+    card._originalSpriteWidth = cardW;
+    card._originalSpriteHeight = cardH;
+
     // Insert sprite between bg (index 0) and hoverBorder (index 1)
     card.container.addChildAt(sprite, 1);
+
+    // Create frame mask for Figma-like clip behavior on resize
+    const frameMask = new Graphics()
+      .rect(CARD_PADDING, CARD_PADDING, cardW, cardH)
+      .fill(0xffffff);
+    card.container.addChildAt(frameMask, 2); // After sprite
+    card._frameMask = frameMask;
+    sprite.mask = frameMask;
 
     // Resize card to actual texture dimensions
     resizeCardTo(card, cardW + CARD_PADDING * 2, cardH + CARD_PADDING * 2);

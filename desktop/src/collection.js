@@ -5,6 +5,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { icon } from './icons.js';
 
 // ============================================================
 // State
@@ -189,7 +190,7 @@ function renderWebResults(results) {
 
     const dlBtn = document.createElement('button');
     dlBtn.className = 'web-dl-btn';
-    dlBtn.textContent = '+';
+    dlBtn.innerHTML = icon('plus', 14);
     dlBtn.title = 'Download to project';
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();

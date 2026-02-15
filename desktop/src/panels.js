@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { loadWebConfig, saveWebConfig } from './collection.js';
+import { icon } from './icons.js';
 
 // ============================================================
 // State
@@ -152,7 +153,7 @@ function renderChips(containerId, items, editable) {
     if (editable) {
       const removeBtn = document.createElement('button');
       removeBtn.className = 'chip-remove';
-      removeBtn.textContent = '\u00d7';
+      removeBtn.innerHTML = icon('x', 12);
       removeBtn.title = 'Remove';
       removeBtn.addEventListener('click', () => chip.remove());
       chip.appendChild(removeBtn);
@@ -207,7 +208,7 @@ function createChip(text, editable) {
   if (editable) {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'chip-remove';
-    removeBtn.textContent = '\u00d7';
+    removeBtn.innerHTML = icon('x', 12);
     removeBtn.addEventListener('click', () => chip.remove());
     chip.appendChild(removeBtn);
   }

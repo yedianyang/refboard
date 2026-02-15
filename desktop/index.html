@@ -768,8 +768,9 @@
       border: none;
       color: var(--text-secondary);
       cursor: pointer;
-      font-size: 13px;
       padding: 0;
+      display: flex;
+      align-items: center;
       line-height: 1;
     }
     .chip-remove:hover {
@@ -1693,8 +1694,6 @@
       color: var(--accent);
       cursor: pointer;
       border-radius: 50%;
-      font-size: 16px;
-      font-weight: bold;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2206,8 +2205,6 @@
       border: none;
       background: transparent;
       color: var(--text-secondary);
-      font-size: 18px;
-      line-height: 1;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -2784,7 +2781,7 @@
     <div class="generate-dialog">
       <div class="generate-header">
         <h3>Generate Image</h3>
-        <button class="generate-close">&times;</button>
+        <button class="generate-close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
       <div class="generate-body">
         <div class="generate-section">
