@@ -57,6 +57,49 @@ Multipart form data with the following fields:
 }
 ```
 
+### DELETE /api/delete
+
+Delete an image from a RefBoard project board.
+
+**Request Format:**
+
+JSON body with the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectPath` | string | yes | Absolute path to the target project directory |
+| `filename` | string | yes | Image filename to delete (in the project's `images/` folder) |
+
+**Response:**
+```json
+{
+  "status": "deleted",
+  "filename": "image.jpg",
+  "projectPath": "/path/to/project"
+}
+```
+
+**Error Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Invalid path (missing required fields or malformed request) |
+| 403 | Path traversal detected (filename contains `..` or is absolute) |
+| 404 | File not found in project's `images/` folder |
+| 500 | Deletion failed (permissions, disk error, etc.) |
+
+**curl example:**
+
+```bash
+curl -X DELETE http://localhost:7890/api/delete \
+  -H "Content-Type: application/json" \
+  -d '{"projectPath": "/Users/you/Documents/RefBoard/art-deco", "filename": "image.jpg"}'
+```
+
+**Frontend Events:**
+
+This endpoint also emits an `api:image-deleted` event to the frontend for real-time canvas updates. The deleted image is immediately removed from the canvas view without requiring a page refresh.
+
 ## Targeting Different Project Boards
 
 Each RefBoard project is a directory on disk containing an `images/` subdirectory and a `.refboard/` metadata folder.

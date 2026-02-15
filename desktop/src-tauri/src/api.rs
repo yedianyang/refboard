@@ -7,7 +7,7 @@ use axum::{
     extract::{Multipart, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -25,8 +25,15 @@ struct ApiState {
 }
 
 // ---------------------------------------------------------------------------
-// Response Types
+// Request/Response Types
 // ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteRequest {
+    project_path: String,
+    filename: String,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +56,12 @@ struct StatusResponse {
     status: String,
     version: String,
     port: u16,
+}
+
+#[derive(Serialize)]
+struct DeleteResponse {
+    success: bool,
+    message: String,
 }
 
 #[derive(Serialize)]
@@ -202,6 +215,73 @@ async fn handle_import(
     Ok((StatusCode::OK, Json(response)))
 }
 
+async fn handle_delete(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<DeleteRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let filename = payload.filename;
+
+    crate::log::log("API", &format!("DELETE /api/delete → project: {project_path}, file: {filename}"));
+
+    // Validate project path exists
+    let project_dir = std::path::Path::new(&project_path);
+    if !project_dir.exists() || !project_dir.is_dir() {
+        return Err(api_error(
+            StatusCode::BAD_REQUEST,
+            format!("Project path does not exist or is not a directory: {project_path}"),
+        ));
+    }
+
+    // Construct full path to the image file
+    let images_dir = project_dir.join("images");
+    let file_path = images_dir.join(&filename);
+
+    // Validate the file exists
+    if !file_path.exists() {
+        return Err(api_error(
+            StatusCode::NOT_FOUND,
+            format!("File not found: {filename}"),
+        ));
+    }
+
+    // Validate file is actually inside images directory (security check)
+    let canonical_file = file_path
+        .canonicalize()
+        .map_err(|e| api_error(StatusCode::BAD_REQUEST, format!("Invalid file path: {e}")))?;
+    let canonical_images = images_dir
+        .canonicalize()
+        .map_err(|e| api_error(StatusCode::BAD_REQUEST, format!("Invalid images directory: {e}")))?;
+
+    if !canonical_file.starts_with(&canonical_images) {
+        return Err(api_error(
+            StatusCode::FORBIDDEN,
+            "File path must be within the project's images directory".to_string(),
+        ));
+    }
+
+    // Delete the file
+    std::fs::remove_file(&file_path)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete file: {e}")))?;
+
+    crate::log::log("API", &format!("Deleted: {}", file_path.display()));
+
+    // Emit event so frontend can remove the card from canvas
+    let event_payload = serde_json::json!({
+        "filename": &filename,
+        "project": &project_path,
+    });
+    let _ = state.app.emit("api:image-deleted", &event_payload);
+
+    let response = DeleteResponse {
+        success: true,
+        message: format!("Successfully deleted {filename}"),
+    };
+
+    crate::log::log("API", "Delete complete, response sent");
+    Ok((StatusCode::OK, Json(response)))
+}
+
 // ---------------------------------------------------------------------------
 // URL Download
 // ---------------------------------------------------------------------------
@@ -310,6 +390,7 @@ pub async fn start_server(app: AppHandle) {
     let router = Router::new()
         .route("/api/status", get(handle_status))
         .route("/api/import", post(handle_import))
+        .route("/api/delete", delete(handle_delete))
         .with_state(state);
 
     let addr = format!("127.0.0.1:{port}");

@@ -1120,3 +1120,32 @@ Content-Type: multipart/form-data
 
 @Designer 用 Read 工具查看这两张图片，按其风格设计 AI Vision 配置面板。
 
+
+[02-15 18:58] @Metro: 📋 **新任务：删除 API**
+
+**任务 1：添加 DELETE API** @Generator
+```
+DELETE /api/delete
+或
+POST /api/delete
+
+参数：
+- project_path: 项目路径
+- filename: 要删除的图片文件名
+- id: 或者用图片 ID
+
+响应：
+{
+  "success": true,
+  "deleted": "paste-xxx.jpg"
+}
+```
+
+实现要点：
+1. 删除 images/ 中的文件
+2. 更新 metadata/board state
+3. 通知前端刷新
+
+**任务 2：更新文档** @Docs
+完成后更新 `desktop/docs/openclaw-integration.md`，添加删除 API 说明
+

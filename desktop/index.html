@@ -71,6 +71,12 @@
       color: var(--text);
       font-size: 13px;
       line-height: 1.4;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    input, textarea, [contenteditable] {
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     /* ---- Layout ---- */
@@ -1975,20 +1981,9 @@
 </head>
 <body>
   <div id="app">
-    <!-- Toolbar -->
+    <!-- Toolbar (macOS titlebar — drag region) -->
     <div id="toolbar">
       <span class="logo">RefBoard</span>
-      <input type="text" id="project-path" placeholder="Project directory path..." />
-      <button id="open-btn">Open</button>
-      <button id="fit-btn">Fit All</button>
-      <div class="toolbar-spacer"></div>
-      <div class="search-wrapper">
-        <span class="search-icon">&#128269;</span>
-        <input type="text" id="search-input" placeholder="Search images... (Cmd+F)" />
-        <button id="search-clear-btn" title="Clear search">&times;</button>
-      </div>
-      <div class="toolbar-spacer"></div>
-      <button id="export-btn" title="Export board as PNG (Cmd+Shift+E)">Export PNG</button>
     </div>
 
     <!-- App content: sidebar + main area -->

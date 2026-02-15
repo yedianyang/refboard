@@ -27,9 +27,6 @@ async function main() {
   const container = document.getElementById('canvas-container');
   const loading = document.getElementById('loading-indicator');
   const zoomDisplay = document.getElementById('zoom-display');
-  const projectPath = document.getElementById('project-path');
-  const openBtn = document.getElementById('open-btn');
-  const fitBtn = document.getElementById('fit-btn');
 
   // Initialize PixiJS canvas
   await initCanvas(container);
@@ -345,14 +342,6 @@ async function main() {
     sidebarSettingsBtn.addEventListener('click', () => openSettings());
   }
 
-  // Export button — PNG export
-  const exportBtn = document.getElementById('export-btn');
-  if (exportBtn) {
-    exportBtn.title = 'Export board as PNG (Cmd+Shift+E)';
-    exportBtn.addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('refboard:export-png'));
-    });
-  }
 
   // Hints toggle button
   const hintsToggle = document.getElementById('hints-toggle');
@@ -370,15 +359,6 @@ async function main() {
     webSidebarBtn.addEventListener('click', () => toggleWebPanel());
   }
 
-  // Open project button
-  openBtn.addEventListener('click', async () => {
-    const dirPath = projectPath.value.trim();
-    if (!dirPath) return;
-    await openProject(dirPath, loading);
-  });
-
-  // Fit all button
-  fitBtn.addEventListener('click', () => fitAll());
 
   // Keyboard shortcuts
   window.addEventListener('keydown', (e) => {
@@ -511,7 +491,7 @@ async function main() {
 
   // Initialize home screen
   const homeScreen = document.getElementById('home-screen');
-  initHomeScreen(homeScreen, projectPath, loading);
+  initHomeScreen(homeScreen, loading);
 }
 
 /** Update sidebar nav active state based on current view. */
@@ -613,7 +593,7 @@ async function getHomePath() {
   }
 }
 
-async function initHomeScreen(homeScreen, projectPathInput, loading) {
+async function initHomeScreen(homeScreen, loading) {
   if (!homeScreen) return;
 
   const gridEl = document.getElementById('home-project-list');
@@ -645,7 +625,6 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
       gridEl.querySelectorAll('.home-project-card').forEach((card) => {
         card.addEventListener('click', () => {
           const path = card.dataset.path;
-          projectPathInput.value = path;
           openProject(path, loading);
         });
       });
@@ -749,7 +728,6 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
     hideContextMenu();
 
     if (action === 'open') {
-      projectPathInput.value = path;
       openProject(path, loading);
     } else if (action === 'finder') {
       try {
@@ -819,11 +797,10 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
         const { open } = await import('@tauri-apps/plugin-dialog');
         const selected = await open({ directory: true, title: 'Open Image Folder' });
         if (selected) {
-          projectPathInput.value = selected;
           openProject(selected, loading);
         }
       } catch {
-        projectPathInput.focus();
+        // Dialog cancelled or failed
       }
     });
   }
@@ -879,7 +856,6 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
           const base = home.endsWith('/') ? home : home + '/';
           const path = `${base}Documents/RefBoard/${name}`;
           const result = await invoke('create_project', { name, path });
-          projectPathInput.value = result.path;
           openProject(result.path, loading);
         } catch (err) {
           console.error('Failed to create project:', err);
