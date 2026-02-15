@@ -8,22 +8,24 @@ A native macOS desktop app for collecting, analyzing, and organizing visual refe
 
 1. [Installation](#installation)
 2. [Opening a Project](#opening-a-project)
-3. [Canvas Navigation](#canvas-navigation)
-4. [Selecting and Moving Cards](#selecting-and-moving-cards)
-5. [Resizing Cards](#resizing-cards)
-6. [Groups](#groups)
-7. [Auto-Layout](#auto-layout)
-8. [AI Analysis](#ai-analysis)
-9. [Search](#search)
-10. [Tag Filtering](#tag-filtering)
-11. [Find Similar](#find-similar)
-12. [Web Collection](#web-collection)
-13. [Saving and Restoring](#saving-and-restoring)
-14. [Exporting](#exporting)
-15. [Settings](#settings)
-16. [Keyboard Shortcuts](#keyboard-shortcuts)
-17. [Data Storage](#data-storage)
-18. [Troubleshooting](#troubleshooting)
+3. [Creating a New Project](#creating-a-new-project)
+4. [Importing Images](#importing-images)
+5. [Canvas Navigation](#canvas-navigation)
+6. [Selecting and Moving Cards](#selecting-and-moving-cards)
+7. [Resizing Cards](#resizing-cards)
+8. [Groups](#groups)
+9. [Auto-Layout](#auto-layout)
+10. [AI Analysis](#ai-analysis)
+11. [Search](#search)
+12. [Tag Filtering](#tag-filtering)
+13. [Find Similar](#find-similar)
+14. [Web Collection](#web-collection)
+15. [Saving and Restoring](#saving-and-restoring)
+16. [Exporting](#exporting)
+17. [Settings](#settings)
+18. [Keyboard Shortcuts](#keyboard-shortcuts)
+19. [Data Storage](#data-storage)
+20. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -63,6 +65,67 @@ The release build outputs to `desktop/src-tauri/target/release/bundle/`. The `.d
 If a saved board state exists (from a previous session), card positions, groups, and the viewport are automatically restored.
 
 Supported image formats: PNG, JPEG, GIF, WebP, SVG, BMP, AVIF, TIFF.
+
+---
+
+## Creating a New Project
+
+Create a new project from the Home screen:
+
+1. Click **+ New Project** (or press **Cmd+N** while on the Home screen).
+2. A dialog appears with a **Project Name** field and a path preview.
+3. Enter a name (e.g., "Art Deco Power").
+4. The path preview updates in real time: `~/Documents/RefBoard/Art Deco Power/`.
+5. Click **Create** (or press **Enter**).
+
+RefBoard creates the project directory structure:
+
+```
+~/Documents/RefBoard/Art Deco Power/
+├── refboard.json         # Project config (version, name, created)
+├── metadata.json         # Image metadata
+├── board.json            # Canvas state (viewport, items, groups)
+├── images/               # Image files
+└── thumbnails/           # Thumbnail cache
+```
+
+After creation, the app switches to the canvas view with a friendly message: **"Empty project -- drag images here or use Find Online (Cmd+Shift+F)"**.
+
+The new project is automatically added to the Home screen's recent projects list.
+
+For a detailed flow diagram, see [docs/create-project-flow.md](create-project-flow.md).
+
+---
+
+## Importing Images
+
+### Drag and Drop
+
+Drag image files from Finder directly onto the canvas. A drop overlay appears when files are hovering. Images are automatically:
+- Copied to the project's `images/` directory
+- Compressed if above 200KB (configurable via Settings)
+- Placed at the drop position on the canvas
+- Embedded with CLIP for similarity search
+
+### Paste from Clipboard
+
+Press **Cmd+V** to paste an image from the clipboard (e.g., a screenshot). The image is:
+- Saved as `paste-{timestamp}.png` in the project's `images/` directory
+- Compressed if applicable (preserves alpha for PNG/WebP)
+- Placed at the center of the current viewport
+
+If the CLIP model is still initializing (first launch), a "Setting up CLIP model" dialog appears briefly while the embedding is generated.
+
+### Image Compression
+
+Imported and pasted images are automatically compressed to save disk space:
+- **Format:** WebP for images with transparency (PNG/WebP sources), JPEG for others
+- **Max dimension:** 2048px (downscaled if larger, preserving aspect ratio)
+- **Quality:** 82% (configurable)
+- **Skip:** Files under 200KB, SVG, and GIF are never compressed
+- **Safety:** Compression is only used if the result is at least 5% smaller than the original
+
+Compression settings can be adjusted in the app (stored in localStorage).
 
 ---
 
@@ -177,12 +240,16 @@ RefBoard can analyze images using AI vision models to generate:
 
 1. Click the **Settings** button (gear icon) in the toolbar.
 2. Choose a provider:
-   - **Claude (Anthropic)** -- cloud, requires an Anthropic API key
-   - **GPT-4o (OpenAI)** -- cloud, requires an OpenAI API key
-   - **Ollama (Local)** -- runs locally, requires [Ollama](https://ollama.com/) with a vision model
+   - **Claude (Anthropic)** -- cloud, default model `claude-sonnet-4-5-20250929`, requires `ANTHROPIC_API_KEY`
+   - **GPT-4o (OpenAI)** -- cloud, default model `gpt-4o`, requires `OPENAI_API_KEY`
+   - **Ollama (Local)** -- runs locally, default model `llava`, requires [Ollama](https://ollama.com/) running at `localhost:11434`
 3. Enter your API key (for cloud providers) or verify the Ollama endpoint.
-4. Select a model from the dropdown.
+4. Optionally select a different model.
 5. Click **Save**.
+
+API keys can also be set via environment variables (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) instead of entering them in Settings.
+
+For detailed provider comparison and configuration, see [docs/FEATURES.md](FEATURES.md#ai-vision-providers).
 
 ### Analyze an Image
 
@@ -369,21 +436,30 @@ Settings are stored in `~/.refboard/config.json`.
 
 | Key | Action |
 |-----|--------|
+| `Cmd+N` | New project (Home screen) |
 | `Escape` | Deselect / close panel / clear filter |
 
 ---
 
 ## Data Storage
 
+### Default Storage Location
+
+New projects are created under `~/Documents/RefBoard/` by default.
+
 ### Project Data
 
-Each project stores its data in a `.refboard/` subdirectory:
+Each project stores its data in the project directory and a `.refboard/` subdirectory:
 
 ```
-your-project/
-├── images/                 # Your image files
+~/Documents/RefBoard/My Project/
+├── refboard.json           # Project config (version, name, created date)
+├── metadata.json           # Image metadata (descriptions, tags, etc.)
+├── board.json              # Canvas state (viewport, items, groups, annotations)
+├── images/                 # Image files (originals + imported)
+├── thumbnails/             # Generated thumbnails (WebP, 256px)
 ├── .refboard/
-│   ├── search.db           # SQLite database (FTS5 index, metadata, embeddings)
+│   ├── search.db           # SQLite database (FTS5 index, metadata, CLIP embeddings)
 │   └── board.json          # Saved board state (positions, groups, viewport)
 ├── export.json             # Metadata export (when exported)
 └── ...

@@ -310,4 +310,227 @@ refboard search --artist "Lee Lawrie"
 
 ---
 
-*最后更新：2026-02-13*
+## v2.0 Desktop — AI Architecture
+
+RefBoard 2.0 uses two complementary AI subsystems: **CLIP** for local visual understanding and **AI Vision** for rich semantic analysis via cloud APIs.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        RefBoard 2.0 Desktop                        │
+├─────────────────────────────┬───────────────────────────────────────┤
+│   CLIP (Local)              │   AI Vision (Remote API)              │
+│   fastembed + ONNX Runtime  │   Anthropic / OpenAI / Ollama         │
+├─────────────────────────────┼───────────────────────────────────────┤
+│                             │                                       │
+│  ┌───────────────────────┐  │  ┌─────────────────────────────────┐  │
+│  │ Image Embeddings      │  │  │ Image Analysis                  │  │
+│  │ 512-dim float vectors │  │  │ Description, tags, style, mood, │  │
+│  │ CLIP ViT-B/32 model   │  │  │ colors, era                     │  │
+│  └───────────┬───────────┘  │  └──────────────┬──────────────────┘  │
+│              │              │                 │                      │
+│  ┌───────────▼───────────┐  │  ┌──────────────▼──────────────────┐  │
+│  │ Similarity Search     │  │  │ Context-Aware Tagging           │  │
+│  │ Cosine similarity     │  │  │ Reuses existing board tags      │  │
+│  │ "Find Similar" action │  │  │ when they apply                 │  │
+│  └───────────┬───────────┘  │  └──────────────┬──────────────────┘  │
+│              │              │                 │                      │
+│  ┌───────────▼───────────┐  │  ┌──────────────▼──────────────────┐  │
+│  │ Stored in SQLite      │  │  │ Stored in SQLite                │  │
+│  │ embeddings table      │  │  │ images table + FTS5 index       │  │
+│  │ per-project search.db │  │  │ per-project search.db           │  │
+│  └───────────────────────┘  │  └─────────────────────────────────┘  │
+│                             │                                       │
+│  Runs: automatically on     │  Runs: on-demand (Cmd+Shift+A)        │
+│  project open + image paste │  User triggers per image               │
+│                             │                                       │
+│  No API key needed          │  Requires API key (cloud) or           │
+│  ~150MB model download      │  Ollama server (local)                 │
+│  Apple Silicon CoreML accel │                                        │
+└─────────────────────────────┴───────────────────────────────────────┘
+```
+
+### How They Work Together
+
+1. **CLIP** answers "what looks like what" — fast visual similarity matching
+2. **AI Vision** answers "what is this" — rich semantic understanding
+
+When a user selects **Find Similar** on a card:
+- If CLIP embeddings exist → cosine similarity on 512-dim vectors (fast, visual)
+- Fallback → Jaccard similarity on tags + style + mood fields (metadata-based)
+
+When a user clicks **Analyze with AI** (Cmd+Shift+A):
+- AI Vision sends the image to the configured provider
+- Returns structured JSON: description, tags, style, mood, colors, era
+- The prompt references existing board tags for consistency
+
+---
+
+## CLIP Image Embedding
+
+Local image embedding using CLIP ViT-B/32 via fastembed (ONNX Runtime). Provides visual similarity search without any external API.
+
+**Source:** `src-tauri/src/embed.rs`
+
+### Model
+
+- **Architecture:** CLIP ViT-B/32
+- **Runtime:** ONNX Runtime (with CoreML acceleration on Apple Silicon)
+- **Output:** 512-dimensional float vectors per image
+- **Model size:** ~150MB (auto-downloaded on first use)
+- **Batch size:** 32 images per inference call
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `cmd_warmup_clip` | Pre-initialize the CLIP model (download + ONNX runtime setup) |
+| `cmd_embed_project` | Generate embeddings for all unembedded images in a project |
+
+### Warmup Behavior
+
+The CLIP model is loaded lazily — it initializes on first use. To avoid lag when the user first pastes an image or opens a project, RefBoard warms up the model in the background:
+
+```
+App Start
+    │
+    ├── UI renders immediately
+    │
+    └── +3 seconds ──► invoke('cmd_warmup_clip')
+                            │
+                            ├── Model already cached? ──► instant return
+                            │
+                            └── First time? ──► download ~150MB model
+                                               initialize ONNX runtime
+                                               (runs in background thread)
+```
+
+**Implementation** (`main.js:35-39`):
+
+```javascript
+setTimeout(() => {
+  invoke('cmd_warmup_clip').catch((err) => {
+    console.warn('CLIP warmup skipped:', err);
+  });
+}, 3000);
+```
+
+**Paste before model is ready:** If the user pastes an image while the CLIP model is still initializing, the app shows a "Setting up CLIP model" dialog. The dialog dismisses automatically once embedding completes.
+
+### Embedding Storage
+
+Embeddings are stored in the per-project SQLite database (`{project}/.refboard/search.db`) in the `embeddings` table:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `path` | TEXT | Image file path |
+| `model` | TEXT | Model identifier (`clip-vit-b-32`) |
+| `embedding` | BLOB | 512 float32 values |
+
+Only images without existing embeddings are processed — re-running `cmd_embed_project` is safe and incremental.
+
+---
+
+## AI Vision Providers
+
+AI Vision provides rich semantic analysis of images: description, tags, style, mood, colors, and era. Three providers are supported.
+
+**Source:** `src-tauri/src/ai.rs`
+
+### Provider Comparison
+
+| | Anthropic (Claude) | OpenAI (GPT-4o) | Ollama (Local) |
+|---|---|---|---|
+| **Display name** | Claude Vision | GPT-4o Vision | Ollama (Local) |
+| **Default model** | `claude-sonnet-4-5-20250929` | `gpt-4o` | `llava` |
+| **Endpoint** | `api.anthropic.com/v1/messages` | `api.openai.com/v1/chat/completions` | `localhost:11434/api/chat` |
+| **Auth** | `x-api-key` header | `Bearer` token | None |
+| **API key env var** | `ANTHROPIC_API_KEY` | `OPENAI_API_KEY` | N/A |
+| **Image format** | Base64 with media type | Data URI (`data:mime;base64,...`) | Raw base64 (no wrapper) |
+| **JSON mode** | Natural (prompt-guided) | `response_format: json_object` | `format: "json"` |
+| **Cost** | Per-token (cloud) | Per-token (cloud) | Free (local compute) |
+| **Privacy** | Images sent to cloud | Images sent to cloud | All data stays local |
+| **Speed** | Fast (~2-5s) | Fast (~2-5s) | Varies by hardware |
+
+### Configuration
+
+AI provider settings are stored in `~/.refboard/config.json`:
+
+```json
+{
+  "ai": {
+    "provider": "anthropic",
+    "apiKey": "sk-ant-...",
+    "endpoint": "https://api.anthropic.com/v1",
+    "model": "claude-sonnet-4-5-20250929"
+  }
+}
+```
+
+The `provider` field accepts: `"anthropic"`, `"openai"`, or `"ollama"`.
+
+### Switching Providers
+
+1. Open **Settings** (gear icon in toolbar)
+2. Select a provider from the dropdown
+3. Enter your API key (Anthropic or OpenAI) or verify the Ollama endpoint
+4. Optionally change the model
+5. Click **Save**
+
+Or set the API key via environment variable:
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."   # for Anthropic
+export OPENAI_API_KEY="sk-..."          # for OpenAI
+```
+
+### Ollama Setup
+
+For fully local AI analysis with no cloud dependency:
+
+1. Install [Ollama](https://ollama.com/)
+2. Pull a vision model: `ollama pull llava`
+3. Start the server: `ollama serve`
+4. In RefBoard Settings, select **Ollama** and verify endpoint is `http://localhost:11434`
+
+RefBoard can check Ollama availability via the `check_ollama` command (calls `/api/tags`).
+
+### Analysis Output
+
+All providers return the same unified `AnalysisResult` structure:
+
+```json
+{
+  "description": "A bronze Art Deco sculpture featuring geometric forms",
+  "tags": ["art-deco", "bronze", "sculpture", "geometric"],
+  "style": ["geometric", "streamlined"],
+  "mood": ["elegant", "powerful"],
+  "colors": ["#8B7355", "#2C2C2C", "#D4AF37"],
+  "era": "1920s"
+}
+```
+
+### Context-Aware Tagging
+
+When analyzing an image, the prompt automatically includes existing board tags. This encourages the AI to reuse consistent terminology across the project rather than inventing new tags for the same concepts.
+
+### IPC Commands
+
+| Command | Parameters | Description |
+|---------|------------|-------------|
+| `analyze_image` | `imagePath`, `providerConfig`, `existingTags` | Analyze a single image |
+| `get_ai_config` | — | Read current AI provider config |
+| `set_ai_config` | `config` | Save AI provider config |
+| `check_ollama` | — | Check if Ollama is running locally |
+
+### Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `ai:analysis:start` | image path | Analysis request sent |
+| `ai:analysis:complete` | image path | Analysis succeeded |
+| `ai:analysis:error` | error message | Analysis failed |
+
+---
+
+*Last updated: 2026-02-15*
