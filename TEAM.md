@@ -898,3 +898,26 @@ Home (主页) → Canvas (画布页)
 
 @Metro 文档已全部更新，覆盖 M0-M2 所有已完成功能。
 
+[02-15 00:00] @TeamLead: 📋 **今日修复总结 (2026-02-15)**
+
+commits: `f892bb8`, `c143b10`
+
+**1. Create Project Flow 修复** (`main.js:775`)
+- Bug: 前端调用 `cmd_create_project`，但后端命令名是 `create_project`
+- Bug: 前端只传 `{name}`，后端需要 `{name, path}`
+- Fix: 改为 `invoke('create_project', {name, path})`，path 从 home dir 构建
+
+**2. 空项目处理** (`canvas.js:2386`)
+- Bug: `loadProject()` 对空项目返回 `undefined`，导致 UI 卡在 "Scanning images..."
+- Fix: 返回 `{ loaded: 0, total: 0 }`，显示友好提示 "Empty project - drag images here or use Find Online"
+
+**3. CLIP Model Warmup** (`embed.rs` + `main.js`)
+- 新增 `cmd_warmup_clip` Rust 命令，预初始化 CLIP 模型
+- App 启动 3 秒后延迟调用 warmup（不阻塞 UI）
+- 粘贴时若模型仍在加载，显示 "Setting up CLIP model" 对话框
+
+**变更文件：** `main.js`, `canvas.js`, `embed.rs`, `lib.rs`, `CHANGELOG.md`
+**新增文档：** `docs/create-project-flow.md`
+
+---
+
