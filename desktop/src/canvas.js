@@ -344,7 +344,6 @@ function setupKeyboard() {
     if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
     if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
     if ((e.key === 'l' || e.key === 'L') && !meta && !e.shiftKey) { setTool('line'); return; }
-    if (e.key === 'd' && !meta && !e.shiftKey) { toggleTheme(); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
@@ -1844,29 +1843,53 @@ function applyThemeToCanvas(isDark) {
   requestMinimapRedraw();
 }
 
-function toggleTheme() {
+function applySystemTheme(isDark) {
   const html = document.documentElement;
-  const isCurrentlyLight = html.getAttribute('data-theme') === 'light';
-  const newTheme = isCurrentlyLight ? 'dark' : 'light';
-
-  if (newTheme === 'dark') {
+  if (isDark) {
     html.removeAttribute('data-theme');
   } else {
     html.setAttribute('data-theme', 'light');
   }
-
-  applyThemeToCanvas(newTheme === 'dark');
-  localStorage.setItem('refboard-theme', newTheme);
+  applyThemeToCanvas(isDark);
 }
 
 /**
- * Apply saved theme on startup. Call during init.
+ * Apply system theme on startup and listen for changes via Tauri API.
+ * Follows macOS appearance (dark/light) automatically.
+ * @param {import('@tauri-apps/api/window').Window} appWindow - Tauri window instance
  */
-export function applySavedTheme() {
-  const saved = localStorage.getItem('refboard-theme');
-  if (saved === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-    applyThemeToCanvas(false);
+export async function applySavedTheme(appWindow) {
+  try {
+    // Use Tauri native API (works reliably on macOS)
+    const initialTheme = await appWindow.theme();
+    applySystemTheme(initialTheme === 'dark');
+
+    // Listen for real-time system theme changes
+    await appWindow.onThemeChanged(({ payload: theme }) => {
+      applySystemTheme(theme === 'dark');
+    });
+  } catch (err) {
+    // Fallback for non-Tauri environments
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    applySystemTheme(prefersDark.matches);
+    prefersDark.addEventListener('change', (e) => applySystemTheme(e.matches));
+  }
+}
+
+/**
+ * Manually set theme override. Use 'system' to follow OS, or 'dark'/'light' to force.
+ * Intended for future Settings > General page.
+ * @param {'system'|'dark'|'light'} mode
+ * @param {import('@tauri-apps/api/window').Window} [appWindow]
+ */
+export async function setThemeMode(mode, appWindow) {
+  if (mode === 'dark') {
+    applySystemTheme(true);
+  } else if (mode === 'light') {
+    applySystemTheme(false);
+  } else if (mode === 'system' && appWindow) {
+    const theme = await appWindow.theme();
+    applySystemTheme(theme === 'dark');
   }
 }
 

@@ -4,16 +4,24 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, exportCanvasPNG } from './canvas.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG } from './canvas.js';
 import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
 async function main() {
-  // Apply saved theme immediately (before canvas init) so home screen renders correctly
-  const savedTheme = localStorage.getItem('refboard-theme');
-  if (savedTheme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
+  // Apply system theme immediately (before canvas init) so home screen renders correctly
+  const appWindow = getCurrentWindow();
+  try {
+    const initialTheme = await appWindow.theme();
+    if (initialTheme !== 'dark') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  } catch {
+    // Fallback if Tauri API unavailable
+    if (!window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
   }
 
   const container = document.getElementById('canvas-container');
@@ -27,8 +35,8 @@ async function main() {
   await initCanvas(container);
   setUIElements({ loading, zoom: zoomDisplay });
 
-  // Apply saved theme (dark/light)
-  applySavedTheme();
+  // Apply system theme and listen for changes via Tauri API
+  await applySavedTheme(appWindow);
 
   // Warm up CLIP model in background after UI is ready
   // Delayed to ensure UI loads first, then model initializes in background
