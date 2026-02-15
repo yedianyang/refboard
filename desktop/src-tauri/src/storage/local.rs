@@ -490,6 +490,59 @@ impl StorageProvider for LocalStorage {
         .await
         .unwrap_or(DEFAULT_API_PORT)
     }
+
+    async fn scan_projects_folder(
+        &self,
+        folder: &str,
+    ) -> Result<Vec<crate::ProjectInfo>, String> {
+        let folder = folder.to_string();
+
+        tokio::task::spawn_blocking(move || {
+            let dir = Path::new(&folder);
+            if !dir.is_dir() {
+                return Ok(Vec::new());
+            }
+
+            let mut projects = Vec::new();
+            let entries = fs::read_dir(dir)
+                .map_err(|e| format!("Cannot read folder: {e}"))?;
+
+            for entry in entries {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => continue,
+                };
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                // Skip hidden directories
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    continue;
+                }
+
+                // Check for RefBoard project markers
+                let has_refboard_json = path.join("refboard.json").exists();
+                let has_metadata = path.join("metadata.json").exists();
+                let has_dot_refboard = path.join(".refboard").is_dir();
+
+                if has_refboard_json || has_metadata || has_dot_refboard {
+                    let image_count = crate::count_images_in(&path);
+                    projects.push(crate::ProjectInfo {
+                        name,
+                        path: path.to_string_lossy().to_string(),
+                        image_count,
+                    });
+                }
+            }
+
+            projects.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+            Ok(projects)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+    }
 }
 
 // ---------------------------------------------------------------------------

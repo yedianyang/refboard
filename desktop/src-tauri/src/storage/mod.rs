@@ -155,4 +155,10 @@ pub trait StorageProvider: Send + Sync {
 
     /// Get the HTTP API port from config.
     async fn get_api_port(&self) -> u16;
+
+    /// Scan a folder for RefBoard projects (subdirectories with refboard.json, metadata.json, or .refboard/).
+    async fn scan_projects_folder(
+        &self,
+        folder: &str,
+    ) -> Result<Vec<crate::ProjectInfo>, String>;
 }

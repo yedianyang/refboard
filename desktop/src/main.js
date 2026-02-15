@@ -600,9 +600,57 @@ async function initHomeScreen(homeScreen, loading) {
   const openBtn = document.getElementById('home-open-btn');
   const newBtn = document.getElementById('home-new-btn');
 
-  // Load recent projects as card grid
+  // Load projects: scan default folder + merge recent
   try {
-    const projects = await invoke('list_projects');
+    // Read app config to get default projects folder
+    let projectsFolder = null;
+    try {
+      const appConfig = await invoke('get_app_config');
+      projectsFolder = appConfig.projectsFolder || null;
+    } catch {}
+
+    // If no folder configured, use ~/Documents/RefBoard as default
+    if (!projectsFolder) {
+      try {
+        const { documentDir } = await import('@tauri-apps/api/path');
+        const docs = await documentDir();
+        const sep = docs.endsWith('/') ? '' : '/';
+        projectsFolder = `${docs}${sep}RefBoard`;
+      } catch {}
+    }
+
+    // Scan default folder for projects
+    let scannedProjects = [];
+    if (projectsFolder) {
+      try {
+        scannedProjects = await invoke('scan_projects_folder', { folder: projectsFolder });
+      } catch (err) {
+        console.warn('Could not scan projects folder:', err);
+      }
+    }
+
+    // Also load recent projects (may include projects outside the default folder)
+    let recentProjects = [];
+    try {
+      recentProjects = await invoke('list_projects');
+    } catch {}
+
+    // Merge: scanned first, then recent (dedup by path)
+    const seen = new Set();
+    const projects = [];
+    for (const p of scannedProjects) {
+      if (!seen.has(p.path)) {
+        seen.add(p.path);
+        projects.push(p);
+      }
+    }
+    for (const p of recentProjects) {
+      if (!seen.has(p.path)) {
+        seen.add(p.path);
+        projects.push(p);
+      }
+    }
+
     if (projects.length > 0) {
       gridEl.innerHTML = projects.map((p) => {
         const safeName = p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');

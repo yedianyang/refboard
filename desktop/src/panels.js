@@ -445,6 +445,13 @@ export function closeSettings() {
 
 
 async function loadSettingsFromBackend() {
+  // Load app config (includes projects_folder)
+  try {
+    const appConfig = await invoke('get_app_config');
+    const folderInput = document.getElementById('settings-projects-folder');
+    if (folderInput) folderInput.value = appConfig.projectsFolder || '';
+  } catch {}
+
   try {
     const config = await invoke('get_ai_config');
     populateSettings(config);
@@ -508,6 +515,7 @@ function updateProviderFields(provider) {
 }
 
 const SETTINGS_CATEGORIES = {
+  general: 'General',
   ai: 'AI Provider',
   web: 'Web Collection',
   compression: 'Compression',
@@ -569,6 +577,20 @@ function setupSettingsEvents() {
     const label = document.getElementById('settings-quality-label');
     if (label) label.textContent = Math.round(e.target.value * 100) + '%';
   });
+
+  // Browse folder button for projects folder
+  document.getElementById('settings-browse-folder-btn')?.addEventListener('click', async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({ directory: true, multiple: false, title: 'Choose Projects Folder' });
+      if (selected) {
+        const folderInput = document.getElementById('settings-projects-folder');
+        if (folderInput) folderInput.value = selected;
+      }
+    } catch (err) {
+      console.warn('Browse folder failed:', err);
+    }
+  });
 }
 
 async function saveSettings() {
@@ -588,6 +610,15 @@ async function saveSettings() {
 
   try {
     await invoke('set_ai_config', { config });
+
+    // Save projects folder via app config
+    const folderInput = document.getElementById('settings-projects-folder');
+    if (folderInput) {
+      const folder = folderInput.value.trim() || null;
+      const appConfig = await invoke('get_app_config');
+      appConfig.projectsFolder = folder;
+      await invoke('set_app_config', { config: appConfig });
+    }
 
     // Save Brave API key
     const braveKey = document.getElementById('settings-brave-key')?.value.trim();

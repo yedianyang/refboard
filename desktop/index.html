@@ -1045,6 +1045,11 @@
       color: var(--text-secondary);
       font-weight: 500;
     }
+    .settings-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
     .settings-select,
     .settings-input {
       height: 30px;
@@ -2337,7 +2342,10 @@
     <div class="settings-page-card">
       <div class="settings-page-left">
         <div class="settings-page-title">Settings</div>
-        <button class="settings-cat active" data-cat="ai">
+        <button class="settings-cat active" data-cat="general">
+          <span class="cat-icon">&#9776;</span> General
+        </button>
+        <button class="settings-cat" data-cat="ai">
           <span class="cat-icon">&#9881;</span> AI Provider
         </button>
         <button class="settings-cat" data-cat="web">
@@ -2349,12 +2357,23 @@
       </div>
       <div class="settings-page-right">
         <div class="settings-page-header">
-          <span class="settings-breadcrumb" id="settings-breadcrumb">Settings &rsaquo; AI Provider</span>
+          <span class="settings-breadcrumb" id="settings-breadcrumb">Settings &rsaquo; General</span>
           <button class="panel-close-btn" id="settings-page-close" title="Close">&times;</button>
         </div>
         <div class="settings-page-body">
+          <!-- General panel -->
+          <div class="settings-panel" id="settings-panel-general">
+            <div class="settings-group">
+              <label class="settings-label">Projects Folder</label>
+              <div class="settings-desc">Default folder for RefBoard projects. Scanned on startup.</div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input id="settings-projects-folder" type="text" class="settings-input" placeholder="~/Documents/RefBoard" style="flex: 1;" />
+                <button id="settings-browse-folder-btn" class="btn-secondary" style="flex: none; white-space: nowrap;">Browse</button>
+              </div>
+            </div>
+          </div>
           <!-- AI Provider panel -->
-          <div class="settings-panel" id="settings-panel-ai">
+          <div class="settings-panel" id="settings-panel-ai" style="display: none;">
             <div class="settings-group">
               <label class="settings-label">Provider</label>
               <select id="settings-provider" class="settings-select">

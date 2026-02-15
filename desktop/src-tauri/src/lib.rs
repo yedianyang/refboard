@@ -192,6 +192,32 @@ async fn list_projects(
     storage.list_recent_projects().await
 }
 
+/// Scan a folder for RefBoard projects.
+#[tauri::command]
+async fn scan_projects_folder(
+    storage: tauri::State<'_, storage::Storage>,
+    folder: String,
+) -> Result<Vec<ProjectInfo>, String> {
+    storage.scan_projects_folder(&folder).await
+}
+
+/// Read the full app configuration.
+#[tauri::command]
+async fn get_app_config(
+    storage: tauri::State<'_, storage::Storage>,
+) -> Result<storage::AppConfig, String> {
+    storage.read_app_config().await
+}
+
+/// Write the full app configuration.
+#[tauri::command]
+async fn set_app_config(
+    storage: tauri::State<'_, storage::Storage>,
+    config: storage::AppConfig,
+) -> Result<(), String> {
+    storage.write_app_config(&config).await
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -399,6 +425,9 @@ pub fn run() {
             write_metadata,
             create_project,
             list_projects,
+            scan_projects_folder,
+            get_app_config,
+            set_app_config,
             ai::analyze_image,
             ai::get_ai_config,
             ai::set_ai_config,
