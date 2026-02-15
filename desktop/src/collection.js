@@ -276,6 +276,13 @@ async function downloadImage(result, cardEl) {
     if (onImageAddedCallback) {
       onImageAddedCallback(dlResult);
     }
+
+    // Trigger CLIP embedding for newly downloaded image
+    invoke('cmd_embed_project', { projectPath: currentProjectPath })
+      .then((count) => {
+        if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+      })
+      .catch((err) => console.log('[CLIP] Embedding skipped:', err));
   } catch (err) {
     if (cardEl) cardEl.classList.remove('downloading');
     if (statusEl) statusEl.textContent = `Download failed: ${err}`;
@@ -314,6 +321,15 @@ async function downloadAllResults() {
 
   if (statusEl) {
     statusEl.textContent = `Download complete: ${downloaded} saved${failed ? `, ${failed} failed` : ''}`;
+  }
+
+  // Trigger CLIP embedding for batch downloaded images
+  if (downloaded > 0) {
+    invoke('cmd_embed_project', { projectPath: currentProjectPath })
+      .then((count) => {
+        if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+      })
+      .catch((err) => console.log('[CLIP] Embedding skipped:', err));
   }
 }
 
