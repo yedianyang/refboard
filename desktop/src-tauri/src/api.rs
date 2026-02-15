@@ -21,14 +21,13 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
-const DEFAULT_PORT: u16 = 7890;
-
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 struct ApiState {
     app: AppHandle,
+    storage: crate::storage::Storage,
 }
 
 // ---------------------------------------------------------------------------
@@ -128,8 +127,7 @@ struct ErrorResponse {
 // ---------------------------------------------------------------------------
 
 async fn handle_status(State(state): State<Arc<ApiState>>) -> Json<StatusResponse> {
-    let port = get_api_port();
-    let _ = &state.app; // keep state alive
+    let port = state.storage.get_api_port().await;
     Json(StatusResponse {
         status: "ok".to_string(),
         version: "2.0.0".to_string(),
@@ -349,29 +347,10 @@ async fn handle_move(
 
     crate::log::log("API", &format!("POST /api/move → project: {project_path}, file: {filename}, x: {x}, y: {y}"));
 
-    // Validate project path exists
-    let project_dir = std::path::Path::new(&project_path);
-    if !project_dir.exists() || !project_dir.is_dir() {
-        return Err(api_error(
-            StatusCode::BAD_REQUEST,
-            format!("Project path does not exist or is not a directory: {project_path}"),
-        ));
-    }
-
-    // Load board state
-    let board_path = project_dir.join(".refboard").join("board.json");
-    if !board_path.exists() {
-        return Err(api_error(
-            StatusCode::NOT_FOUND,
-            "Board state file not found".to_string(),
-        ));
-    }
-
-    let contents = std::fs::read_to_string(&board_path)
-        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot read board.json: {e}")))?;
-
-    let mut state_json: serde_json::Value = serde_json::from_str(&contents)
-        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid board.json: {e}")))?;
+    // Load board state via storage backend
+    let mut state_json = state.storage.load_board_state(&project_path).await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot load board state: {e}")))?
+        .ok_or_else(|| api_error(StatusCode::NOT_FOUND, "Board state not found".to_string()))?;
 
     // Find and update the item
     let items = state_json
@@ -395,11 +374,9 @@ async fn handle_move(
         obj.insert("y".to_string(), serde_json::json!(y));
     }
 
-    // Save board state
-    let json = serde_json::to_string_pretty(&state_json)
-        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot serialize board state: {e}")))?;
-    std::fs::write(&board_path, json)
-        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot write board.json: {e}")))?;
+    // Save board state via storage backend
+    state.storage.save_board_state(&project_path, &state_json).await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot save board state: {e}")))?;
 
     crate::log::log("API", &format!("Moved: {filename} to ({x}, {y})"));
 
@@ -461,8 +438,8 @@ async fn handle_update_item(
         era: payload.era,
     };
 
-    // Update in search database
-    crate::search::cmd_update_search_metadata(project_path.clone(), metadata.clone())
+    // Update in search database via storage backend
+    state.storage.upsert_image_metadata(&project_path, &metadata).await
         .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update metadata: {e}")))?;
 
     crate::log::log("API", &format!("Updated metadata for: {filename}"));
@@ -570,35 +547,14 @@ fn api_error(status: StatusCode, message: String) -> (StatusCode, Json<ErrorResp
 }
 
 // ---------------------------------------------------------------------------
-// Port Config
-// ---------------------------------------------------------------------------
-
-/// Read the API port from ~/.refboard/config.json, defaulting to 7890.
-fn get_api_port() -> u16 {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    let config_path = std::path::Path::new(&home)
-        .join(".refboard")
-        .join("config.json");
-
-    if let Ok(contents) = std::fs::read_to_string(config_path) {
-        if let Ok(config) = serde_json::from_str::<serde_json::Value>(&contents) {
-            if let Some(port) = config.get("apiPort").and_then(|v| v.as_u64()) {
-                return port as u16;
-            }
-        }
-    }
-    DEFAULT_PORT
-}
-
-// ---------------------------------------------------------------------------
 // Server Lifecycle
 // ---------------------------------------------------------------------------
 
 /// Start the HTTP API server in the background.
 /// Called from Tauri's setup hook.
-pub async fn start_server(app: AppHandle) {
-    let port = get_api_port();
-    let state = Arc::new(ApiState { app });
+pub async fn start_server(app: AppHandle, storage: crate::storage::Storage) {
+    let port = storage.get_api_port().await;
+    let state = Arc::new(ApiState { app, storage });
 
     let router = Router::new()
         .route("/api/status", get(handle_status))
@@ -626,8 +582,10 @@ pub async fn start_server(app: AppHandle) {
 // Tauri Commands
 // ---------------------------------------------------------------------------
 
-/// Get the current API server port.
+/// Get the current API server port via storage backend.
 #[tauri::command]
-pub fn cmd_get_api_port() -> u16 {
-    get_api_port()
+pub async fn cmd_get_api_port(
+    storage: tauri::State<'_, crate::storage::Storage>,
+) -> Result<u16, String> {
+    Ok(storage.get_api_port().await)
 }

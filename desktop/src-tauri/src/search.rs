@@ -593,72 +593,72 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f64 {
 // Tauri Commands
 // ---------------------------------------------------------------------------
 
-/// Index all images in a project for search.
+/// Index all images in a project for search via storage backend.
 #[tauri::command]
-pub fn cmd_index_project(project_path: String) -> Result<usize, String> {
-    let images = crate::scan_images(project_path.clone())?;
-    let count = index_project_images(&project_path, &images)?;
+pub async fn cmd_index_project(
+    storage: tauri::State<'_, crate::storage::Storage>,
+    project_path: String,
+) -> Result<usize, String> {
+    let images = crate::scan_images_in(&project_path)?;
+    let count = storage.index_images(&project_path, &images).await?;
 
     // Generate CLIP embeddings (best-effort, don't fail indexing)
-    let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
-    if let Err(e) = crate::embed::embed_and_store(&project_path, &paths) {
+    if let Err(e) = storage.embed_project(&project_path).await {
         eprintln!("CLIP embedding skipped: {e}");
     }
 
     Ok(count)
 }
 
-/// Full-text search across all metadata fields.
+/// Full-text search across all metadata fields via storage backend.
 #[tauri::command]
-pub fn cmd_search_text(
+pub async fn cmd_search_text(
+    storage: tauri::State<'_, crate::storage::Storage>,
     project_path: String,
     query: String,
     limit: Option<usize>,
 ) -> Result<Vec<SearchResult>, String> {
-    search_text(&project_path, &query, limit.unwrap_or(50))
+    storage.search_text(&project_path, &query, limit.unwrap_or(50)).await
 }
 
-/// Get all tags with counts for the tag filter sidebar.
+/// Get all tags with counts for the tag filter sidebar via storage backend.
 #[tauri::command]
-pub fn cmd_get_all_tags(project_path: String) -> Result<Vec<TagCount>, String> {
-    get_all_tags(&project_path)
+pub async fn cmd_get_all_tags(
+    storage: tauri::State<'_, crate::storage::Storage>,
+    project_path: String,
+) -> Result<Vec<TagCount>, String> {
+    storage.get_all_tags(&project_path).await
 }
 
-/// Get image paths that have a specific tag.
+/// Get image paths that have a specific tag via storage backend.
 #[tauri::command]
-pub fn cmd_filter_by_tag(
+pub async fn cmd_filter_by_tag(
+    storage: tauri::State<'_, crate::storage::Storage>,
     project_path: String,
     tag: String,
 ) -> Result<Vec<String>, String> {
-    get_images_by_tag(&project_path, &tag)
+    storage.get_images_by_tag(&project_path, &tag).await
 }
 
-/// Find similar images (uses embeddings if available, falls back to tag similarity).
+/// Find similar images via storage backend.
 #[tauri::command]
-pub fn cmd_find_similar(
+pub async fn cmd_find_similar(
+    storage: tauri::State<'_, crate::storage::Storage>,
     project_path: String,
     image_path: String,
     limit: Option<usize>,
 ) -> Result<Vec<SearchResult>, String> {
-    let limit = limit.unwrap_or(10);
-
-    // Try embedding-based similarity first
-    match find_similar(&project_path, &image_path, limit) {
-        Ok(results) if !results.is_empty() => Ok(results),
-        _ => {
-            // Fall back to tag-based similarity
-            find_similar_by_tags(&project_path, &image_path, limit)
-        }
-    }
+    storage.find_similar(&project_path, &image_path, limit.unwrap_or(10)).await
 }
 
-/// Update metadata for a single image in the search index.
+/// Update metadata for a single image via storage backend.
 #[tauri::command]
-pub fn cmd_update_search_metadata(
+pub async fn cmd_update_search_metadata(
+    storage: tauri::State<'_, crate::storage::Storage>,
     project_path: String,
     metadata: ImageMetadataRow,
 ) -> Result<(), String> {
-    update_image_metadata(&project_path, &metadata)
+    storage.upsert_image_metadata(&project_path, &metadata).await
 }
 
 // ---------------------------------------------------------------------------

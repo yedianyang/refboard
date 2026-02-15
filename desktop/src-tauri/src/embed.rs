@@ -89,9 +89,9 @@ pub fn cmd_warmup_clip() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn cmd_embed_project(project_path: String) -> Result<usize, String> {
-    let images = crate::scan_images(project_path.clone())?;
-    crate::log::log("CLIP", &format!("Embedding project: {project_path} ({} images found)", images.len()));
-    let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
-    embed_and_store(&project_path, &paths)
+pub async fn cmd_embed_project(
+    storage: tauri::State<'_, crate::storage::Storage>,
+    project_path: String,
+) -> Result<usize, String> {
+    storage.embed_project(&project_path).await
 }

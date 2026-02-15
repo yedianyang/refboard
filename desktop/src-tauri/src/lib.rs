@@ -3,6 +3,7 @@ mod api;
 mod embed;
 pub mod log;
 mod search;
+pub mod storage;
 mod web;
 
 use serde::{Deserialize, Serialize};
@@ -55,10 +56,9 @@ pub struct ProjectInfo {
 // Commands
 // ---------------------------------------------------------------------------
 
-/// Recursively scan a directory for image files.
-#[tauri::command]
-fn scan_images(dir_path: String) -> Result<Vec<ImageInfo>, String> {
-    let path = Path::new(&dir_path);
+/// Scan a directory for image files (core logic, callable from other modules).
+pub fn scan_images_in(dir_path: &str) -> Result<Vec<ImageInfo>, String> {
+    let path = Path::new(dir_path);
     if !path.exists() {
         return Err(format!("Path does not exist: {}", dir_path));
     }
@@ -70,6 +70,12 @@ fn scan_images(dir_path: String) -> Result<Vec<ImageInfo>, String> {
     walk_for_images(path, &mut images)?;
     images.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok(images)
+}
+
+/// Recursively scan a directory for image files.
+#[tauri::command]
+fn scan_images(dir_path: String) -> Result<Vec<ImageInfo>, String> {
+    scan_images_in(&dir_path)
 }
 
 fn walk_for_images(dir: &Path, images: &mut Vec<ImageInfo>) -> Result<(), String> {
@@ -149,184 +155,49 @@ fn import_clipboard_image(
     import_image_bytes(data, extension, project_path)
 }
 
-/// Read project metadata from a directory's metadata.json file.
+/// Read project metadata via storage backend.
 #[tauri::command]
-fn read_metadata(project_path: String) -> Result<ProjectMetadata, String> {
-    let meta_path = Path::new(&project_path).join("metadata.json");
-    if !meta_path.exists() {
-        return Err(format!(
-            "No metadata.json found in {}",
-            project_path
-        ));
-    }
-    let contents =
-        fs::read_to_string(&meta_path).map_err(|e| format!("Cannot read metadata: {}", e))?;
-    let metadata: ProjectMetadata =
-        serde_json::from_str(&contents).map_err(|e| format!("Invalid metadata JSON: {}", e))?;
-    Ok(metadata)
+async fn read_metadata(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+) -> Result<ProjectMetadata, String> {
+    storage.read_project_metadata(&project_path).await
 }
 
-/// Write project metadata to a directory's metadata.json file.
+/// Write project metadata via storage backend.
 #[tauri::command]
-fn write_metadata(project_path: String, metadata: ProjectMetadata) -> Result<(), String> {
-    let meta_path = Path::new(&project_path).join("metadata.json");
-    let json = serde_json::to_string_pretty(&metadata)
-        .map_err(|e| format!("Cannot serialize metadata: {}", e))?;
-    fs::write(&meta_path, json).map_err(|e| format!("Cannot write metadata: {}", e))?;
-    Ok(())
+async fn write_metadata(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+    metadata: ProjectMetadata,
+) -> Result<(), String> {
+    storage.write_project_metadata(&project_path, &metadata).await
 }
 
-/// Create a new project: initialize directory structure with refboard.json,
-/// metadata.json, and images/ subdirectory.
+/// Create a new project via storage backend.
 #[tauri::command]
-fn create_project(name: String, path: String) -> Result<ProjectInfo, String> {
-    let project_dir = Path::new(&path);
-
-    // Create directory structure
-    fs::create_dir_all(project_dir.join("images"))
-        .map_err(|e| format!("Cannot create project directories: {}", e))?;
-    fs::create_dir_all(project_dir.join("thumbnails"))
-        .map_err(|e| format!("Cannot create thumbnails directory: {}", e))?;
-
-    // Write refboard.json (project config)
-    let refboard_config = serde_json::json!({
-        "version": 2,
-        "name": name,
-        "created": chrono_now_iso(),
-    });
-    fs::write(
-        project_dir.join("refboard.json"),
-        serde_json::to_string_pretty(&refboard_config).unwrap(),
-    )
-    .map_err(|e| format!("Cannot write refboard.json: {}", e))?;
-
-    // Write metadata.json
-    let metadata = ProjectMetadata {
-        name: name.clone(),
-        path: path.clone(),
-        description: None,
-        tags: Vec::new(),
-        image_count: 0,
-        created_at: Some(chrono_now_iso()),
-        updated_at: Some(chrono_now_iso()),
-    };
-    let meta_json = serde_json::to_string_pretty(&metadata)
-        .map_err(|e| format!("Cannot serialize metadata: {}", e))?;
-    fs::write(project_dir.join("metadata.json"), meta_json)
-        .map_err(|e| format!("Cannot write metadata.json: {}", e))?;
-
-    // Write board.json (empty canvas state)
-    let board = serde_json::json!({
-        "version": 2,
-        "viewport": { "x": 0, "y": 0, "zoom": 1.0 },
-        "items": [],
-        "groups": [],
-        "annotations": [],
-    });
-    fs::write(
-        project_dir.join("board.json"),
-        serde_json::to_string_pretty(&board).unwrap(),
-    )
-    .map_err(|e| format!("Cannot write board.json: {}", e))?;
-
-    // Add to recent projects list
-    let _ = add_to_recent(&name, &path);
-
-    Ok(ProjectInfo {
-        name,
-        path,
-        image_count: 0,
-    })
+async fn create_project(
+    storage: tauri::State<'_, storage::Storage>,
+    name: String,
+    path: String,
+) -> Result<ProjectInfo, String> {
+    storage.create_project(&name, &path).await
 }
 
-/// List recent projects from ~/.refboard/recent.json.
+/// List recent projects via storage backend.
 #[tauri::command]
-fn list_projects() -> Result<Vec<ProjectInfo>, String> {
-    let recent_path = refboard_data_dir().join("recent.json");
-    if !recent_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let contents =
-        fs::read_to_string(&recent_path).map_err(|e| format!("Cannot read recent.json: {}", e))?;
-
-    #[derive(Deserialize)]
-    struct RecentEntry {
-        name: String,
-        path: String,
-    }
-
-    let entries: Vec<RecentEntry> =
-        serde_json::from_str(&contents).map_err(|e| format!("Invalid recent.json: {}", e))?;
-
-    let mut projects = Vec::new();
-    for entry in entries {
-        let project_dir = Path::new(&entry.path);
-        if project_dir.exists() {
-            // Count images if the directory exists
-            let image_count = count_images_in(project_dir);
-            projects.push(ProjectInfo {
-                name: entry.name,
-                path: entry.path,
-                image_count,
-            });
-        }
-    }
-
-    Ok(projects)
+async fn list_projects(
+    storage: tauri::State<'_, storage::Storage>,
+) -> Result<Vec<ProjectInfo>, String> {
+    storage.list_recent_projects().await
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Get the RefBoard data directory (~/.refboard/).
-fn refboard_data_dir() -> std::path::PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    Path::new(&home).join(".refboard")
-}
-
-/// Add a project to the recent projects list.
-fn add_to_recent(name: &str, path: &str) -> Result<(), String> {
-    let data_dir = refboard_data_dir();
-    fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
-
-    let recent_path = data_dir.join("recent.json");
-
-    #[derive(Serialize, Deserialize)]
-    struct RecentEntry {
-        name: String,
-        path: String,
-    }
-
-    let mut entries: Vec<RecentEntry> = if recent_path.exists() {
-        let contents = fs::read_to_string(&recent_path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&contents).unwrap_or_default()
-    } else {
-        Vec::new()
-    };
-
-    // Remove existing entry with same path, then prepend
-    entries.retain(|e| e.path != path);
-    entries.insert(
-        0,
-        RecentEntry {
-            name: name.to_string(),
-            path: path.to_string(),
-        },
-    );
-
-    // Keep max 20 recent projects
-    entries.truncate(20);
-
-    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
-    fs::write(&recent_path, json).map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
 /// Count images in a directory (non-recursive, quick check).
-fn count_images_in(dir: &Path) -> usize {
+pub fn count_images_in(dir: &Path) -> usize {
     let images_dir = dir.join("images");
     let target = if images_dir.is_dir() {
         &images_dir
@@ -351,7 +222,7 @@ fn count_images_in(dir: &Path) -> usize {
 }
 
 /// Simple ISO-ish timestamp without pulling in the chrono crate.
-fn chrono_now_iso() -> String {
+pub fn chrono_now_iso() -> String {
     use std::time::SystemTime;
     let duration = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -365,34 +236,23 @@ fn chrono_now_iso() -> String {
 // Board State (Auto-save / Crash Recovery)
 // ---------------------------------------------------------------------------
 
-/// Save board state (card positions, groups, viewport) to .refboard/board.json.
+/// Save board state (card positions, groups, viewport) via storage backend.
 #[tauri::command]
-fn save_board_state(project_path: String, state: serde_json::Value) -> Result<(), String> {
-    let refboard_dir = Path::new(&project_path).join(".refboard");
-    fs::create_dir_all(&refboard_dir)
-        .map_err(|e| format!("Cannot create .refboard dir: {}", e))?;
-
-    let board_path = refboard_dir.join("board.json");
-    let json = serde_json::to_string_pretty(&state)
-        .map_err(|e| format!("Cannot serialize board state: {}", e))?;
-    fs::write(&board_path, json)
-        .map_err(|e| format!("Cannot write board.json: {}", e))?;
-    Ok(())
+async fn save_board_state(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+    state: serde_json::Value,
+) -> Result<(), String> {
+    storage.save_board_state(&project_path, &state).await
 }
 
-/// Load board state from .refboard/board.json. Returns null if no saved state.
+/// Load board state via storage backend. Returns null if no saved state.
 #[tauri::command]
-fn load_board_state(project_path: String) -> Result<Option<serde_json::Value>, String> {
-    let board_path = Path::new(&project_path).join(".refboard").join("board.json");
-    if !board_path.exists() {
-        return Ok(None);
-    }
-
-    let contents = fs::read_to_string(&board_path)
-        .map_err(|e| format!("Cannot read board.json: {}", e))?;
-    let state: serde_json::Value = serde_json::from_str(&contents)
-        .map_err(|e| format!("Invalid board.json: {}", e))?;
-    Ok(Some(state))
+async fn load_board_state(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+) -> Result<Option<serde_json::Value>, String> {
+    storage.load_board_state(&project_path).await
 }
 
 /// Import image files into a project's images/ directory.
@@ -449,7 +309,7 @@ fn import_images(paths: Vec<String>, project_path: String) -> Result<Vec<ImageIn
 /// Export all image metadata as a JSON file.
 #[tauri::command]
 fn export_metadata(project_path: String, output_path: String) -> Result<usize, String> {
-    let images = scan_images(project_path.clone())?;
+    let images = scan_images_in(&project_path)?;
 
     // Merge with search DB metadata if available
     let conn = search::open_db(&project_path).ok();
@@ -514,15 +374,20 @@ fn export_metadata(project_path: String, output_path: String) -> Result<usize, S
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize the unified storage backend
+    let store: storage::Storage = std::sync::Arc::new(storage::LocalStorage::new());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .manage(store.clone())
+        .setup(move |app| {
             let handle = app.handle().clone();
+            let api_storage = store;
             tauri::async_runtime::spawn(async move {
-                api::start_server(handle).await;
+                api::start_server(handle, api_storage).await;
             });
             Ok(())
         })
