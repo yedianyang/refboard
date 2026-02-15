@@ -85,6 +85,7 @@
       display: flex;
       flex: 1;
       overflow: hidden;
+      min-height: 0;
     }
 
     /* ---- Toolbar (macOS titlebar-style) ---- */
@@ -178,6 +179,7 @@
       flex: 1;
       overflow: hidden;
       position: relative;
+      min-width: 0;
     }
 
     /* Hide board elements when in home view */
@@ -385,6 +387,8 @@
       flex: 1;
       position: relative;
       overflow: hidden;
+      min-width: 0;
+      min-height: 0;
     }
     #canvas-container canvas {
       display: block;
@@ -495,7 +499,9 @@
       pointer-events: none;
       z-index: 5;
       opacity: 0.7;
+      display: none;
     }
+    #hints.visible { display: block; }
     #hints kbd {
       display: inline-block;
       padding: 1px 4px;
@@ -505,6 +511,27 @@
       font-family: inherit;
       font-size: 10px;
     }
+    #hints-toggle {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      z-index: 6;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      transition: opacity 0.15s ease;
+    }
+    #hints-toggle:hover { opacity: 1; }
+    #hints-toggle.active { opacity: 0.8; }
 
     /* ---- Right Panel (Suggestion + Metadata) ---- */
     #right-panel {
@@ -2145,9 +2172,10 @@
           <kbd>Cmd</kbd>+<kbd>G</kbd> group &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> tidy up<br>
           <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> analyze &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> find online<br>
           <kbd>Cmd</kbd>+<kbd>S</kbd> save &nbsp; <kbd>T</kbd> text &nbsp; <kbd>R</kbd> rect &nbsp; <kbd>O</kbd> ellipse &nbsp; <kbd>L</kbd> line<br>
-          <kbd>Cmd</kbd>+<kbd>,</kbd> settings &nbsp; <kbd>D</kbd> theme &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect<br>
+          <kbd>Cmd</kbd>+<kbd>,</kbd> settings &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect<br>
           <kbd>&larr;&uarr;&darr;&rarr;</kbd> nudge 1px &nbsp; <kbd>Shift</kbd>+arrows 10px
         </div>
+        <button id="hints-toggle" title="Keyboard shortcuts">?</button>
       </div>
 
       <!-- Right Panel (Suggestion + Metadata) -->

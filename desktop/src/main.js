@@ -354,6 +354,16 @@ async function main() {
     });
   }
 
+  // Hints toggle button
+  const hintsToggle = document.getElementById('hints-toggle');
+  const hintsPanel = document.getElementById('hints');
+  if (hintsToggle && hintsPanel) {
+    hintsToggle.addEventListener('click', () => {
+      hintsPanel.classList.toggle('visible');
+      hintsToggle.classList.toggle('active');
+    });
+  }
+
   // Web collection sidebar button
   const webSidebarBtn = document.getElementById('web-sidebar-btn');
   if (webSidebarBtn) {

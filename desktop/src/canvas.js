@@ -174,12 +174,23 @@ export async function initCanvas(containerEl) {
   setupGlobalDrag();
   drawGrid();
 
-  window.addEventListener('resize', () => {
+  // Redraw grid/minimap on any resize
+  const onResize = () => {
     drawGrid();
     app.stage.hitArea = app.screen;
     invalidateMinimapCardCache();
     requestMinimapRedraw();
+  };
+  window.addEventListener('resize', onResize);
+
+  // Also observe container size changes (more reliable than window resize)
+  const ro = new ResizeObserver(() => {
+    if (app?.renderer) {
+      app.resize();
+      onResize();
+    }
   });
+  ro.observe(containerEl);
 
   // Wire sidebar tool buttons to click handlers
   const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line' };
@@ -338,8 +349,8 @@ function setupKeyboard() {
     if (e.key === '0' && meta) { zoomTo100(); e.preventDefault(); return; }
 
     // Tools
-    if (e.key === 'v' || e.key === 'V') { setTool('select'); return; }
-    if (e.key === 'h' || e.key === 'H') { setTool('hand'); return; }
+    if ((e.key === 'v' || e.key === 'V') && !meta) { setTool('select'); return; }
+    if ((e.key === 'h' || e.key === 'H') && !meta) { setTool('hand'); return; }
     if ((e.key === 't' || e.key === 'T') && !meta && !e.shiftKey) { setTool('text'); return; }
     if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
     if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
@@ -352,6 +363,10 @@ function setupKeyboard() {
     if (e.key === 'z' && meta && e.shiftKey) { redo(); e.preventDefault(); return; }
     // (Cmd+Shift+Z on macOS / Ctrl+Y also common)
     if (e.key === 'y' && meta) { redo(); e.preventDefault(); return; }
+
+    // Edit — Copy/Paste
+    if (e.key === 'c' && meta && !e.shiftKey) { copySelected(); e.preventDefault(); return; }
+    if (e.key === 'v' && meta && !e.shiftKey && clipboard.length > 0) { pasteFromClipboard(); e.preventDefault(); return; }
 
     // Edit — Selection operations
     if (e.key === 'a' && meta) { selectAll(); e.preventDefault(); return; }
@@ -1556,23 +1571,71 @@ function deleteSelected() {
   updateColorPaletteVisibility();
 }
 
+// Internal clipboard for copy/paste
+let clipboard = [];
+
+function copySelected() {
+  if (selection.size === 0) return;
+  clipboard = Array.from(selection).map(card => ({
+    data: { ...card.data },
+    x: card.container.x,
+    y: card.container.y,
+    width: card.cardWidth,
+    height: card.cardHeight,
+    isText: !!card.isText,
+    isShape: !!card.isShape,
+    // Preserve text content for text cards
+    text: card.isText && card.textObj ? card.textObj.text : undefined,
+  }));
+}
+
+function pasteFromClipboard() {
+  if (clipboard.length === 0) return;
+  const offset = 30;
+  clearSelection();
+  for (const item of clipboard) {
+    const nx = item.x + offset;
+    const ny = item.y + offset;
+
+    if (item.isText) {
+      const newCard = createTextCard(item.text || item.data.text || '', nx, ny, {
+        width: item.width,
+        height: item.height,
+        fontSize: item.data.fontSize,
+        color: item.data.color,
+      });
+      setCardSelected(newCard, true);
+    } else if (item.isShape) {
+      const newCard = createShapeCard(item.data.shapeType, nx, ny, {
+        width: item.width,
+        height: item.height,
+        color: item.data.color,
+        strokeWidth: item.data.strokeWidth,
+      });
+      setCardSelected(newCard, true);
+    } else {
+      // Image card
+      addImageCard(item.data, nx, ny)
+        .then((newCard) => {
+          if (newCard) {
+            resizeCardTo(newCard, item.width, item.height);
+            setCardSelected(newCard, true);
+          }
+        });
+    }
+  }
+  // Shift clipboard positions so repeated paste offsets further
+  clipboard = clipboard.map(item => ({
+    ...item,
+    x: item.x + offset,
+    y: item.y + offset,
+  }));
+}
+
 function duplicateSelected() {
   if (selection.size === 0) return;
-  const offset = 30;
-  const toDuplicate = Array.from(selection);
-
-  clearSelection();
-
-  for (const card of toDuplicate) {
-    // Create a duplicate by adding a new card at offset position
-    addImageCard(card.data, card.container.x + offset, card.container.y + offset)
-      .then((newCard) => {
-        if (newCard) {
-          resizeCardTo(newCard, card.cardWidth, card.cardHeight);
-          setCardSelected(newCard, true);
-        }
-      });
-  }
+  copySelected();
+  pasteFromClipboard();
 }
 
 function selectAll() {
@@ -2094,6 +2157,8 @@ function showCanvasContextMenu(clientX, clientY) {
       items.push({ icon: '\uD83C\uDF10', label: 'Find More Online', shortcut: '\u2318\u21E7F', action: 'find-online' });
       items.push({ divider: true });
     }
+    items.push({ icon: '\u2398', label: 'Copy', shortcut: '\u2318C', action: 'copy' });
+    items.push({ icon: '\u2398', label: 'Paste', shortcut: '\u2318V', action: 'paste', disabled: clipboard.length === 0 });
     items.push({ icon: '\u2398', label: 'Duplicate', shortcut: '\u2318D', action: 'duplicate' });
     items.push({ divider: true });
     items.push({ icon: '\u2B06', label: 'Bring to Front', shortcut: '\u2318]', action: 'bring-front' });
@@ -2107,6 +2172,10 @@ function showCanvasContextMenu(clientX, clientY) {
     items.push({ divider: true });
     items.push({ icon: '\u232B', label: 'Delete', shortcut: 'Del', action: 'delete', destructive: true });
   } else {
+    if (clipboard.length > 0) {
+      items.push({ icon: '\u2398', label: 'Paste', shortcut: '\u2318V', action: 'paste' });
+      items.push({ divider: true });
+    }
     items.push({ icon: '\u2395', label: 'Fit All', shortcut: '\u21E71', action: 'fit-all' });
     items.push({ icon: '\u2316', label: 'Zoom to 100%', shortcut: '\u23180', action: 'zoom-100' });
     items.push({ divider: true });
@@ -2178,6 +2247,8 @@ function findCardAt(worldX, worldY) {
 
 function handleContextAction(action) {
   switch (action) {
+    case 'copy': copySelected(); break;
+    case 'paste': pasteFromClipboard(); break;
     case 'delete': deleteSelected(); break;
     case 'duplicate': duplicateSelected(); break;
     case 'bring-front': bringForward(); break;
