@@ -531,6 +531,7 @@ pub fn run() {
             web::cmd_get_web_config,
             web::cmd_set_web_config,
             embed::cmd_embed_project,
+            embed::cmd_warmup_clip,
             save_board_state,
             load_board_state,
             export_metadata,

@@ -30,6 +30,14 @@ async function main() {
   // Apply saved theme (dark/light)
   applySavedTheme();
 
+  // Warm up CLIP model in background after UI is ready
+  // Delayed to ensure UI loads first, then model initializes in background
+  setTimeout(() => {
+    invoke('cmd_warmup_clip').catch((err) => {
+      console.warn('CLIP warmup skipped:', err);
+    });
+  }, 3000);  // Wait 3 seconds after app start
+
   // Shared image extension set
   const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'tiff']);
   // Formats that should NOT be compressed (vector, animated, or already tiny)
@@ -240,7 +248,12 @@ async function main() {
           await addImageCard(info, centerX, centerY);
           const suffix = compressed ? ' (compressed)' : '';
           setStatus(`Pasted image: ${info.name}${suffix}`);
-          invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
+          // Generate embedding in background with dialog feedback
+          const dlg = document.getElementById('model-download-dialog');
+          if (dlg) dlg.style.display = 'flex';
+          invoke('cmd_embed_project', { projectPath: currentProjectPath })
+            .then(() => { if (dlg) dlg.style.display = 'none'; })
+            .catch(() => { if (dlg) dlg.style.display = 'none'; });
         } catch (err) {
           setStatus(`Paste failed: ${err}`);
         }
@@ -493,8 +506,13 @@ async function openProject(dirPath, loading) {
         });
       });
 
-      loading.textContent = `Loaded ${result.loaded} images`;
-      setTimeout(() => { loading.style.display = 'none'; }, 2000);
+      if (result.loaded === 0) {
+        loading.textContent = 'Empty project — drag images here or use Find Online (Cmd+Shift+F)';
+        loading.style.color = '#888';
+      } else {
+        loading.textContent = `Loaded ${result.loaded} images`;
+      }
+      setTimeout(() => { loading.style.display = 'none'; }, 3000);
     }
   } catch (err) {
     loading.textContent = `Error: ${err}`;
@@ -772,18 +790,17 @@ async function initHomeScreen(homeScreen, projectPathInput, loading) {
         if (!name) return;
         newDialog.classList.remove('open');
         try {
-          const result = await invoke('cmd_create_project', { name });
+          // Construct full path and call create_project with both name and path
+          const home = await getHomePath();
+          const base = home.endsWith('/') ? home : home + '/';
+          const path = `${base}Documents/RefBoard/${name}`;
+          const result = await invoke('create_project', { name, path });
           projectPathInput.value = result.path;
           openProject(result.path, loading);
         } catch (err) {
-          // Fallback: create directory manually via home path
-          const home = await getHomePath();
-          if (home) {
-            const base = home.endsWith('/') ? home : home + '/';
-            const path = `${base}Documents/RefBoard/${name}`;
-            projectPathInput.value = path;
-            openProject(path, loading);
-          }
+          console.error('Failed to create project:', err);
+          const statusText = document.getElementById('status-text');
+          if (statusText) statusText.textContent = `Error: ${err}`;
         }
       });
 

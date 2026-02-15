@@ -2383,7 +2383,7 @@ export async function loadProject(dirPath) {
   const images = await invoke('scan_images', { dirPath });
   if (images.length === 0) {
     console.warn('No images found in', dirPath);
-    return;
+    return { loaded: 0, total: 0 };  // Return valid result for empty projects
   }
 
   const total = images.length;

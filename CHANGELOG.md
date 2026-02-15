@@ -4,6 +4,28 @@ All notable changes to RefBoard will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0-beta.1] - 2026-02-15
+
+Bug fixes and performance improvements for the Home page and CLIP model loading.
+
+### Fixed
+
+- **Create Project flow** -- Fixed command name mismatch (`cmd_create_project` → `create_project`) and missing `path` parameter. New projects now correctly create directory structure at `~/Documents/RefBoard/<name>/`
+- **Empty project handling** -- `loadProject()` now returns `{ loaded: 0, total: 0 }` instead of `undefined` for empty projects, preventing the UI from getting stuck on "Scanning images..."
+- **Empty project UX** -- Shows helpful message "Empty project — drag images here or use Find Online (Cmd+Shift+F)" instead of hanging
+
+### Added
+
+- **CLIP model warmup** -- New `cmd_warmup_clip` Rust command to pre-initialize the CLIP model on app startup
+- **Background model loading** -- CLIP model (~150MB) now loads 3 seconds after app start in the background, preventing UI lag on first paste
+- **Paste loading indicator** -- Shows "Setting up CLIP model" dialog when pasting images if model is still initializing
+
+### Changed
+
+- Model warmup is now delayed to ensure UI loads first, then initializes silently in background
+
+---
+
 ## [2.0.0-beta.0] - 2026-02-14
 
 RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and PixiJS 8.

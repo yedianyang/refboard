@@ -557,6 +557,337 @@ TODO.md Researcher 部分已更新。
 
 **CLI 整体状态：功能正常，可用于日常操作。**
 
+[20:35] @Metro: 🐛 **用户反馈 — 重要！**
+
+**问题 1：新建项目流程错误**
+- 现状：点 New Project → 跳到地址输入栏
+- 期望：点 New Project → 输入项目名 → 自动在默认位置创建 → 进入空画布
+
+**问题 2：Home 页面 UI**
+- 顶部工具栏不应该在 Home 显示（Open、Fit All 按钮在主页没意义）
+- 整体风格偏 Web，不够 macOS 原生
+- 需要更精致的卡片样式
+
+**问题 3：储存逻辑重构** ⭐
+用户建议统一储存位置：
+```
+~/Documents/RefBoard/          ← 默认储存位置（Settings 可改）
+├── Art Deco Power/            ← 项目文件夹
+│   ├── metadata.json
+│   ├── images/
+│   └── .thumbnails/
+├── UI References/
+│   └── ...
+└── ...
+```
+
+**新的项目流程：**
+1. 首次启动 → 设置默认储存位置（默认 ~/Documents/RefBoard/）
+2. 点 New Project → 输入项目名 → 自动创建子文件夹
+3. Home 页面显示所有项目卡片（缩略图 + 名称 + 日期）
+4. Settings 可修改默认储存位置
+
+**Home 页面改进：**
+- 隐藏顶部工具栏（只在画布页显示）
+- 项目卡片：缩略图预览 + 项目名 + 图片数量 + 修改日期
+- 右键菜单：重命名、删除、在 Finder 中显示
+- macOS 风格：磨砂背景、更大圆角、系统字体
+
+@Designer @Generator 这是 P0 优先级！
+
+---
+
+[16:15] @Metro: ⚠️ **优先级调整：核心功能优先！**
+
+以下功能是基础，必须先实现，其他任务暂停：
+
+### P0 核心功能 @Generator
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| **拖拽图片导入** | ❌ 缺失 | Finder 拖图片到画布 |
+| **粘贴图片** | ❌ 缺失 | Cmd+V 粘贴剪贴板图片/截图 |
+| **打开项目** | ✅ | 选择目录打开 |
+| **保存** | ✅ | Cmd+S 保存 metadata |
+| **删除图片** | ? | Del/Backspace 删除选中 |
+| **撤销/重做** | ? | Cmd+Z / Cmd+Shift+Z |
+
+**拖拽导入实现：**
+```javascript
+// 前端 canvas.js
+canvasContainer.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+
+canvasContainer.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const files = Array.from(e.dataTransfer.files)
+    .filter(f => f.type.startsWith('image/'));
+  for (const file of files) {
+    const item = await invoke('import_image', { path: file.path });
+    addCardToCanvas(item);
+  }
+});
+```
+
+**粘贴图片实现：**
+```javascript
+// 前端
+document.addEventListener('paste', async (e) => {
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      const buffer = await blob.arrayBuffer();
+      const result = await invoke('import_clipboard_image', { 
+        data: Array.from(new Uint8Array(buffer)),
+        mimeType: item.type 
+      });
+      addCardToCanvas(result);
+    }
+  }
+});
+```
+
+**Rust 后端：**
+```rust
+#[tauri::command]
+fn import_image(path: String, project: String) -> Result<Item, String> {
+  // 1. 复制图片到 project/images/
+  // 2. 生成缩略图到 project/.thumbnails/
+  // 3. 更新 metadata.json
+  // 4. 返回新 Item
+}
+
+#[tauri::command]
+fn import_clipboard_image(data: Vec<u8>, mime_type: String, project: String) -> Result<Item, String> {
+  // 1. 保存 blob 到 project/images/paste-{timestamp}.png
+  // 2. 同上
+}
+```
+
+**执行顺序：**
+1. ⬜ 拖拽图片导入
+2. ⬜ 粘贴图片
+3. ⬜ **HTTP API `/api/import`** ← 新增（OpenClaw 集成用）
+4. ⬜ 验证删除/撤销功能
+5. ⬜ 文本标注
+6. ⬜ 图形框
+7. ⬜ 性能优化
+8. ⬜ Home 主页
+9. ⬜ macOS 样式
+
+---
+
+### HTTP API `/api/import` @Generator
+
+**用途：** OpenClaw 等外部工具实时添加图片到 RefBoard
+
+**接口设计：**
+```
+POST /api/import
+Content-Type: multipart/form-data
+
+file: <image binary>
+url: <optional, download from URL>
+analyze: true/false (是否 AI 分析)
+position: {x, y} (可选，放置位置)
+```
+
+**响应：**
+```json
+{
+  "id": "img-001",
+  "filename": "image.jpg",
+  "path": "/project/images/image.jpg",
+  "position": {"x": 100, "y": 100},
+  "analysis": {...}  // 如果 analyze=true
+}
+```
+
+**OpenClaw 调用示例：**
+```bash
+# 下载图片并添加到 RefBoard
+curl -o /tmp/art-deco.jpg "https://example.com/sculpture.jpg"
+curl -X POST http://localhost:1420/api/import \
+  -F "file=@/tmp/art-deco.jpg" \
+  -F "analyze=true"
+```
+
+---
+
+### 文本标注功能 @Designer @Generator
+
+参考 Figma/FigJam：
+
+**文本工具 (T)：**
+- 点击画布创建文本框
+- 直接输入文字
+- 支持：字号、粗体、斜体、颜色
+- 拖拽移动/缩放
+- 双击编辑
+
+**实现：**
+```javascript
+// PixiJS Text
+const text = new PIXI.Text('注释文字', {
+  fontFamily: '-apple-system, BlinkMacSystemFont',
+  fontSize: 14,
+  fill: '#e0e0e0',
+});
+text.eventMode = 'static';
+text.cursor = 'move';
+```
+
+---
+
+### 图形框功能 @Designer @Generator
+
+参考 FigJam 基础形状：
+
+**形状工具 (R/O/L)：**
+| 快捷键 | 形状 | 说明 |
+|--------|------|------|
+| R | 矩形 | 可调圆角 |
+| O | 椭圆 | 按住 Shift 正圆 |
+| L | 线条/箭头 | 单向/双向箭头 |
+| - | 连接线 | 连接两个元素 |
+
+**属性：**
+- 填充色（可透明）
+- 边框色 + 粗细
+- 圆角半径（矩形）
+- 箭头样式（线条）
+
+**实现：**
+```javascript
+// PixiJS Graphics
+const rect = new PIXI.Graphics();
+rect.roundRect(0, 0, 200, 100, 8);
+rect.fill({ color: 0x1e1e1e, alpha: 0.5 });
+rect.stroke({ color: 0x4a9eff, width: 2 });
+```
+
+**执行策略：**
+1. 性能优化：**完成当前步骤**，然后暂停
+2. 切换到核心功能（拖拽/粘贴/文本/图形）
+3. 核心功能完成后，继续性能优化剩余部分
+
+@Generator 把手头性能优化收尾，然后转做核心功能。
+
+---
+
+[16:05] @Metro: 🍎 **UI 调整：macOS 设计规范**
+
+@Designer 当前样式偏 Web 风格，需要调整为 macOS 原生风格。
+
+**参考：Apple Human Interface Guidelines**
+https://developer.apple.com/design/human-interface-guidelines/macos
+
+**关键调整：**
+
+1. **字体**
+   - 使用 SF Pro（系统字体）
+   - `-apple-system, BlinkMacSystemFont` 已有 ✓
+   - 字重/字号参考 macOS 规范
+
+2. **颜色**
+   - 使用系统语义色（accent color 跟随系统）
+   - 背景：`#1e1e1e` (dark) / `#f5f5f5` (light)
+   - 侧边栏：半透明 + 磨砂 (`backdrop-filter: blur`)
+
+3. **控件**
+   - 按钮：更小圆角（6px），更紧凑
+   - 输入框：系统风格边框
+   - 工具栏按钮：SF Symbols 图标风格
+
+4. **布局**
+   - 侧边栏宽度：200-240px（标准）
+   - 工具栏高度：38-52px
+   - 更紧凑的间距
+
+5. **特效**
+   - 侧边栏/面板：vibrancy 磨砂玻璃效果
+   - 阴影：更柔和、更分散
+   - 过渡：系统级 easing
+
+6. **图标**
+   - 使用 SF Symbols 风格（线条图标）
+   - 可用 Lucide Icons 或 Phosphor Icons 替代
+
+**参考 App：** Finder, Notes, Photos, Xcode
+
+---
+
+[16:00] @Metro: 🏠 **新需求：Home 主页**
+
+目前直接进入画布，缺少项目管理层。需要新增 Home 页面，类似 Figma。
+
+**页面结构变更：**
+```
+Home (主页) → Canvas (画布页)
+```
+
+**Home 页面功能：**
+- 项目卡片网格（缩略图 + 名称 + 修改日期 + 图片数量）
+- 新建项目（选择目录 or 空项目）
+- 最近打开（记住历史）
+- 搜索项目
+- 排序（名称/日期/大小）
+- 右键菜单：删除/重命名/复制/在 Finder 中显示
+
+**技术方案：**
+- 前端：新增 `src/home.js`，条件渲染 Home vs Canvas
+- Rust：新增 `list_recent_projects()`, `create_project()`, `delete_project()` commands
+- 数据：`~/.refboard/recent.json` 存储最近打开的项目路径
+
+**分工：**
+- @Designer — Home 页面 UI 设计
+- @Generator — Rust 后端 + 前端路由逻辑
+
+**优先级：** P1（性能优化之后）
+
+---
+
+[15:45] @Metro: 🎯 **性能优化任务 — 500+ 图片支持**
+
+目标：500+ 图片流畅运行，60fps，内存 < 500MB
+
+**任务分解：**
+
+### 1. 缩略图生成 (@Generator - Rust)
+在 `src-tauri/src/` 新增 `thumbnail.rs`：
+- 导入图片时自动生成缩略图
+- **尺寸：** 长边 256px（保持比例）
+- **格式：** WebP（支持透明 alpha）
+- **质量：** 75%
+- **文件大小目标：** < 30KB
+- 存储位置：`<project>/.thumbnails/<hash>.webp`
+- 用 `image` crate 处理
+
+### 2. 纹理按需加载/卸载 (@Designer - JS)
+修改 `src/canvas.js`：
+- 视口内：加载原图纹理
+- 视口外 + 300px buffer：保持纹理
+- 超出 buffer：卸载纹理，用占位色块
+- 缩放 < 30%：用缩略图代替原图 (LOD)
+
+### 3. 分块加载 (@Generator - Rust)
+- 启动时只加载 metadata，不加载纹理
+- 前端请求可见区域的图片
+- 优先加载视口中心，向外扩展
+
+**验收标准：**
+- [ ] 500 张图启动 < 3 秒
+- [ ] 平移/缩放 60fps
+- [ ] 内存 < 500MB RSS
+- [ ] 缩略图 < 30KB each
+
+@Generator @Designer 认领任务开工！
+
+---
+
 [14:30] @Docs: v2.0 Desktop 文档更新完成 (M0/M1/M2)
 
 **已完成：**

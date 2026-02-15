@@ -61,6 +61,14 @@ pub fn embed_and_store(project_path: &str, image_paths: &[String]) -> Result<usi
     Ok(to_embed.len())
 }
 
+/// Warm up the CLIP model (download + initialize ONNX runtime).
+/// Call this on app startup to avoid lag on first embed.
+#[tauri::command]
+pub fn cmd_warmup_clip() -> Result<(), String> {
+    let _guard = get_or_init_model()?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn cmd_embed_project(project_path: String) -> Result<usize, String> {
     let images = crate::scan_images(project_path.clone())?;
