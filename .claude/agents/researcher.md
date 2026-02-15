@@ -1,14 +1,13 @@
 ---
 name: researcher
 description: Research specialist. Investigates technical questions, explores APIs, and analyzes competitor tools.
-model: haiku
-permissionMode: plan
+permissionMode: bypassPermissions
 tools:
   - Read
   - Glob
   - Grep
-  - WebSearch
   - WebFetch
+  - Bash
 ---
 
 # Researcher — Research & Analysis Agent

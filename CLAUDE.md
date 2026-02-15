@@ -77,6 +77,39 @@ node bin/refboard.js help      # CLI 帮助
 - SQLite 数据库：`{project}/.refboard/search.db`
 - 画布状态：`{project}/.refboard/board.json`
 
+### 日志规范 (Logging)
+
+**所有新功能必须记录日志！**
+
+```rust
+crate::log::log("TAG", &format!("操作描述: {}", value));
+```
+
+**已有 TAG：**
+| TAG | 用途 |
+|-----|------|
+| `AI` | 图片分析、批量分析、图片生成 |
+| `API` | HTTP 端点操作 |
+| `CLIP` | 模型加载、embedding 生成 |
+| `IMPORT` | 图片导入 |
+| `SEARCH` | 搜索相关 |
+
+**日志位置：** `~/.refboard/debug.log`（同时输出 stdout）
+
+**记录时机：**
+- ✅ 关键操作开始/完成
+- ✅ 错误和警告
+- ✅ 外部 API 调用
+- ❌ 不记录敏感信息（API key、用户数据）
+
+**示例：**
+```rust
+crate::log::log("AI", &format!("Analyzing image: {filename} (provider: {provider})"));
+crate::log::log("AI", &format!("Response received: {status}, {len} bytes"));
+crate::log::log("API", &format!("POST /api/import → project: {project}"));
+crate::log::log("CLIP", "Model warmup started");
+```
+
 ### JavaScript (Frontend)
 - ESM 模块，支持 Node >= 18
 - 库函数不调用 `console.log`（只在 CLI 层输出）
@@ -94,6 +127,7 @@ node bin/refboard.js help      # CLI 帮助
 
 | Agent | Model | 职责 | 文件 ownership |
 |-------|-------|------|----------------|
+| **Main (Team Lead)** | opus-4-6 | 任务协调、进度追踪 | `TEAM.md`, `TODO.md` |
 | **Designer** | opus-4-6 | UI/UX、CSS、动效 | `*.css`, `panels.js`, HTML 模板 |
 | **Generator** | opus-4-6 | Rust 后端、核心逻辑 | `src-tauri/src/*.rs`, `lib/*.js` |
 | **Researcher** | opus-4-6 | 技术调研、竞品分析 | `docs/research/*.md` |
@@ -101,11 +135,150 @@ node bin/refboard.js help      # CLI 帮助
 | **Tester** | sonnet-4-5 | 功能测试、Bug 报告 | `docs/test-report.md` |
 | **Docs** | sonnet-4-5 | 文档更新、发布准备 | `README.md`, `CHANGELOG.md`, `docs/*.md` |
 
+### Team Lead 职责
+
+**⚠️ 核心原则：Team Lead 不写代码！**
+- ❌ 禁止自己写代码、修改源文件
+- ✅ 必须把任务分配给对应 teammate
+- ✅ 可以更新 TEAM.md / TODO.md
+
+**任务下发流程：**
+1. 分析任务涉及哪些文件
+2. 确定分配给哪个 teammate
+3. 用标准模板写任务描述
+4. @teammate 下发任务
+5. 等待完成，检查结果
+
+**Checkpoint（每 10 分钟）：**
+- 检查 context 剩余量
+- 更新 TEAM.md 当前状态
+- Context < 30% 立即保存进度
+
+**并行策略：**
+- ✅ 可并行：Designer + Generator（前后端）、Researcher
+- ❌ 必须串行：Tester 等功能完成、Docs 等测试完成
+
 ### 协作规则
 1. 开始工作前在 `TEAM.md` 写消息
-2. 完成任务后更新 `TODO.md`
-3. Bug 修复：Tester 报告 → 对应 Agent 修复 → Tester 验证
-4. 需要协作时 @对应角色
+2. **修改代码前必须提交 Plan**（见下方模板）
+3. 完成任务后更新 `TODO.md`
+4. Bug 修复：Tester 报告 → 对应 Agent 修复 → Tester 验证
+5. 需要协作时 @对应角色
+6. **踩坑必记录** → 更新 `CLAUDE.md`「踩坑经验」章节
+7. **完成任务后必须 Git 提交**
+
+---
+
+## 工程流程
+
+### 任务循环 (Task Loop)
+
+```
+Plan → 审批 → 编码 → 测试 → Commit → Push
+```
+
+每个任务必须完整走完这个循环，不允许跳过任何步骤。
+
+### Plan 审批模板
+
+**修改代码前必须先提交 Plan，等 Team Lead `✅ Approved` 后再动手：**
+
+```markdown
+## Plan: [任务名称]
+
+**目标：** [一句话描述]
+
+**修改文件：**
+- `path/to/file.rs` — [改什么]
+- `path/to/file.js` — [改什么]
+
+**实现步骤：**
+1. [步骤1]
+2. [步骤2]
+3. [步骤3]
+
+**影响范围：** [可能影响的其他功能]
+
+**测试方案：** [如何验证]
+```
+
+### Git 提交规范
+
+**每个任务完成后必须提交：**
+```bash
+git add -A
+git commit -m "type: 简短描述"
+git push
+```
+
+**Commit 类型：**
+| type | 说明 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | Bug 修复 |
+| `refactor` | 重构（不改变功能） |
+| `style` | 样式/UI 调整 |
+| `docs` | 文档更新 |
+| `test` | 测试相关 |
+| `chore` | 构建/配置/杂项 |
+
+**示例：**
+```
+feat: add batch analyze API endpoint
+fix: resolve empty project loading issue
+style: replace emoji with Lucide icons
+docs: update HTTP API reference
+```
+
+**提交时机：**
+- ✅ 任务完成 + 测试通过 → 立即提交
+- ❌ 不要积攒多个任务一起提交
+- ❌ 不要提交未测试的代码
+
+### Generator + Template 协作（API 契约）
+
+当任务涉及 Rust 后端 + JS 前端协作时：
+
+**1. Generator 先定义 API 契约**
+```rust
+#[tauri::command]
+fn cmd_xxx(param: String) -> Result<XxxResponse, String>
+
+#[derive(Serialize)]
+struct XxxResponse {
+    field1: String,
+    field2: Vec<String>,
+}
+```
+
+**2. Generator 完成后通知 Template**
+> @Template API 已就绪：`invoke('cmd_xxx', {param})` 返回 `{field1, field2}`
+
+**3. Template 按契约实现前端调用**
+```javascript
+const result = await invoke('cmd_xxx', { param: 'value' });
+console.log(result.field1, result.field2);
+```
+
+### Tester 持续监控
+
+- 持续运行 `npm test` / `cargo test`
+- 发现回归 → **立即通知对应 teammate**
+- 通知格式：`🔴 回归！@Generator xxx.rs 第 N 行，原本 pass 现在 fail`
+
+### 踩坑经验记录
+
+每次遇到 bug/问题/解决方案，**立即更新本文件「踩坑经验」章节**：
+
+```markdown
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| [描述问题] | [根本原因] | [解决方法] |
+```
+
+避免后续 agent 重复踩坑。
+
+---
 
 ### Tester 角色特殊规范
 
@@ -114,6 +287,11 @@ node bin/refboard.js help      # CLI 帮助
 - ✅ 创建/修改测试文件：`*.test.js`, `*.test.ts`, `#[cfg(test)]` 块
 - ✅ 运行测试命令
 - ❌ **不能修改非测试源码**
+
+**持续监控模式：**
+- 持续运行 `npm test` / `cargo test`
+- 发现回归 → **立即通知对应 teammate**
+- 通知格式：`🔴 回归！@Generator xxx.rs 第 N 行，原本 pass 现在 fail`
 
 **Tester 工作流程：**
 1. 先读 `.claude/skills/testing/SKILL.md`
@@ -151,6 +329,53 @@ node bin/refboard.js help      # CLI 帮助
 - 全局配置：`~/.refboard/config.json`
 - 缩略图缓存：`{project}/.thumbnails/`
 - 搜索数据库：`{project}/.refboard/search.db`
+
+## 踩坑经验 (Lessons Learned)
+
+> ⚠️ **重要：** 每次迭代发现的问题和解决方案必须记录在这里，避免重复踩坑！
+
+### Tauri / Rust
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 前端调用 Rust 命令失败 | 命令名不匹配（前端用 `cmd_xxx`，Rust 用 `xxx`）| 统一命名：Rust 用 `#[tauri::command] fn xxx()`，前端 `invoke('xxx')` |
+| 参数缺失导致调用失败 | 前端传的参数和 Rust 定义不一致 | 检查两边参数名和类型完全匹配 |
+| CLIP 模型阻塞 UI | 模型加载在主线程 | 启动后 3 秒延迟 warmup，或用 `spawn_blocking` |
+| `asset://` 路径无法加载 | Tauri 2.0 需要转换路径 | 使用 `convertFileSrc(path)` |
+
+### 前端 / PixiJS
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 空项目卡在 loading | `loadProject()` 返回 `undefined` | 返回 `{ loaded: 0, total: 0 }`，显示空状态提示 |
+| 纹理内存泄漏 | 切换项目没销毁旧纹理 | `texture.destroy(true)` 销毁 baseTexture |
+| 拖拽事件穿透 | 子元素没设置 `eventMode` | 设置 `eventMode = 'static'` |
+
+### 团队协作
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 重复导出错误 | 同一函数既在声明时 export 又在文件末尾 export | 只用一种方式导出 |
+| 命令处理函数未定义 | 注册了命令但忘写实现 | 先写空函数骨架，再填逻辑 |
+| Tester 改了源码 | 权限没限制 | Tester 只改测试文件，源码 bug @对应角色修 |
+
+### 设计 / UI
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| emoji 不同平台显示不一致 | 系统 emoji 渲染差异 | 使用 Lucide Icons SVG |
+| 磨砂玻璃效果不生效 | 没设置背景色透明 | `background: rgba(30,30,30,0.8)` + `backdrop-filter` |
+| 深色模式颜色错 | 硬编码颜色 | 使用 CSS 变量 `var(--bg-color)` |
+
+### 新增经验模板
+
+```markdown
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| [描述问题] | [根本原因] | [解决方法] |
+```
+
+---
 
 ## 当前开发重点 (2026-02)
 

@@ -1,8 +1,7 @@
 ---
 name: designer
 description: UI/UX specialist for RefBoard. Designs interactions, visual styles, and prototypes.
-model: sonnet
-permissionMode: acceptEdits
+permissionMode: bypassPermissions
 ---
 
 # Designer — UI/UX Specialist
