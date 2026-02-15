@@ -33,9 +33,10 @@ async function main() {
   // Warm up CLIP model in background after UI is ready
   // Delayed to ensure UI loads first, then model initializes in background
   setTimeout(() => {
-    invoke('cmd_warmup_clip').catch((err) => {
-      console.warn('CLIP warmup skipped:', err);
-    });
+    console.log('[CLIP] Requesting warmup...');
+    invoke('cmd_warmup_clip')
+      .then(() => console.log('[CLIP] Warmup complete'))
+      .catch((err) => console.log('[CLIP] Warmup skipped:', err));
   }, 3000);  // Wait 3 seconds after app start
 
   // Shared image extension set
@@ -187,7 +188,13 @@ async function main() {
       }
       const msg = `Imported ${imported.length} image${imported.length !== 1 ? 's' : ''}`;
       setStatus(compressed > 0 ? `${msg} (${compressed} compressed)` : msg);
-      invoke('cmd_embed_project', { projectPath: currentProjectPath }).catch(() => {});
+      console.log('[CLIP] Import complete, requesting embedding for project');
+      invoke('cmd_embed_project', { projectPath: currentProjectPath })
+        .then((count) => {
+          if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+          else console.log('[CLIP] No new embeddings needed');
+        })
+        .catch(() => {});
     } catch (err) {
       setStatus(`Import failed: ${err}`);
     }
@@ -249,10 +256,15 @@ async function main() {
           const suffix = compressed ? ' (compressed)' : '';
           setStatus(`Pasted image: ${info.name}${suffix}`);
           // Generate embedding in background with dialog feedback
+          console.log('[CLIP] Paste detected, requesting embedding for project');
           const dlg = document.getElementById('model-download-dialog');
           if (dlg) dlg.style.display = 'flex';
           invoke('cmd_embed_project', { projectPath: currentProjectPath })
-            .then(() => { if (dlg) dlg.style.display = 'none'; })
+            .then((count) => {
+              if (dlg) dlg.style.display = 'none';
+              if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+              else console.log('[CLIP] No new embeddings needed');
+            })
             .catch(() => { if (dlg) dlg.style.display = 'none'; });
         } catch (err) {
           setStatus(`Paste failed: ${err}`);
@@ -491,11 +503,16 @@ async function openProject(dirPath, loading) {
       invoke('cmd_embed_project', { projectPath: dirPath })
         .then((count) => {
           if (dlg) dlg.style.display = 'none';
-          if (count > 0) setStatus(`Generated embeddings for ${count} images`);
+          if (count > 0) {
+            console.log(`[CLIP] Embedded ${count} new images`);
+            setStatus(`Generated embeddings for ${count} images`);
+          } else {
+            console.log('[CLIP] No new embeddings needed');
+          }
         })
         .catch((err) => {
           if (dlg) dlg.style.display = 'none';
-          console.warn('Embedding generation skipped:', err);
+          console.log('[CLIP] Embedding skipped:', err);
         });
 
       // Start auto-save

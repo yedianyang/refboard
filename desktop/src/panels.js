@@ -353,6 +353,8 @@ export async function analyzeCard(card) {
   if (analyzing) return;
   analyzing = true;
 
+  const filename = card.data?.name || card.data?.path?.split('/').pop() || 'unknown';
+  console.log(`[AI] Analyzing image: ${filename}`);
   showAnalysisLoading(true);
 
   try {
@@ -367,8 +369,10 @@ export async function analyzeCard(card) {
       existingTags,
     });
 
+    console.log(`[AI] Analysis complete for ${filename}`);
     showSuggestions(card, result);
   } catch (err) {
+    console.log(`[AI] Analysis error: ${err}`);
     showAnalysisError(err.toString());
   } finally {
     analyzing = false;

@@ -1,5 +1,6 @@
 mod ai;
 mod embed;
+pub mod log;
 mod search;
 mod web;
 
@@ -532,6 +533,7 @@ pub fn run() {
             web::cmd_set_web_config,
             embed::cmd_embed_project,
             embed::cmd_warmup_clip,
+            log::cmd_read_log,
             save_board_state,
             load_board_state,
             export_metadata,

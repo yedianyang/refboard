@@ -11,11 +11,13 @@ static MODEL: Mutex<Option<ImageEmbedding>> = Mutex::new(None);
 fn get_or_init_model() -> Result<std::sync::MutexGuard<'static, Option<ImageEmbedding>>, String> {
     let mut guard = MODEL.lock().map_err(|e| format!("Model lock poisoned: {e}"))?;
     if guard.is_none() {
+        crate::log::log("CLIP", "Downloading/loading model (~150MB)...");
         let options = ImageInitOptions::new(ImageEmbeddingModel::ClipVitB32)
             .with_show_download_progress(true);
         let model = ImageEmbedding::try_new(options)
             .map_err(|e| format!("Cannot initialize CLIP model: {e}"))?;
         *guard = Some(model);
+        crate::log::log("CLIP", "Model initialized successfully");
     }
     Ok(guard)
 }
@@ -26,7 +28,10 @@ pub fn embed_image_files(paths: &[String]) -> Result<Vec<Vec<f32>>, String> {
     let model = guard.as_ref().unwrap();
     model
         .embed(paths.to_vec(), Some(32))
-        .map_err(|e| format!("Embedding failed: {e}"))
+        .map_err(|e| {
+            crate::log::log("CLIP", &format!("Embedding failed: {e}"));
+            format!("Embedding failed: {e}")
+        })
 }
 
 /// Embed images that don't already have embeddings and store them in the project DB.
@@ -48,16 +53,21 @@ pub fn embed_and_store(project_path: &str, image_paths: &[String]) -> Result<usi
         }
     }
 
+    let cached = image_paths.len() - to_embed.len();
     if to_embed.is_empty() {
+        crate::log::log("CLIP", &format!("All {cached} images already embedded, skipping"));
         return Ok(0);
     }
 
+    crate::log::log("CLIP", &format!("{cached} already embedded, {} new to process", to_embed.len()));
+    crate::log::log("CLIP", &format!("Embedding batch of {} images...", to_embed.len()));
     let embeddings = embed_image_files(&to_embed)?;
 
     for (path, embedding) in to_embed.iter().zip(embeddings.iter()) {
         crate::search::store_embedding_conn(&conn, path, "clip-vit-b-32", embedding)?;
     }
 
+    crate::log::log("CLIP", &format!("Done: {} new embeddings stored", to_embed.len()));
     Ok(to_embed.len())
 }
 
@@ -65,13 +75,23 @@ pub fn embed_and_store(project_path: &str, image_paths: &[String]) -> Result<usi
 /// Call this on app startup to avoid lag on first embed.
 #[tauri::command]
 pub fn cmd_warmup_clip() -> Result<(), String> {
-    let _guard = get_or_init_model()?;
-    Ok(())
+    crate::log::log("CLIP", "Warmup: initializing model...");
+    match get_or_init_model() {
+        Ok(_guard) => {
+            crate::log::log("CLIP", "Warmup: model ready");
+            Ok(())
+        }
+        Err(e) => {
+            crate::log::log("CLIP", &format!("Warmup: error — {e}"));
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]
 pub fn cmd_embed_project(project_path: String) -> Result<usize, String> {
     let images = crate::scan_images(project_path.clone())?;
+    crate::log::log("CLIP", &format!("Embedding project: {project_path} ({} images found)", images.len()));
     let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
     embed_and_store(&project_path, &paths)
 }

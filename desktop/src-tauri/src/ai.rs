@@ -317,8 +317,11 @@ impl AiVisionProvider for AnthropicProvider {
             .await
             .map_err(|e| format!("Anthropic request failed: {e}"))?;
 
-        if !resp.status().is_success() {
-            let status = resp.status();
+        let status = resp.status();
+        let content_len = resp.content_length().unwrap_or(0);
+        crate::log::log("AI", &format!("Response received: {status}, {content_len} bytes"));
+
+        if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             return Err(format!("Anthropic API error ({status}): {text}"));
         }
@@ -455,8 +458,11 @@ impl AiVisionProvider for OpenAIProvider {
             .await
             .map_err(|e| format!("OpenAI request failed: {e}"))?;
 
-        if !resp.status().is_success() {
-            let status = resp.status();
+        let status = resp.status();
+        let content_len = resp.content_length().unwrap_or(0);
+        crate::log::log("AI", &format!("Response received: {status}, {content_len} bytes"));
+
+        if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             return Err(format!("OpenAI API error ({status}): {text}"));
         }
@@ -558,8 +564,11 @@ impl AiVisionProvider for OllamaProvider {
             .await
             .map_err(|e| format!("Ollama request failed: {e}"))?;
 
-        if !resp.status().is_success() {
-            let status = resp.status();
+        let status = resp.status();
+        let content_len = resp.content_length().unwrap_or(0);
+        crate::log::log("AI", &format!("Response received: {status}, {content_len} bytes"));
+
+        if !status.is_success() {
             let text = resp.text().await.unwrap_or_default();
             return Err(format!("Ollama API error ({status}): {text}"));
         }
@@ -672,25 +681,43 @@ pub async fn analyze_image(
     provider_config: AiProviderConfig,
     existing_tags: Vec<String>,
 ) -> Result<AnalysisResult, String> {
+    let filename = Path::new(&image_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| image_path.clone());
+    let provider_name = format!("{:?}", provider_config.provider);
+    let model_name = provider_config.model.clone().unwrap_or_else(|| "default".to_string());
+
+    crate::log::log("AI", &format!("Provider config: {provider_name} / {model_name}"));
+    crate::log::log("AI", &format!("Analyzing image: {filename} (provider: {provider_name})"));
+
     let client = reqwest::Client::new();
     let provider = create_provider(&client, &provider_config)?;
     let prompt = build_analysis_prompt(&existing_tags);
     let path = PathBuf::from(&image_path);
 
     if !path.exists() {
+        crate::log::log("AI", &format!("Error: image file not found: {image_path}"));
         return Err(format!("Image file not found: {image_path}"));
     }
 
     // Emit progress event to frontend
     let _ = app.emit("ai:analysis:start", &image_path);
 
+    crate::log::log("AI", &format!("Request sent to {}", provider_config.endpoint));
     let result = provider.analyze_image(&path, &prompt).await;
 
     match &result {
-        Ok(_) => {
+        Ok(analysis) => {
+            let tag_count = analysis.tags.len();
+            let desc_preview: String = analysis.description.chars().take(50).collect();
+            crate::log::log("AI", &format!(
+                "Analysis complete: {tag_count} tags generated, description: {desc_preview}..."
+            ));
             let _ = app.emit("ai:analysis:complete", &image_path);
         }
         Err(e) => {
+            crate::log::log("AI", &format!("Error: {e}"));
             let _ = app.emit("ai:analysis:error", e.as_str());
         }
     }
