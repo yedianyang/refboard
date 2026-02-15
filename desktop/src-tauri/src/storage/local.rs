@@ -437,6 +437,29 @@ impl StorageProvider for LocalStorage {
         .map_err(|e| format!("Task join error: {e}"))?
     }
 
+    async fn has_embedding(
+        &self,
+        project_path: &str,
+        image_path: &str,
+    ) -> Result<bool, String> {
+        let project_path = project_path.to_string();
+        let image_path = image_path.to_string();
+
+        tokio::task::spawn_blocking(move || {
+            let conn = crate::search::open_db(&project_path)?;
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM embeddings WHERE path = ?1",
+                    rusqlite::params![image_path],
+                    |row| row.get(0),
+                )
+                .map_err(|e| format!("Cannot check embedding: {e}"))?;
+            Ok(count > 0)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+    }
+
     // ---- App Config ----
 
     async fn read_app_config(&self) -> Result<AppConfig, String> {

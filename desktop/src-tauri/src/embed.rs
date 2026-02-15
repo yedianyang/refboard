@@ -95,3 +95,12 @@ pub async fn cmd_embed_project(
 ) -> Result<usize, String> {
     storage.embed_project(&project_path).await
 }
+
+#[tauri::command]
+pub async fn cmd_has_embedding(
+    storage: tauri::State<'_, crate::storage::Storage>,
+    project_path: String,
+    image_path: String,
+) -> Result<bool, String> {
+    storage.has_embedding(&project_path, &image_path).await
+}

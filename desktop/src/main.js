@@ -319,9 +319,25 @@ async function main() {
     },
   });
 
-  // Card selection -> open metadata panel
+  // Card selection -> open metadata panel + auto-embed if needed
   onCardSelect((card) => {
     showMetadata(card);
+
+    // Auto-embed if not yet embedded
+    if (currentProjectPath && card?.data?.path) {
+      invoke('cmd_has_embedding', { projectPath: currentProjectPath, imagePath: card.data.path })
+        .then((hasEmbed) => {
+          if (!hasEmbed) {
+            console.log('[CLIP] Auto-embedding unanalyzed image:', card.data.name);
+            invoke('cmd_embed_project', { projectPath: currentProjectPath })
+              .then((count) => {
+                if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
   });
 
   // Sidebar nav: Home button — show home screen, update active state

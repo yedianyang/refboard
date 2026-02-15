@@ -444,6 +444,7 @@ pub fn run() {
             web::cmd_get_web_config,
             web::cmd_set_web_config,
             embed::cmd_embed_project,
+            embed::cmd_has_embedding,
             embed::cmd_warmup_clip,
             log::cmd_read_log,
             api::cmd_get_api_port,

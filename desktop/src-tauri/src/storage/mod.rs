@@ -145,6 +145,13 @@ pub trait StorageProvider: Send + Sync {
         limit: usize,
     ) -> Result<Vec<crate::search::SearchResult>, String>;
 
+    /// Check if a CLIP embedding exists for a specific image.
+    async fn has_embedding(
+        &self,
+        project_path: &str,
+        image_path: &str,
+    ) -> Result<bool, String>;
+
     // ---- App Config ----
 
     /// Read the full app configuration.
