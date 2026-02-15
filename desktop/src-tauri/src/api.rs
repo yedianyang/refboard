@@ -1,13 +1,20 @@
 //! HTTP API server for external tool integration (OpenClaw, agents, scripts).
 //!
 //! Runs alongside the Tauri app on a configurable local port (default 7890).
-//! Provides `POST /api/import` for importing images from external sources.
+//!
+//! ## Endpoints
+//!
+//! - `GET /api/status` - Health check and version info
+//! - `POST /api/import` - Import image from file upload or URL
+//! - `DELETE /api/delete` - Delete an image from the project
+//! - `POST /api/move` - Move an item's position on the board
+//! - `PATCH /api/item` - Update item metadata (tags, description, etc.)
 
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -33,6 +40,36 @@ struct ApiState {
 struct DeleteRequest {
     project_path: String,
     filename: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MoveRequest {
+    project_path: String,
+    filename: String,
+    x: f64,
+    y: f64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateItemRequest {
+    project_path: String,
+    filename: String,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    tags: Option<Vec<String>>,
+    #[serde(default)]
+    styles: Option<Vec<String>>,
+    #[serde(default)]
+    moods: Option<Vec<String>>,
+    #[serde(default)]
+    era: Option<String>,
+    #[serde(default)]
+    artist: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -62,6 +99,23 @@ struct StatusResponse {
 struct DeleteResponse {
     success: bool,
     message: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MoveResponse {
+    status: String,
+    filename: String,
+    x: f64,
+    y: f64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateItemResponse {
+    status: String,
+    filename: String,
+    metadata: serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -282,6 +336,165 @@ async fn handle_delete(
     Ok((StatusCode::OK, Json(response)))
 }
 
+/// Move an item's position on the board.
+/// Frontend should listen to `api:item-moved` event to update the canvas.
+async fn handle_move(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<MoveRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let filename = payload.filename;
+    let x = payload.x;
+    let y = payload.y;
+
+    crate::log::log("API", &format!("POST /api/move → project: {project_path}, file: {filename}, x: {x}, y: {y}"));
+
+    // Validate project path exists
+    let project_dir = std::path::Path::new(&project_path);
+    if !project_dir.exists() || !project_dir.is_dir() {
+        return Err(api_error(
+            StatusCode::BAD_REQUEST,
+            format!("Project path does not exist or is not a directory: {project_path}"),
+        ));
+    }
+
+    // Load board state
+    let board_path = project_dir.join(".refboard").join("board.json");
+    if !board_path.exists() {
+        return Err(api_error(
+            StatusCode::NOT_FOUND,
+            "Board state file not found".to_string(),
+        ));
+    }
+
+    let contents = std::fs::read_to_string(&board_path)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot read board.json: {e}")))?;
+
+    let mut state_json: serde_json::Value = serde_json::from_str(&contents)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid board.json: {e}")))?;
+
+    // Find and update the item
+    let items = state_json
+        .get_mut("items")
+        .and_then(|v| v.as_array_mut())
+        .ok_or_else(|| api_error(StatusCode::INTERNAL_SERVER_ERROR, "Invalid board state structure".to_string()))?;
+
+    let item = items
+        .iter_mut()
+        .find(|item| {
+            item.get("name")
+                .and_then(|v| v.as_str())
+                .map(|name| name == filename)
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| api_error(StatusCode::NOT_FOUND, format!("Item not found: {filename}")))?;
+
+    // Update position
+    if let Some(obj) = item.as_object_mut() {
+        obj.insert("x".to_string(), serde_json::json!(x));
+        obj.insert("y".to_string(), serde_json::json!(y));
+    }
+
+    // Save board state
+    let json = serde_json::to_string_pretty(&state_json)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot serialize board state: {e}")))?;
+    std::fs::write(&board_path, json)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot write board.json: {e}")))?;
+
+    crate::log::log("API", &format!("Moved: {filename} to ({x}, {y})"));
+
+    // Emit event so frontend can update the card position
+    let event_payload = serde_json::json!({
+        "filename": &filename,
+        "x": x,
+        "y": y,
+    });
+    let _ = state.app.emit("api:item-moved", &event_payload);
+
+    let response = MoveResponse {
+        status: "moved".to_string(),
+        filename,
+        x,
+        y,
+    };
+
+    crate::log::log("API", "Move complete, response sent");
+    Ok((StatusCode::OK, Json(response)))
+}
+
+/// Update item metadata (tags, description, etc.).
+/// Frontend should listen to `api:item-updated` event to refresh the card display.
+async fn handle_update_item(
+    State(state): State<Arc<ApiState>>,
+    Json(payload): Json<UpdateItemRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project_path = payload.project_path;
+    let filename = payload.filename;
+
+    crate::log::log("API", &format!("PATCH /api/item → project: {project_path}, file: {filename}"));
+
+    // Validate project path exists
+    let project_dir = std::path::Path::new(&project_path);
+    if !project_dir.exists() || !project_dir.is_dir() {
+        return Err(api_error(
+            StatusCode::BAD_REQUEST,
+            format!("Project path does not exist or is not a directory: {project_path}"),
+        ));
+    }
+
+    // Construct full image path for database lookup
+    let images_dir = project_dir.join("images");
+    let image_path = images_dir.join(&filename);
+    let image_path_str = image_path.to_string_lossy().to_string();
+
+    // Build metadata update
+    use crate::search::ImageMetadataRow;
+
+    let metadata = ImageMetadataRow {
+        image_path: image_path_str.clone(),
+        name: filename.clone(),
+        description: payload.title.or(payload.description),
+        tags: payload.tags.unwrap_or_default(),
+        style: payload.styles.unwrap_or_default(),
+        mood: payload.moods.unwrap_or_default(),
+        colors: Vec::new(),  // Not provided in this API
+        era: payload.era,
+    };
+
+    // Update in search database
+    crate::search::cmd_update_search_metadata(project_path.clone(), metadata.clone())
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update metadata: {e}")))?;
+
+    crate::log::log("API", &format!("Updated metadata for: {filename}"));
+
+    // Build response metadata object
+    let response_metadata = serde_json::json!({
+        "path": image_path_str,
+        "name": filename,
+        "description": metadata.description,
+        "tags": metadata.tags,
+        "style": metadata.style,
+        "mood": metadata.mood,
+        "era": metadata.era,
+    });
+
+    // Emit event so frontend can refresh the card
+    let event_payload = serde_json::json!({
+        "filename": &filename,
+        "metadata": &response_metadata,
+    });
+    let _ = state.app.emit("api:item-updated", &event_payload);
+
+    let response = UpdateItemResponse {
+        status: "updated".to_string(),
+        filename,
+        metadata: response_metadata,
+    };
+
+    crate::log::log("API", "Update complete, response sent");
+    Ok((StatusCode::OK, Json(response)))
+}
+
 // ---------------------------------------------------------------------------
 // URL Download
 // ---------------------------------------------------------------------------
@@ -391,6 +604,8 @@ pub async fn start_server(app: AppHandle) {
         .route("/api/status", get(handle_status))
         .route("/api/import", post(handle_import))
         .route("/api/delete", delete(handle_delete))
+        .route("/api/move", post(handle_move))
+        .route("/api/item", patch(handle_update_item))
         .with_state(state);
 
     let addr = format!("127.0.0.1:{port}");

@@ -100,6 +100,72 @@ curl -X DELETE http://localhost:7890/api/delete \
 
 This endpoint also emits an `api:image-deleted` event to the frontend for real-time canvas updates. The deleted image is immediately removed from the canvas view without requiring a page refresh.
 
+### POST /api/move — Move Item Position
+
+Moves an item's position on the canvas.
+
+**Request:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectPath` | string | yes | Target project directory |
+| `filename` | string | yes | Image filename |
+| `x` | number | yes | New X position on canvas |
+| `y` | number | yes | New Y position on canvas |
+
+**Response:**
+```json
+{
+  "status": "moved",
+  "filename": "image.jpg",
+  "x": 100.0,
+  "y": 200.0
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:7890/api/move \
+  -H "Content-Type: application/json" \
+  -d '{"projectPath": "/path/to/project", "filename": "image.jpg", "x": 100, "y": 200}'
+```
+
+Emits `api:item-moved` event to frontend.
+
+### PATCH /api/item — Update Item Metadata
+
+Updates metadata fields for an image. Only provided fields are updated.
+
+**Request:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `projectPath` | string | yes | Target project directory |
+| `filename` | string | yes | Image filename |
+| `title` | string | no | Display title |
+| `description` | string | no | Description text |
+| `tags` | string[] | no | Tags array |
+| `styles` | string[] | no | Style descriptors |
+| `moods` | string[] | no | Mood descriptors |
+| `era` | string | no | Time period |
+| `artist` | string | no | Artist name |
+
+**Response:**
+```json
+{
+  "status": "updated",
+  "filename": "image.jpg",
+  "metadata": { ... }
+}
+```
+
+**Example:**
+```bash
+curl -X PATCH http://localhost:7890/api/item \
+  -H "Content-Type: application/json" \
+  -d '{"projectPath": "/path/to/project", "filename": "image.jpg", "tags": ["art-deco", "gold"], "description": "Art deco pattern"}'
+```
+
+Emits `api:item-updated` event to frontend.
+
 ## Targeting Different Project Boards
 
 Each RefBoard project is a directory on disk containing an `images/` subdirectory and a `.refboard/` metadata folder.
