@@ -1579,7 +1579,7 @@ curl -X POST http://localhost:1420/api/import \
 
 ### 建议 💡
 
-**1. 补充 Generate 对话框前端** (P0)
+**1. 补充 Generate 对话框前端** (P0) → ✅ 已完成 (0ef22f1)
 - @Designer 设计 generate-dialog HTML + CSS（参考 TEAM.md 中 Metro 的 UI 规范）
 - @Template 实现 `openGenerateDialog()` / `startGenerate()` / `closeGenerateDialog()` 逻辑
 - @Template 绑定 `Cmd+G` 快捷键到 `main.js`
@@ -1589,4 +1589,70 @@ curl -X POST http://localhost:1420/api/import \
   - 建议：在 UI 或日志中使用 provider name，或添加 `#[allow(dead_code)]`
 - `api.rs:71` — `UpdateItemRequest.artist` 字段未被读取
   - 建议：如果 API 不需要 artist 字段，移除它
+
+---
+
+[02-16 11:00] @TeamLead: 📋 **Sprint 总结 (2026-02-16)**
+
+commits: `808354c`, `c7aaf4b`
+
+### Sprint A — 6 任务 (`808354c`)
+
+**1. 浮动选中工具栏** (Designer + Template)
+- `#floating-toolbar` 6 个按钮: Lock/Align/Copy/Delete/More (全部 Lucide SVG)
+- macOS vibrancy 风格 (backdrop-filter blur, 8px 圆角, 阴影)
+- 对齐子菜单 (左/中/右/上/下 + 水平/垂直分布)
+- RAF 选中监听 + 视口边缘钳位 + pan/zoom 跟随
+
+**2. 顶部导航栏重构** (Designer + Template)
+- Home 按钮移到左上角 (Lucide `home` 图标)
+- Sidebar toggle 按钮 (Lucide `panel-left`) + `Cmd+\` 快捷键
+- Sidebar 折叠动画 (0.2s ease-out) + localStorage 持久化
+- 从 sidebar 内部移除 Home 按钮
+
+**3. AI Vision 配置面板完整接线** (Generator + Template)
+- 后端: `get_ai_config` / `set_ai_config` / `cmd_test_ai_vision` 已就绪
+- 前端: 7 个 Provider 预设 (OpenAI/OpenRouter/Claude/Ollama/Google/Moonshot/DeepSeek)
+- Provider 切换自动填充 Base URL + 推荐模型
+- Test 按钮调用真实 `cmd_test_ai_vision` (替代旧的仅检查 key 逻辑)
+- API Key 眼睛图标切换显示/隐藏
+
+**4. CLIP API 扩展** (Generator)
+- 5 个新 HTTP 端点: `/api/embed`, `/api/embed-batch`, `/api/similar`, `/api/search-semantic`, `/api/cluster`
+- `search::get_embedding()` + `search::get_all_embeddings()` 公开接口
+- `cosine_sim()` 余弦相似度辅助函数
+
+### Sprint B — 2 任务 (`c7aaf4b`)
+
+**5. 图形框缩放优化** (Template)
+- 图片卡片使用 PixiJS mask 实现 Frame 裁剪
+- 缩放只改变可见区域，图像保持原始分辨率
+- `card._frameMask` + `card._originalSpriteWidth/Height`
+- 纹理重载时恢复原始尺寸 + 重新应用 mask
+- Shape/Text 卡片不受影响
+
+**6. 图标矢量化** (Designer)
+- `&times;` → Lucide `x` (dialog 关闭按钮)
+- `\u00d7` → Lucide `x` (chip 移除按钮)
+- `+` → Lucide `plus` (下载按钮)
+- 审计确认: 所有工具栏/上下文菜单已使用 Lucide SVG
+
+**变更量:** +1,127 / -118, 11 files
+**构建:** `vite build` ✅, `cargo check` ✅ (仅 2 个预存 warning)
+
+### 待验收
+
+Jingxi 验收清单:
+1. 选中图片 → 浮动工具栏弹出 (Lock/Align/Copy/Delete/More)
+2. 左上角 Home 按钮 + `Cmd+\` 侧边栏切换
+3. Settings > AI Vision → 切 Provider → Save → Test
+4. 拖拽图片卡片边角 → 图像不缩放，只裁剪可见区域
+5. 关闭按钮/芯片删除 → 统一 SVG 图标
+
+### TODO 剩余 P0
+
+| 任务 | 状态 |
+|------|------|
+| OpenClaw 深度集成方案 | ⬜ 待 @Docs 调研 |
+| AI Vision 模型扩展 | 🔄 调研完成，待 Settings UI 更新 |
 
