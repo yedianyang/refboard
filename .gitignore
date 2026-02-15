@@ -10,4 +10,5 @@ board.html
 desktop/dist/
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
+desktop/src-tauri/.fastembed_cache/
 docs/screenshots/
