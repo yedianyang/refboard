@@ -921,3 +921,109 @@ commits: `f892bb8`, `c143b10`
 
 ---
 
+
+[02-15 12:10] @Metro: 📋 **新调研任务**
+
+@Researcher 请调研 **OpenRouter** 并输出报告到 `docs/research/openrouter-integration.md`
+
+**调研内容：**
+1. OpenRouter 是什么、核心价值
+2. 支持的 Vision 模型列表（带价格）
+3. API 格式（是否 100% OpenAI 兼容）
+4. 认证方式
+5. 速率限制
+6. 与直连 API 的优缺点对比
+7. RefBoard 集成建议（代码示例）
+
+**参考：** https://openrouter.ai/docs
+
+
+[02-15 12:20] @Metro: 🆕 **新需求：LLM 设置面板**
+
+参考截图设计一个 AI Provider 配置界面。
+
+**UI 结构：**
+```
+Settings > LLM
+├── 左侧：Provider 列表
+│   ├── OpenAI (默认)
+│   ├── OpenRouter
+│   ├── Claude
+│   ├── Ollama
+│   ├── DeepSeek
+│   └── ...
+└── 右侧：配置表单
+    ├── Provider 名称 + 描述
+    ├── API Key 输入框（带眼睛图标显示/隐藏）
+    ├── Model 输入框/下拉
+    ├── Base URL 输入框
+    ├── [Save] [Test] 按钮
+    └── 测试结果提示
+```
+
+**功能需求：**
+1. 选择 Provider → 显示对应配置表单
+2. 预填默认值（如 OpenAI baseURL = https://api.openai.com/v1）
+3. Save → 保存到 `~/.refboard/config.json`
+4. Test → 调用简单 API 验证连接
+5. 密码框切换显示/隐藏
+
+**默认 Provider 列表：**
+| Provider | Base URL | 说明 |
+|----------|----------|------|
+| OpenAI | https://api.openai.com/v1 | GPT-4o, GPT-4o-mini |
+| OpenRouter | https://openrouter.ai/api/v1 | 300+ 模型聚合 |
+| Claude | https://api.anthropic.com | Claude 系列 |
+| Ollama | http://localhost:11434/v1 | 本地模型 |
+| DeepSeek | https://api.deepseek.com/v1 | 国产便宜 |
+| Moonshot | https://api.moonshot.cn/v1 | Kimi |
+
+**分工：**
+- @Designer — UI 设计（CSS + 布局）
+- @Generator — Rust 后端（配置读写 + API 测试）
+
+**优先级：** P0
+
+
+[02-15 12:20] @Metro: ⚠️ **任务澄清：AI Vision 配置面板**
+
+不只是通用 LLM，而是专门针对 **图片分析 (AI Vision)** 的配置：
+
+**功能定位：**
+- 配置用于「分析图片」「自动打标签」「描述生成」的 AI 模型
+- 不是通用聊天，是 Vision API
+
+**UI 调整：**
+```
+Settings > AI Vision
+├── 左侧：Vision Provider 列表
+│   ├── OpenAI (GPT-4o-mini) ← 推荐
+│   ├── OpenRouter (多模型)
+│   ├── Claude (Haiku/Sonnet)
+│   ├── Ollama (LLaVA)
+│   ├── Google (Gemini)
+│   └── Moonshot (Kimi Vision)
+└── 右侧：配置表单
+    ├── Provider 名称 + "用于图片分析"
+    ├── API Key
+    ├── Vision Model（下拉选择常用模型）
+    ├── Base URL
+    ├── [Save] [Test] 按钮
+    └── 测试：分析一张示例图片
+```
+
+**Vision Model 预设：**
+| Provider | 推荐模型 |
+|----------|----------|
+| OpenAI | gpt-4o-mini |
+| OpenRouter | google/gemini-2.0-flash |
+| Claude | claude-3-5-haiku-latest |
+| Ollama | llava:13b |
+| Google | gemini-2.0-flash |
+| Moonshot | moonshot-v1-8k-vision-preview |
+
+**Test 功能：**
+用内置示例图片测试，返回简短描述，验证 Vision API 可用
+
+@TeamLead 请按此更新任务分配
+
