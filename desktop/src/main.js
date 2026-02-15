@@ -2,9 +2,10 @@
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, exportCanvasPNG } from './canvas.js';
-import { initPanels, showMetadata, openSettings, closeSettings, toggleSidebar, closeSidebar, analyzeCard } from './panels.js';
+import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -21,7 +22,6 @@ async function main() {
   const projectPath = document.getElementById('project-path');
   const openBtn = document.getElementById('open-btn');
   const fitBtn = document.getElementById('fit-btn');
-  const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
 
   // Initialize PixiJS canvas
   await initCanvas(container);
@@ -319,18 +319,15 @@ async function main() {
     showMetadata(card);
   });
 
-  // Sidebar toggle button
-  sidebarToggleBtn.addEventListener('click', () => toggleSidebar());
-
-  // Sidebar nav: Home button
+  // Sidebar nav: Home button — show home screen, update active state
   const sidebarHomeBtn = document.getElementById('sidebar-home-btn');
   if (sidebarHomeBtn) {
     sidebarHomeBtn.addEventListener('click', () => {
-      closeSidebar();
       const homeScreen = document.getElementById('home-screen');
-      const toolbar = document.getElementById('toolbar');
+      const main = document.getElementById('main');
       if (homeScreen) homeScreen.classList.remove('hidden');
-      if (toolbar) toolbar.classList.add('toolbar-hidden');
+      if (main) main.classList.add('home-view');
+      updateSidebarActive('home');
     });
   }
 
@@ -475,11 +472,37 @@ async function main() {
     }
   });
 
-  // Initialize home screen — hide toolbar when on home
-  const toolbar = document.getElementById('toolbar');
+  // Listen for HTTP API import events (from external tools like OpenClaw)
+  listen('api:image-imported', async (event) => {
+    const { image, position } = event.payload || {};
+    if (!image) return;
+    console.log(`[API] Image imported via HTTP: ${image.name}`);
+    const x = position?.x ?? 0;
+    const y = position?.y ?? 0;
+    await addImageCard(image, x, y);
+    setStatus(`Imported via API: ${image.name}`);
+    // Trigger embedding in background
+    if (currentProjectPath) {
+      invoke('cmd_embed_project', { projectPath: currentProjectPath })
+        .then((count) => {
+          if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
+        })
+        .catch(() => {});
+    }
+  }).catch(() => {});
+
+  // Initialize home screen
   const homeScreen = document.getElementById('home-screen');
-  if (toolbar) toolbar.classList.add('toolbar-hidden');
   initHomeScreen(homeScreen, projectPath, loading);
+}
+
+/** Update sidebar nav active state based on current view. */
+function updateSidebarActive(view) {
+  const homeBtn = document.getElementById('sidebar-home-btn');
+  const settingsBtn = document.getElementById('sidebar-settings-btn');
+  // Remove active from all nav items
+  if (homeBtn) homeBtn.classList.toggle('active', view === 'home');
+  if (settingsBtn) settingsBtn.classList.remove('active');
 }
 
 let currentProjectPath = null;
@@ -490,11 +513,12 @@ function setStatus(text) {
 }
 
 async function openProject(dirPath, loading) {
-  // Hide home screen, show toolbar when opening a project
+  // Hide home screen, remove home-view class, update sidebar active state
   const homeScreen = document.getElementById('home-screen');
-  const toolbar = document.getElementById('toolbar');
+  const main = document.getElementById('main');
   if (homeScreen) homeScreen.classList.add('hidden');
-  if (toolbar) toolbar.classList.remove('toolbar-hidden');
+  if (main) main.classList.remove('home-view');
+  updateSidebarActive('board');
 
   loading.style.display = 'block';
   loading.textContent = 'Scanning images...';

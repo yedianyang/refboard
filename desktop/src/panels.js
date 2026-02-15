@@ -51,8 +51,6 @@ function setupKeyboardShortcuts() {
     if (e.key === 'Escape') {
       if (document.getElementById('settings-page').classList.contains('open')) {
         closeSettings();
-      } else if (document.getElementById('app-sidebar').classList.contains('open')) {
-        closeSidebar();
       } else if (activePanel) {
         closePanel();
       }
@@ -445,26 +443,6 @@ export function closeSettings() {
   page.classList.remove('open');
 }
 
-/** Toggle the navigation sidebar (left slide-in). */
-export function toggleSidebar() {
-  const sidebar = document.getElementById('app-sidebar');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  if (sidebar.classList.contains('open')) {
-    sidebar.classList.remove('open');
-    if (toggleBtn) toggleBtn.classList.remove('active');
-  } else {
-    sidebar.classList.add('open');
-    if (toggleBtn) toggleBtn.classList.add('active');
-  }
-}
-
-/** Close the navigation sidebar. */
-export function closeSidebar() {
-  const sidebar = document.getElementById('app-sidebar');
-  sidebar.classList.remove('open');
-  const toggleBtn = document.getElementById('sidebar-toggle-btn');
-  if (toggleBtn) toggleBtn.classList.remove('active');
-}
 
 async function loadSettingsFromBackend() {
   try {

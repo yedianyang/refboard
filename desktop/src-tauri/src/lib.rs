@@ -1,4 +1,5 @@
 mod ai;
+mod api;
 mod embed;
 pub mod log;
 mod search;
@@ -16,7 +17,7 @@ const IMAGE_EXTENSIONS: &[&str] = &[
     "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "tiff",
 ];
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageInfo {
     pub name: String,
@@ -99,9 +100,9 @@ fn walk_for_images(dir: &Path, images: &mut Vec<ImageInfo>) -> Result<(), String
     Ok(())
 }
 
-/// Import a clipboard image (raw bytes) into the project's images/ directory.
-#[tauri::command]
-fn import_clipboard_image(
+/// Import raw image bytes into a project's images/ directory.
+/// Core logic shared by the Tauri command and the HTTP API.
+pub fn import_image_bytes(
     data: Vec<u8>,
     extension: String,
     project_path: String,
@@ -136,6 +137,16 @@ fn import_clipboard_image(
         size_bytes: data.len() as u64,
         extension: ext,
     })
+}
+
+/// Tauri command wrapper for import_image_bytes.
+#[tauri::command]
+fn import_clipboard_image(
+    data: Vec<u8>,
+    extension: String,
+    project_path: String,
+) -> Result<ImageInfo, String> {
+    import_image_bytes(data, extension, project_path)
 }
 
 /// Read project metadata from a directory's metadata.json file.
@@ -508,6 +519,13 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                api::start_server(handle).await;
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             scan_images,
             import_images,
@@ -534,6 +552,7 @@ pub fn run() {
             embed::cmd_embed_project,
             embed::cmd_warmup_clip,
             log::cmd_read_log,
+            api::cmd_get_api_port,
             save_board_state,
             load_board_state,
             export_metadata,
