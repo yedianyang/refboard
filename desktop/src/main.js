@@ -615,7 +615,7 @@ async function initHomeScreen(homeScreen, loading) {
           <div class="home-project-info">
             <div class="home-project-name">${safeName}</div>
             <div class="home-project-meta">
-              <span>${p.image_count} images</span>
+              <span>${p.imageCount} images</span>
             </div>
           </div>
         </button>`;
@@ -851,10 +851,21 @@ async function initHomeScreen(homeScreen, loading) {
         if (!name) return;
         newDialog.classList.remove('open');
         try {
-          // Construct full path and call create_project with both name and path
-          const home = await getHomePath();
-          const base = home.endsWith('/') ? home : home + '/';
-          const path = `${base}Documents/RefBoard/${name}`;
+          // Use Tauri's documentDir for correct base path
+          let base;
+          try {
+            const { documentDir } = await import('@tauri-apps/api/path');
+            base = await documentDir();
+          } catch {
+            // Fallback if Tauri path API unavailable
+            const home = await getHomePath();
+            base = home ? `${home}/Documents` : null;
+          }
+          if (!base) {
+            throw new Error('Cannot determine Documents directory');
+          }
+          const sep = base.endsWith('/') ? '' : '/';
+          const path = `${base}${sep}RefBoard/${name}`;
           const result = await invoke('create_project', { name, path });
           openProject(result.path, loading);
         } catch (err) {
