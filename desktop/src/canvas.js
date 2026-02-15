@@ -4,6 +4,7 @@
 import { Application, Container, Sprite, Graphics, Assets, Rectangle, Text, TextStyle } from 'pixi.js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { icon } from './icons.js';
 
 // ============================================================
 // State
@@ -1660,15 +1661,12 @@ function toggleLockSelected() {
 function setCardLocked(card, locked) {
   card.locked = locked;
   card.data.locked = locked;
-  // Show/hide lock indicator
+  // Show/hide lock indicator (drawn as a small padlock graphic)
   if (locked) {
     if (!card.lockIcon) {
-      card.lockIcon = new Text({
-        text: '\uD83D\uDD12',
-        style: new TextStyle({ fontSize: 14 }),
-      });
-      card.lockIcon.anchor = { x: 1, y: 0 };
-      card.lockIcon.x = card.cardWidth - 4;
+      card.lockIcon = new Graphics();
+      drawLockIcon(card.lockIcon);
+      card.lockIcon.x = card.cardWidth - 18;
       card.lockIcon.y = 4;
     }
     card.container.addChild(card.lockIcon);
@@ -1679,6 +1677,15 @@ function setCardLocked(card, locked) {
       card.lockIcon = null;
     }
   }
+}
+
+function drawLockIcon(g) {
+  // 14x14 padlock: body rect + shackle arc
+  g.roundRect(1, 7, 12, 7, 1.5)
+    .fill({ color: 0x000000, alpha: 0.45 })
+    .stroke({ color: 0xffffff, width: 1.5 });
+  g.arc(7, 7, 3.5, Math.PI, 0)
+    .stroke({ color: 0xffffff, width: 1.5 });
 }
 
 export function changeSelectionOpacity(value) {
@@ -2152,39 +2159,45 @@ function showCanvasContextMenu(clientX, clientY) {
 
   if (hasSelection) {
     if (singleImage) {
-      items.push({ icon: '\u2728', label: 'Analyze with AI', shortcut: '\u2318\u21E7A', action: 'analyze' });
-      items.push({ icon: '\uD83D\uDD0D', label: 'Find Similar', action: 'find-similar' });
-      items.push({ icon: '\uD83C\uDF10', label: 'Find More Online', shortcut: '\u2318\u21E7F', action: 'find-online' });
+      items.push({ icon: icon('sparkles', 14), label: 'Analyze with AI', shortcut: '\u2318\u21E7A', action: 'analyze' });
+      items.push({ icon: icon('search', 14), label: 'Find Similar', action: 'find-similar' });
+      items.push({ icon: icon('globe', 14), label: 'Find More Online', shortcut: '\u2318\u21E7F', action: 'find-online' });
       items.push({ divider: true });
+    } else {
+      const imageCards = sel.filter(c => !c.isText && !c.isShape);
+      if (imageCards.length > 1) {
+        items.push({ icon: icon('sparkles', 14), label: `Analyze All (${imageCards.length})`, shortcut: '\u2318\u21E7A', action: 'analyze-batch' });
+        items.push({ divider: true });
+      }
     }
-    items.push({ icon: '\u2398', label: 'Copy', shortcut: '\u2318C', action: 'copy' });
-    items.push({ icon: '\u2398', label: 'Paste', shortcut: '\u2318V', action: 'paste', disabled: clipboard.length === 0 });
-    items.push({ icon: '\u2398', label: 'Duplicate', shortcut: '\u2318D', action: 'duplicate' });
+    items.push({ icon: icon('copy', 14), label: 'Copy', shortcut: '\u2318C', action: 'copy' });
+    items.push({ icon: icon('clipboard-paste', 14), label: 'Paste', shortcut: '\u2318V', action: 'paste', disabled: clipboard.length === 0 });
+    items.push({ icon: icon('copy-plus', 14), label: 'Duplicate', shortcut: '\u2318D', action: 'duplicate' });
     items.push({ divider: true });
-    items.push({ icon: '\u2B06', label: 'Bring to Front', shortcut: '\u2318]', action: 'bring-front' });
-    items.push({ icon: '\u2B07', label: 'Send to Back', shortcut: '\u2318[', action: 'send-back' });
+    items.push({ icon: icon('arrow-up-to-line', 14), label: 'Bring to Front', shortcut: '\u2318]', action: 'bring-front' });
+    items.push({ icon: icon('arrow-down-to-line', 14), label: 'Send to Back', shortcut: '\u2318[', action: 'send-back' });
     if (sel.length >= 2) {
       items.push({ divider: true });
-      items.push({ icon: '\u25A3', label: 'Group', shortcut: '\u2318G', action: 'group' });
+      items.push({ icon: icon('group', 14), label: 'Group', shortcut: '\u2318G', action: 'group' });
     }
     const anyLocked = sel.some(c => c.locked);
-    items.push({ icon: anyLocked ? '\uD83D\uDD13' : '\uD83D\uDD12', label: anyLocked ? 'Unlock' : 'Lock', shortcut: '\u2318L', action: 'toggle-lock' });
+    items.push({ icon: icon(anyLocked ? 'unlock' : 'lock', 14), label: anyLocked ? 'Unlock' : 'Lock', shortcut: '\u2318L', action: 'toggle-lock' });
     items.push({ divider: true });
-    items.push({ icon: '\u232B', label: 'Delete', shortcut: 'Del', action: 'delete', destructive: true });
+    items.push({ icon: icon('trash-2', 14), label: 'Delete', shortcut: 'Del', action: 'delete', destructive: true });
   } else {
     if (clipboard.length > 0) {
-      items.push({ icon: '\u2398', label: 'Paste', shortcut: '\u2318V', action: 'paste' });
+      items.push({ icon: icon('clipboard-paste', 14), label: 'Paste', shortcut: '\u2318V', action: 'paste' });
       items.push({ divider: true });
     }
-    items.push({ icon: '\u2395', label: 'Fit All', shortcut: '\u21E71', action: 'fit-all' });
-    items.push({ icon: '\u2316', label: 'Zoom to 100%', shortcut: '\u23180', action: 'zoom-100' });
+    items.push({ icon: icon('maximize', 14), label: 'Fit All', shortcut: '\u21E71', action: 'fit-all' });
+    items.push({ icon: icon('scan', 14), label: 'Zoom to 100%', shortcut: '\u23180', action: 'zoom-100' });
     items.push({ divider: true });
-    items.push({ icon: '\u2591', label: `${gridVisible ? 'Hide' : 'Show'} Grid`, shortcut: 'G', action: 'toggle-grid' });
-    items.push({ icon: '\u25A1', label: `${minimapVisible ? 'Hide' : 'Show'} Minimap`, shortcut: 'M', action: 'toggle-minimap' });
+    items.push({ icon: icon('grid-3x3', 14), label: `${gridVisible ? 'Hide' : 'Show'} Grid`, shortcut: 'G', action: 'toggle-grid' });
+    items.push({ icon: icon('map', 14), label: `${minimapVisible ? 'Hide' : 'Show'} Minimap`, shortcut: 'M', action: 'toggle-minimap' });
     items.push({ divider: true });
-    items.push({ icon: '\u2B1A', label: 'Tidy Up', shortcut: '\u2318\u21E7T', action: 'tidy-up' });
+    items.push({ icon: icon('layout-grid', 14), label: 'Tidy Up', shortcut: '\u2318\u21E7T', action: 'tidy-up' });
     items.push({ divider: true });
-    items.push({ icon: '\uD83D\uDCF7', label: 'Export as PNG', shortcut: '\u2318\u21E7E', action: 'export-png' });
+    items.push({ icon: icon('image-down', 14), label: 'Export as PNG', shortcut: '\u2318\u21E7E', action: 'export-png' });
   }
 
   // Render menu
@@ -2265,6 +2278,7 @@ function handleContextAction(action) {
       break;
     // Cross-module actions: dispatch custom events for main.js to handle
     case 'analyze':
+    case 'analyze-batch':
     case 'find-similar':
     case 'find-online':
       window.dispatchEvent(new CustomEvent('refboard:context-action', { detail: { action, cards: Array.from(selection) } }));
@@ -2594,7 +2608,7 @@ function updateSelectionInfo() {
     return;
   }
   const card = Array.from(selection)[0];
-  const lockTag = card.locked ? ' \uD83D\uDD12' : '';
+  const lockTag = card.locked ? ' (locked)' : '';
   if (card.isText) {
     const preview = (card.data.text || 'Empty note').slice(0, 30);
     el.textContent = `Text: "${preview}${card.data.text?.length > 30 ? '...' : ''}"${lockTag}`;

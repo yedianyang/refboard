@@ -4,8 +4,8 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG } from './canvas.js';
-import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard } from './panels.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards } from './canvas.js';
+import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard, analyzeBatch } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -317,6 +317,7 @@ async function main() {
     onFindOnline: (card) => {
       findMoreLike(card);
     },
+    getAllCards,
   });
 
   // Card selection -> open metadata panel + auto-embed if needed
@@ -395,13 +396,18 @@ async function main() {
       return;
     }
 
-    // Cmd+Shift+A: Analyze selected image
+    // Cmd+Shift+A: Analyze selected image(s)
     if (meta && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
       e.preventDefault();
       const sel = getSelection();
-      if (sel.size === 1) {
-        const card = Array.from(sel)[0];
-        analyzeCard(card);
+      const imageCards = Array.from(sel).filter(c => !c.isText && !c.isShape);
+      if (imageCards.length === 1) {
+        analyzeCard(imageCards[0]);
+      } else if (imageCards.length > 1) {
+        const saveFn = currentProjectPath ? () => {
+          invoke('save_board_state', { projectPath: currentProjectPath, state: getBoardState() }).catch(() => {});
+        } : null;
+        analyzeBatch(imageCards, saveFn);
       }
       return;
     }
@@ -447,6 +453,16 @@ async function main() {
   // Canvas context menu actions (dispatched from canvas.js)
   window.addEventListener('refboard:context-action', (e) => {
     const { action, cards } = e.detail;
+    if (action === 'analyze-batch') {
+      const imageCards = cards.filter(c => !c.isText && !c.isShape);
+      if (imageCards.length > 0) {
+        const saveFn = currentProjectPath ? () => {
+          invoke('save_board_state', { projectPath: currentProjectPath, state: getBoardState() }).catch(() => {});
+        } : null;
+        analyzeBatch(imageCards, saveFn);
+      }
+      return;
+    }
     if (cards.length !== 1) return;
     const card = cards[0];
     if (action === 'analyze') analyzeCard(card);
@@ -674,7 +690,7 @@ async function initHomeScreen(homeScreen, loading) {
         return `
         <button class="home-project-card" data-path="${safePath}">
           <div class="home-project-thumb">
-            <span class="home-project-thumb-placeholder">&#128444;</span>
+            <span class="home-project-thumb-placeholder"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
           </div>
           <div class="home-project-info">
             <div class="home-project-name">${safeName}</div>
@@ -845,7 +861,7 @@ async function initHomeScreen(homeScreen, loading) {
         if (gridEl.querySelectorAll('.home-project-card').length === 0) {
           gridEl.innerHTML = `
             <div class="home-empty">
-              <div class="home-empty-icon">&#128444;</div>
+              <div class="home-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
               <div class="home-empty-title">No recent projects</div>
               Open an image folder or create a new project to get started.
             </div>`;

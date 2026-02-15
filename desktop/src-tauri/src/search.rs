@@ -221,6 +221,38 @@ pub fn update_image_metadata(
     upsert_image(&conn, meta)
 }
 
+/// Get metadata for a single image by path.
+pub fn get_image_metadata(
+    project_path: &str,
+    image_path: &str,
+) -> Result<Option<ImageMetadataRow>, String> {
+    let conn = open_db(project_path)?;
+    let result = conn
+        .query_row(
+            "SELECT path, name, description, tags, style, mood, colors, era FROM images WHERE path = ?1",
+            params![image_path],
+            |row| {
+                let tags_str: String = row.get(3)?;
+                let style_str: String = row.get(4)?;
+                let mood_str: String = row.get(5)?;
+                let colors_str: String = row.get(6)?;
+                Ok(ImageMetadataRow {
+                    image_path: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    tags: tags_str.split_whitespace().map(String::from).collect(),
+                    style: style_str.split_whitespace().map(String::from).collect(),
+                    mood: mood_str.split_whitespace().map(String::from).collect(),
+                    colors: colors_str.split_whitespace().map(String::from).collect(),
+                    era: row.get(7)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| format!("Cannot query image metadata: {e}"))?;
+    Ok(result)
+}
+
 // ---------------------------------------------------------------------------
 // Full-Text Search
 // ---------------------------------------------------------------------------

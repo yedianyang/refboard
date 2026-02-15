@@ -17,6 +17,8 @@ let currentAnalysis = null; // Latest AI analysis result
 let onAcceptCallback = null; // Called when user accepts suggestions
 let onFindSimilarCallback = null; // Called when user clicks "Find Similar"
 let onFindOnlineCallback = null; // Called when user clicks "Find Online"
+let _getAllCards = null; // Injected from main.js
+let batchCancelled = false; // Batch analysis cancel flag
 
 // Provider default models
 const PROVIDER_MODELS = {
@@ -36,13 +38,15 @@ const PROVIDER_LABELS = {
 // ============================================================
 
 /** Initialize all panel DOM and event listeners. Call once at startup. */
-export function initPanels({ onAccept, onFindSimilar, onFindOnline } = {}) {
+export function initPanels({ onAccept, onFindSimilar, onFindOnline, getAllCards } = {}) {
   onAcceptCallback = onAccept || null;
   onFindSimilarCallback = onFindSimilar || null;
   onFindOnlineCallback = onFindOnline || null;
+  _getAllCards = getAllCards || null;
   setupPanelEvents();
   setupSettingsEvents();
   setupKeyboardShortcuts();
+  setupBatchProgressEvents();
   listenForAIEvents();
 }
 
@@ -381,10 +385,12 @@ export async function analyzeCard(card) {
 }
 
 function collectAllTags() {
-  // Imported cards may have tags — collect unique set
   const tags = new Set();
-  // Access allCards via the canvas module if available
-  // For now, return empty — will be wired later
+  if (_getAllCards) {
+    for (const card of _getAllCards()) {
+      if (card.data?.tags) card.data.tags.forEach(t => tags.add(t));
+    }
+  }
   return Array.from(tags);
 }
 
@@ -404,6 +410,116 @@ function showAnalysisError(message) {
       el.style.display = 'none';
     }, 5000);
   }
+}
+
+// ============================================================
+// Batch Analysis
+// ============================================================
+
+/**
+ * Analyze multiple cards sequentially with progress UI.
+ * @param {object[]} cards - Array of canvas card objects (images only)
+ * @param {function} [onSaveBoard] - Called after batch to persist board state
+ */
+export async function analyzeBatch(cards, onSaveBoard) {
+  if (analyzing) return;
+  analyzing = true;
+  batchCancelled = false;
+
+  const total = cards.length;
+  let completed = 0;
+  let failed = 0;
+
+  try {
+    const config = await invoke('get_ai_config');
+    const existingTags = collectAllTags();
+
+    showBatchProgress(0, total);
+
+    for (let i = 0; i < cards.length; i++) {
+      if (batchCancelled) break;
+
+      const card = cards[i];
+      const filename = card.data?.name || card.data?.path?.split('/').pop() || 'unknown';
+      updateBatchProgress(i + 1, total, filename);
+
+      try {
+        const result = await invoke('analyze_image', {
+          imagePath: card.data.path,
+          providerConfig: config,
+          existingTags,
+        });
+
+        // Merge result into card data
+        card.data.description = result.description;
+        card.data.tags = result.tags;
+        card.data.style = result.style;
+        card.data.mood = result.mood;
+        card.data.colors = result.colors;
+        card.data.era = result.era;
+
+        // Add new tags to context for subsequent analyses
+        if (result.tags) {
+          result.tags.forEach(t => { if (!existingTags.includes(t)) existingTags.push(t); });
+        }
+
+        completed++;
+      } catch (err) {
+        console.error(`[AI] Batch: failed to analyze ${filename}:`, err);
+        failed++;
+      }
+    }
+  } catch (err) {
+    showAnalysisError(`Batch analysis failed: ${err}`);
+  } finally {
+    analyzing = false;
+    hideBatchProgress();
+
+    // Show summary in status bar
+    const statusText = document.getElementById('status-text');
+    if (statusText) {
+      if (batchCancelled) {
+        statusText.textContent = `Analysis cancelled (${completed}/${total} done)`;
+      } else if (failed > 0) {
+        statusText.textContent = `Analyzed ${completed}/${total} images (${failed} failed)`;
+      } else {
+        statusText.textContent = `Analyzed ${completed} images`;
+      }
+    }
+
+    if (onSaveBoard) onSaveBoard();
+  }
+}
+
+function showBatchProgress(current, total) {
+  const el = document.getElementById('batch-progress');
+  if (!el) return;
+  el.style.display = 'flex';
+  updateBatchProgress(current, total);
+}
+
+function updateBatchProgress(current, total, filename) {
+  const textEl = document.getElementById('batch-progress-text');
+  const fillEl = document.getElementById('batch-progress-fill');
+  if (textEl) {
+    textEl.textContent = filename
+      ? `Analyzing ${current}/${total}: ${filename}`
+      : `Preparing batch analysis (${total} images)...`;
+  }
+  if (fillEl) {
+    fillEl.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
+  }
+}
+
+function hideBatchProgress() {
+  const el = document.getElementById('batch-progress');
+  if (el) el.style.display = 'none';
+}
+
+function setupBatchProgressEvents() {
+  document.getElementById('batch-progress-cancel')?.addEventListener('click', () => {
+    batchCancelled = true;
+  });
 }
 
 // Listen for Tauri AI events

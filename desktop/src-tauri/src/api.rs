@@ -237,6 +237,18 @@ async fn handle_import(
 
     crate::log::log("API", &format!("Imported: {} → {}", original_name, info.path));
 
+    // Index + embed in background (don't block the API response).
+    // This ensures the new image appears in search, tags, and find_similar.
+    {
+        let storage = state.storage.clone();
+        let bg_project = project.clone();
+        tokio::spawn(async move {
+            if let Err(e) = storage.embed_project(&bg_project).await {
+                crate::log::log("API", &format!("Background index+embed failed: {e}"));
+            }
+        });
+    }
+
     // Emit event so frontend can add the card to canvas
     let event_payload = serde_json::json!({
         "image": &info,

@@ -410,6 +410,18 @@ impl StorageProvider for LocalStorage {
                     images.len()
                 ),
             );
+
+            // Ensure all images are indexed in the `images` table first.
+            // Without this, newly imported images have embeddings but no
+            // metadata row, causing find_similar JOINs to miss them.
+            let indexed = crate::search::index_project_images(&project_path, &images)?;
+            if indexed > 0 {
+                crate::log::log(
+                    "CLIP",
+                    &format!("{indexed} new images indexed in search DB"),
+                );
+            }
+
             let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
             crate::embed::embed_and_store(&project_path, &paths)
         })

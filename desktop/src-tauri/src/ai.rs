@@ -39,8 +39,8 @@ pub struct AiProviderConfig {
     pub provider: AiProviderKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
-    #[serde(default = "default_anthropic_endpoint")]
-    pub endpoint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
 }
@@ -53,8 +53,15 @@ pub enum AiProviderKind {
     Ollama,
 }
 
-fn default_anthropic_endpoint() -> String {
-    "https://api.anthropic.com/v1".to_string()
+impl AiProviderKind {
+    /// Default API endpoint for each provider.
+    fn default_endpoint(&self) -> &str {
+        match self {
+            AiProviderKind::Anthropic => "https://api.anthropic.com/v1",
+            AiProviderKind::Openai => "https://api.openai.com/v1",
+            AiProviderKind::Ollama => "http://localhost:11434",
+        }
+    }
 }
 
 impl Default for AiProviderConfig {
@@ -62,7 +69,7 @@ impl Default for AiProviderConfig {
         Self {
             provider: AiProviderKind::Anthropic,
             api_key: None,
-            endpoint: default_anthropic_endpoint(),
+            endpoint: None,
             model: None,
         }
     }
@@ -73,7 +80,6 @@ impl Default for AiProviderConfig {
 // ---------------------------------------------------------------------------
 
 /// The analysis prompt for image analysis.
-/// Replicates the v1 prompt from lib/ai-provider.js but adds style/mood/colors/era.
 const ANALYSIS_PROMPT: &str = r##"Analyze this image for a visual reference board. Return ONLY a JSON object with these fields:
 
 {
@@ -218,14 +224,16 @@ pub struct AnthropicProvider {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    endpoint: String,
 }
 
 impl AnthropicProvider {
-    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>) -> Self {
+    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String) -> Self {
         Self {
             client,
             api_key,
             model: model.unwrap_or_else(|| "claude-sonnet-4-5-20250929".to_string()),
+            endpoint,
         }
     }
 }
@@ -306,9 +314,10 @@ impl AiVisionProvider for AnthropicProvider {
             }],
         };
 
+        let url = format!("{}/messages", self.endpoint.trim_end_matches('/'));
         let resp = self
             .client
-            .post("https://api.anthropic.com/v1/messages")
+            .post(&url)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -355,14 +364,16 @@ pub struct OpenAIProvider {
     client: reqwest::Client,
     api_key: String,
     model: String,
+    endpoint: String,
 }
 
 impl OpenAIProvider {
-    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>) -> Self {
+    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String) -> Self {
         Self {
             client,
             api_key,
             model: model.unwrap_or_else(|| "gpt-4o".to_string()),
+            endpoint,
         }
     }
 }
@@ -448,9 +459,10 @@ impl AiVisionProvider for OpenAIProvider {
             }],
         };
 
+        let url = format!("{}/chat/completions", self.endpoint.trim_end_matches('/'));
         let resp = self
             .client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&body)
@@ -595,6 +607,13 @@ fn create_provider(
     client: &reqwest::Client,
     config: &AiProviderConfig,
 ) -> Result<Box<dyn AiVisionProvider>, String> {
+    // Resolve endpoint: use configured value or provider-specific default.
+    let endpoint = config
+        .endpoint
+        .clone()
+        .filter(|e| !e.is_empty())
+        .unwrap_or_else(|| config.provider.default_endpoint().to_string());
+
     match config.provider {
         AiProviderKind::Anthropic => {
             let key = config
@@ -606,6 +625,7 @@ fn create_provider(
                 client.clone(),
                 key,
                 config.model.clone(),
+                endpoint,
             )))
         }
         AiProviderKind::Openai => {
@@ -618,11 +638,12 @@ fn create_provider(
                 client.clone(),
                 key,
                 config.model.clone(),
+                endpoint,
             )))
         }
         AiProviderKind::Ollama => Ok(Box::new(OllamaProvider::new(
             client.clone(),
-            Some(config.endpoint.clone()),
+            Some(endpoint),
             config.model.clone(),
         ))),
     }
@@ -672,39 +693,34 @@ fn save_app_config(config: &AppConfig) -> Result<(), String> {
 // Tauri Commands
 // ---------------------------------------------------------------------------
 
-/// Analyze a single image using the configured AI provider.
-/// Called from frontend via: invoke('analyze_image', { imagePath, providerConfig, existingTags })
-#[tauri::command]
-pub async fn analyze_image(
-    app: tauri::AppHandle,
-    image_path: String,
-    provider_config: AiProviderConfig,
-    existing_tags: Vec<String>,
+/// Analyze a single image and optionally save results to search DB.
+/// Core logic shared by the Tauri command and batch analysis.
+async fn do_analyze_image(
+    app: &tauri::AppHandle,
+    client: &reqwest::Client,
+    image_path: &str,
+    provider_config: &AiProviderConfig,
+    existing_tags: &[String],
+    project_path: Option<&str>,
 ) -> Result<AnalysisResult, String> {
-    let filename = Path::new(&image_path)
+    let filename = Path::new(image_path)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| image_path.clone());
+        .unwrap_or_else(|| image_path.to_string());
     let provider_name = format!("{:?}", provider_config.provider);
-    let model_name = provider_config.model.clone().unwrap_or_else(|| "default".to_string());
 
-    crate::log::log("AI", &format!("Provider config: {provider_name} / {model_name}"));
     crate::log::log("AI", &format!("Analyzing image: {filename} (provider: {provider_name})"));
 
-    let client = reqwest::Client::new();
-    let provider = create_provider(&client, &provider_config)?;
-    let prompt = build_analysis_prompt(&existing_tags);
-    let path = PathBuf::from(&image_path);
+    let provider = create_provider(client, provider_config)?;
+    let prompt = build_analysis_prompt(existing_tags);
+    let path = PathBuf::from(image_path);
 
     if !path.exists() {
-        crate::log::log("AI", &format!("Error: image file not found: {image_path}"));
         return Err(format!("Image file not found: {image_path}"));
     }
 
-    // Emit progress event to frontend
-    let _ = app.emit("ai:analysis:start", &image_path);
+    let _ = app.emit("ai:analysis:start", image_path);
 
-    crate::log::log("AI", &format!("Request sent to {}", provider_config.endpoint));
     let result = provider.analyze_image(&path, &prompt).await;
 
     match &result {
@@ -712,9 +728,27 @@ pub async fn analyze_image(
             let tag_count = analysis.tags.len();
             let desc_preview: String = analysis.description.chars().take(50).collect();
             crate::log::log("AI", &format!(
-                "Analysis complete: {tag_count} tags generated, description: {desc_preview}..."
+                "Analysis complete: {tag_count} tags, description: {desc_preview}..."
             ));
-            let _ = app.emit("ai:analysis:complete", &image_path);
+
+            // Auto-save to search DB if project_path is provided
+            if let Some(proj) = project_path {
+                let meta = crate::search::ImageMetadataRow {
+                    image_path: image_path.to_string(),
+                    name: filename.clone(),
+                    description: Some(analysis.description.clone()),
+                    tags: analysis.tags.clone(),
+                    style: analysis.style.clone(),
+                    mood: analysis.mood.clone(),
+                    colors: analysis.colors.clone(),
+                    era: analysis.era.clone(),
+                };
+                if let Err(e) = crate::search::update_image_metadata(proj, &meta) {
+                    crate::log::log("AI", &format!("Warning: failed to save metadata to DB: {e}"));
+                }
+            }
+
+            let _ = app.emit("ai:analysis:complete", image_path);
         }
         Err(e) => {
             crate::log::log("AI", &format!("Error: {e}"));
@@ -723,6 +757,116 @@ pub async fn analyze_image(
     }
 
     result
+}
+
+/// Analyze a single image using the configured AI provider.
+/// Called from frontend via: invoke('analyze_image', { imagePath, providerConfig, existingTags, projectPath })
+#[tauri::command]
+pub async fn analyze_image(
+    app: tauri::AppHandle,
+    image_path: String,
+    provider_config: AiProviderConfig,
+    existing_tags: Vec<String>,
+    project_path: Option<String>,
+) -> Result<AnalysisResult, String> {
+    let provider_name = format!("{:?}", provider_config.provider);
+    let model_name = provider_config.model.clone().unwrap_or_else(|| "default".to_string());
+    crate::log::log("AI", &format!("Provider config: {provider_name} / {model_name}"));
+
+    let client = reqwest::Client::new();
+    do_analyze_image(
+        &app,
+        &client,
+        &image_path,
+        &provider_config,
+        &existing_tags,
+        project_path.as_deref(),
+    )
+    .await
+}
+
+/// Batch analysis result for a single image.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchAnalysisItem {
+    pub image_path: String,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<AnalysisResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Batch analysis progress event payload.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BatchProgress {
+    current: usize,
+    total: usize,
+    image_path: String,
+}
+
+/// Analyze multiple images sequentially, emitting progress events.
+#[tauri::command]
+pub async fn cmd_analyze_batch(
+    app: tauri::AppHandle,
+    image_paths: Vec<String>,
+    project_path: String,
+    provider_config: AiProviderConfig,
+    existing_tags: Vec<String>,
+) -> Result<Vec<BatchAnalysisItem>, String> {
+    let total = image_paths.len();
+    let client = reqwest::Client::new();
+    let mut results = Vec::with_capacity(total);
+
+    // Collect tags as we go so later images benefit from earlier results
+    let mut running_tags = existing_tags;
+
+    for (i, img_path) in image_paths.iter().enumerate() {
+        let _ = app.emit("ai:batch:progress", BatchProgress {
+            current: i + 1,
+            total,
+            image_path: img_path.clone(),
+        });
+
+        match do_analyze_image(
+            &app,
+            &client,
+            img_path,
+            &provider_config,
+            &running_tags,
+            Some(&project_path),
+        )
+        .await
+        {
+            Ok(analysis) => {
+                // Add new tags to running set for context-aware prompts
+                for tag in &analysis.tags {
+                    if !running_tags.contains(tag) {
+                        running_tags.push(tag.clone());
+                    }
+                }
+                results.push(BatchAnalysisItem {
+                    image_path: img_path.clone(),
+                    success: true,
+                    result: Some(analysis),
+                    error: None,
+                });
+            }
+            Err(e) => {
+                crate::log::log("AI", &format!("Batch error for {img_path}: {e}"));
+                results.push(BatchAnalysisItem {
+                    image_path: img_path.clone(),
+                    success: false,
+                    result: None,
+                    error: Some(e),
+                });
+            }
+        }
+    }
+
+    let _ = app.emit("ai:batch:complete", &results);
+    Ok(results)
 }
 
 /// Get the current AI provider configuration.
@@ -751,6 +895,387 @@ pub async fn check_ollama() -> Result<bool, String> {
         .map(|r| r.status().is_success())
         .unwrap_or(false);
     Ok(available)
+}
+
+/// Test AI provider connection by sending a small text prompt.
+/// Returns a success message with the model's reply, or an error.
+#[tauri::command]
+pub async fn cmd_test_ai_vision(
+    provider_config: AiProviderConfig,
+) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Cannot create HTTP client: {e}"))?;
+
+    let endpoint = provider_config
+        .endpoint
+        .clone()
+        .filter(|e| !e.is_empty())
+        .unwrap_or_else(|| provider_config.provider.default_endpoint().to_string());
+    let base = endpoint.trim_end_matches('/');
+
+    match provider_config.provider {
+        AiProviderKind::Anthropic => {
+            let key = provider_config
+                .api_key
+                .clone()
+                .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
+                .ok_or("No API key configured")?;
+            let model = provider_config
+                .model
+                .unwrap_or_else(|| "claude-sonnet-4-5-20250929".to_string());
+
+            let body = AnthropicRequest {
+                model,
+                max_tokens: 20,
+                system: None,
+                messages: vec![AnthropicMessage {
+                    role: "user".to_string(),
+                    content: vec![AnthropicContent::Text {
+                        text: "Reply with exactly one word: OK".to_string(),
+                    }],
+                }],
+            };
+
+            let resp = client
+                .post(format!("{base}/messages"))
+                .header("x-api-key", &key)
+                .header("anthropic-version", "2023-06-01")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| format!("Connection failed: {e}"))?;
+
+            let status = resp.status();
+            if !status.is_success() {
+                let text = resp.text().await.unwrap_or_default();
+                return Err(format!("API error ({status}): {text}"));
+            }
+
+            let result: AnthropicResponse = resp
+                .json()
+                .await
+                .map_err(|e| format!("Response parse error: {e}"))?;
+
+            let text = result
+                .content
+                .iter()
+                .find_map(|b| match b {
+                    AnthropicResponseBlock::Text { text } => Some(text.clone()),
+                })
+                .unwrap_or_default();
+
+            Ok(format!("Connection successful. Model replied: {text}"))
+        }
+        AiProviderKind::Openai => {
+            let key = provider_config
+                .api_key
+                .clone()
+                .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+                .ok_or("No API key configured")?;
+            let model = provider_config
+                .model
+                .unwrap_or_else(|| "gpt-4o".to_string());
+
+            // Use simple JSON body (text-only, no vision) to test connection
+            let body = serde_json::json!({
+                "model": model,
+                "max_tokens": 20,
+                "messages": [{"role": "user", "content": "Reply with exactly one word: OK"}]
+            });
+
+            let resp = client
+                .post(format!("{base}/chat/completions"))
+                .header("Authorization", format!("Bearer {key}"))
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| format!("Connection failed: {e}"))?;
+
+            let status = resp.status();
+            if !status.is_success() {
+                let text = resp.text().await.unwrap_or_default();
+                return Err(format!("API error ({status}): {text}"));
+            }
+
+            let result: OpenAIResponse = resp
+                .json()
+                .await
+                .map_err(|e| format!("Response parse error: {e}"))?;
+
+            let text = result
+                .choices
+                .first()
+                .and_then(|c| c.message.content.clone())
+                .unwrap_or_default();
+
+            Ok(format!("Connection successful. Model replied: {text}"))
+        }
+        AiProviderKind::Ollama => {
+            let resp = client
+                .get(format!("{base}/api/tags"))
+                .send()
+                .await
+                .map_err(|e| format!("Cannot connect to Ollama at {base}: {e}"))?;
+
+            if !resp.status().is_success() {
+                return Err(format!("Ollama returned status {}", resp.status()));
+            }
+
+            let model = provider_config
+                .model
+                .unwrap_or_else(|| "llava".to_string());
+
+            #[derive(Deserialize)]
+            struct OllamaTagsResponse {
+                models: Vec<OllamaModelInfo>,
+            }
+            #[derive(Deserialize)]
+            struct OllamaModelInfo {
+                name: String,
+            }
+
+            let tags: OllamaTagsResponse = resp
+                .json()
+                .await
+                .map_err(|e| format!("Cannot parse Ollama response: {e}"))?;
+
+            let available = tags.models.iter().any(|m| m.name.starts_with(&model));
+            if available {
+                Ok(format!("Connection successful. Model '{model}' is available."))
+            } else {
+                let names: Vec<_> = tags.models.iter().map(|m| m.name.as_str()).collect();
+                Ok(format!(
+                    "Connected to Ollama but model '{model}' not found. Available: {}",
+                    names.join(", ")
+                ))
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Image Generation
+// ---------------------------------------------------------------------------
+
+/// Result returned from image generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageGenerateResult {
+    pub path: String,
+    pub filename: String,
+    pub width: u32,
+    pub height: u32,
+    pub prompt: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revised_prompt: Option<String>,
+}
+
+// OpenAI Images API response types
+#[derive(Deserialize)]
+struct ImageGenResponse {
+    data: Vec<ImageGenData>,
+}
+
+#[derive(Deserialize)]
+struct ImageGenData {
+    url: Option<String>,
+    #[serde(default)]
+    revised_prompt: Option<String>,
+}
+
+/// Build a generation prompt that incorporates reference image metadata.
+fn build_generation_prompt(
+    user_prompt: &str,
+    reference_paths: &[String],
+    project_path: &str,
+) -> String {
+    let mut context_parts: Vec<String> = Vec::new();
+
+    for ref_path in reference_paths {
+        if let Ok(Some(meta)) = crate::search::get_image_metadata(project_path, ref_path) {
+            let mut desc = Vec::new();
+            if let Some(ref d) = meta.description {
+                desc.push(d.clone());
+            }
+            if !meta.style.is_empty() {
+                desc.push(format!("Style: {}", meta.style.join(", ")));
+            }
+            if !meta.mood.is_empty() {
+                desc.push(format!("Mood: {}", meta.mood.join(", ")));
+            }
+            if !meta.tags.is_empty() {
+                desc.push(format!("Tags: {}", meta.tags.join(", ")));
+            }
+            if let Some(ref era) = meta.era {
+                desc.push(format!("Era: {era}"));
+            }
+            if !desc.is_empty() {
+                context_parts.push(format!("[Reference: {}] {}", meta.name, desc.join(". ")));
+            }
+        }
+    }
+
+    if context_parts.is_empty() {
+        return user_prompt.to_string();
+    }
+
+    format!(
+        "Using these reference images as inspiration:\n{}\n\nGenerate: {}",
+        context_parts.join("\n"),
+        user_prompt
+    )
+}
+
+/// Parse size string into (width, height). Defaults to 1024x1024.
+fn parse_size(size: &str) -> (u32, u32) {
+    match size {
+        "1792x1024" => (1792, 1024),
+        "1024x1792" => (1024, 1792),
+        "512x512" => (512, 512),
+        "256x256" => (256, 256),
+        _ => (1024, 1024),
+    }
+}
+
+/// Generate images using OpenAI-compatible Images API (DALL-E 3, etc).
+#[tauri::command]
+pub async fn cmd_generate_image(
+    app: tauri::AppHandle,
+    prompt: String,
+    reference_paths: Vec<String>,
+    project_path: String,
+    model: Option<String>,
+    size: Option<String>,
+    count: Option<u32>,
+) -> Result<Vec<ImageGenerateResult>, String> {
+    let ai_config = load_app_config().ai.unwrap_or_default();
+
+    let api_key = ai_config
+        .api_key
+        .clone()
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or("No API key configured for image generation. Configure it in Settings > AI.")?;
+
+    // Resolve endpoint — generation always uses OpenAI-compatible API
+    let endpoint = ai_config
+        .endpoint
+        .clone()
+        .filter(|e| !e.is_empty())
+        .unwrap_or_else(|| AiProviderKind::Openai.default_endpoint().to_string());
+    let base = endpoint.trim_end_matches('/');
+
+    let gen_model = model.unwrap_or_else(|| "dall-e-3".to_string());
+    let gen_size = size.unwrap_or_else(|| "1024x1024".to_string());
+    let gen_count = count.unwrap_or(1).min(4).max(1);
+    let (width, height) = parse_size(&gen_size);
+
+    // Build prompt with reference context
+    let full_prompt = build_generation_prompt(&prompt, &reference_paths, &project_path);
+    crate::log::log("AI", &format!(
+        "Generating {gen_count} image(s) with {gen_model}, size: {gen_size}"
+    ));
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("Cannot create HTTP client: {e}"))?;
+
+    let _ = app.emit("ai:generate:start", serde_json::json!({
+        "prompt": prompt,
+        "model": gen_model,
+        "count": gen_count,
+    }));
+
+    // Create output directory
+    let gen_dir = Path::new(&project_path).join("images").join("generated");
+    std::fs::create_dir_all(&gen_dir)
+        .map_err(|e| format!("Cannot create generated images dir: {e}"))?;
+
+    let mut results = Vec::new();
+
+    // DALL-E 3 only supports n=1, so loop for multiple images
+    for i in 0..gen_count {
+        let body = serde_json::json!({
+            "model": gen_model,
+            "prompt": full_prompt,
+            "n": 1,
+            "size": gen_size,
+            "response_format": "url",
+        });
+
+        let resp = client
+            .post(format!("{base}/images/generations"))
+            .header("Authorization", format!("Bearer {api_key}"))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Image generation request failed: {e}"))?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(format!("Image generation API error ({status}): {text}"));
+        }
+
+        let gen_resp: ImageGenResponse = resp
+            .json()
+            .await
+            .map_err(|e| format!("Cannot parse generation response: {e}"))?;
+
+        for item in &gen_resp.data {
+            let url = item.url.as_deref()
+                .ok_or("No URL in generation response")?;
+
+            // Download the generated image
+            let img_resp = client
+                .get(url)
+                .send()
+                .await
+                .map_err(|e| format!("Cannot download generated image: {e}"))?;
+
+            if !img_resp.status().is_success() {
+                return Err(format!("Image download failed: {}", img_resp.status()));
+            }
+
+            let bytes = img_resp
+                .bytes()
+                .await
+                .map_err(|e| format!("Cannot read image bytes: {e}"))?;
+
+            // Save to disk
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
+            let filename = format!("gen-{ts}-{i}.png");
+            let dest = gen_dir.join(&filename);
+            std::fs::write(&dest, &bytes)
+                .map_err(|e| format!("Cannot save generated image: {e}"))?;
+
+            let dest_str = dest.to_string_lossy().to_string();
+            crate::log::log("AI", &format!("Generated image saved: {filename}"));
+
+            results.push(ImageGenerateResult {
+                path: dest_str,
+                filename,
+                width,
+                height,
+                prompt: prompt.clone(),
+                revised_prompt: item.revised_prompt.clone(),
+            });
+        }
+
+        // Emit per-image progress
+        let _ = app.emit("ai:generate:progress", serde_json::json!({
+            "current": i + 1,
+            "total": gen_count,
+        }));
+    }
+
+    let _ = app.emit("ai:generate:complete", &results);
+    Ok(results)
 }
 
 // ---------------------------------------------------------------------------
@@ -803,8 +1328,30 @@ mod tests {
     fn test_default_config() {
         let config = AiProviderConfig::default();
         assert_eq!(config.provider, AiProviderKind::Anthropic);
-        assert_eq!(config.endpoint, "https://api.anthropic.com/v1");
+        assert!(config.endpoint.is_none());
         assert!(config.api_key.is_none());
+    }
+
+    #[test]
+    fn test_provider_default_endpoints() {
+        assert_eq!(AiProviderKind::Anthropic.default_endpoint(), "https://api.anthropic.com/v1");
+        assert_eq!(AiProviderKind::Openai.default_endpoint(), "https://api.openai.com/v1");
+        assert_eq!(AiProviderKind::Ollama.default_endpoint(), "http://localhost:11434");
+    }
+
+    #[test]
+    fn test_config_with_custom_endpoint() {
+        let json = r#"{"provider":"openai","apiKey":"sk-test","endpoint":"https://openrouter.ai/api/v1","model":"google/gemini-2.0-flash"}"#;
+        let config: AiProviderConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.provider, AiProviderKind::Openai);
+        assert_eq!(config.endpoint, Some("https://openrouter.ai/api/v1".to_string()));
+    }
+
+    #[test]
+    fn test_config_without_endpoint() {
+        let json = r#"{"provider":"openai","apiKey":"sk-test"}"#;
+        let config: AiProviderConfig = serde_json::from_str(json).unwrap();
+        assert!(config.endpoint.is_none());
     }
 
     #[test]
@@ -828,5 +1375,35 @@ mod tests {
 
         let kind: AiProviderKind = serde_json::from_str(r#""ollama""#).unwrap();
         assert_eq!(kind, AiProviderKind::Ollama);
+    }
+
+    #[test]
+    fn test_parse_size() {
+        assert_eq!(parse_size("1024x1024"), (1024, 1024));
+        assert_eq!(parse_size("1792x1024"), (1792, 1024));
+        assert_eq!(parse_size("1024x1792"), (1024, 1792));
+        assert_eq!(parse_size("512x512"), (512, 512));
+        assert_eq!(parse_size("unknown"), (1024, 1024)); // default
+    }
+
+    #[test]
+    fn test_build_generation_prompt_no_refs() {
+        let prompt = build_generation_prompt("A cool painting", &[], "/tmp/fake");
+        assert_eq!(prompt, "A cool painting");
+    }
+
+    #[test]
+    fn test_image_generate_result_serialization() {
+        let result = ImageGenerateResult {
+            path: "/tmp/gen.png".to_string(),
+            filename: "gen.png".to_string(),
+            width: 1024,
+            height: 1024,
+            prompt: "test".to_string(),
+            revised_prompt: Some("revised test".to_string()),
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("\"revisedPrompt\""));
+        assert!(json.contains("gen.png"));
     }
 }

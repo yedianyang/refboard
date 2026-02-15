@@ -226,7 +226,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
       transition: all 0.1s ease;
     }
     .sidebar-btn:hover {
@@ -382,7 +381,6 @@
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.1);
       color: rgba(255, 255, 255, 0.7);
-      font-size: 18px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -583,7 +581,6 @@
       color: var(--text-secondary);
       cursor: pointer;
       border-radius: 4px;
-      font-size: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -842,6 +839,70 @@
       text-align: center;
     }
 
+    /* ---- Batch Analysis Progress ---- */
+    #batch-progress {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 360px;
+      background: var(--dialog-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      padding: 14px 18px;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    .batch-progress-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #batch-progress-text {
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #batch-progress-cancel {
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.12s ease;
+      flex-shrink: 0;
+    }
+    #batch-progress-cancel:hover {
+      background: var(--btn-hover);
+      color: var(--text);
+    }
+    .batch-progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--border-strong);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #batch-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease-out;
+    }
+
     /* ---- Metadata Panel Editable Fields ---- */
     .meta-input {
       width: 100%;
@@ -915,8 +976,9 @@
     }
     .app-sidebar-nav-item .nav-icon {
       width: 18px;
-      text-align: center;
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .app-sidebar-nav-item.muted {
       color: var(--text-muted);
@@ -1005,8 +1067,9 @@
     }
     .settings-cat .cat-icon {
       width: 16px;
-      text-align: center;
-      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .settings-page-right {
       flex: 1;
@@ -1653,8 +1716,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
       flex-shrink: 0;
+      color: var(--accent);
     }
     .home-action-label {
       display: flex;
@@ -1712,8 +1775,10 @@
       object-fit: cover;
     }
     .home-project-thumb-placeholder {
-      font-size: 32px;
       opacity: 0.15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     /* 2x2 thumbnail mosaic */
     .home-thumb-mosaic {
@@ -1763,7 +1828,6 @@
       line-height: 1.6;
     }
     .home-empty-icon {
-      font-size: 48px;
       opacity: 0.15;
       margin-bottom: 12px;
     }
@@ -1790,7 +1854,6 @@
       color: var(--text-muted);
       cursor: pointer;
       border-radius: 4px;
-      font-size: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1822,8 +1885,9 @@
       border-radius: 6px;
       overflow: hidden;
     }
-    .home-project-grid.list-view .home-project-thumb-placeholder {
-      font-size: 18px;
+    .home-project-grid.list-view .home-project-thumb-placeholder svg {
+      width: 18px;
+      height: 18px;
     }
     .home-project-grid.list-view .home-project-info {
       padding: 8px 12px 8px 4px;
@@ -1895,7 +1959,8 @@
       text-align: left;
     }
     .ctx-item:hover { background: var(--accent-bg); }
-    .ctx-item-icon { width: 16px; text-align: center; font-size: 13px; opacity: 0.7; }
+    .ctx-item-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; opacity: 0.7; flex-shrink: 0; }
+    .ctx-item-icon svg { display: block; }
     .ctx-item-shortcut {
       margin-left: auto;
       font-size: 10px;
@@ -1998,16 +2063,16 @@
         <div class="app-sidebar-nav">
           <div class="app-sidebar-label">Navigation</div>
           <button class="app-sidebar-nav-item active" id="sidebar-home-btn">
-            <span class="nav-icon">&#8962;</span> Home
+            <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span> Home
           </button>
           <div class="app-sidebar-label" style="margin-top: 8px;">Preferences</div>
           <button class="app-sidebar-nav-item" id="sidebar-settings-btn">
-            <span class="nav-icon">&#9881;</span> Settings
+            <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span> Settings
           </button>
         </div>
         <div class="app-sidebar-bottom">
           <button class="app-sidebar-nav-item muted" id="sidebar-help-btn">
-            <span class="nav-icon">?</span> Help &amp; support
+            <span class="nav-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span> Help &amp; support
           </button>
         </div>
       </div>
@@ -2026,14 +2091,14 @@
           </div>
           <div class="home-actions">
             <button class="home-action-btn" id="home-open-btn">
-              <span class="home-action-icon">&#128193;</span>
+              <span class="home-action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></span>
               <span class="home-action-label">
                 Open Folder
                 <span class="home-action-sub">Browse for an image directory</span>
               </span>
             </button>
             <button class="home-action-btn" id="home-new-btn">
-              <span class="home-action-icon">&#43;</span>
+              <span class="home-action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
               <span class="home-action-label">
                 New Project
                 <span class="home-action-sub">Create an empty project</span>
@@ -2045,14 +2110,14 @@
               <span class="home-section-title">Recent Projects</span>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <div class="home-view-toggle">
-                  <button class="home-view-btn active" id="home-grid-btn" title="Grid view">&#9638;</button>
-                  <button class="home-view-btn" id="home-list-btn" title="List view">&#9776;</button>
+                  <button class="home-view-btn active" id="home-grid-btn" title="Grid view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></button>
+                  <button class="home-view-btn" id="home-list-btn" title="List view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg></button>
                 </div>
               </div>
             </div>
             <div class="home-project-grid" id="home-project-list">
               <div class="home-empty">
-                <div class="home-empty-icon">&#128444;</div>
+                <div class="home-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
                 <div class="home-empty-title">No recent projects</div>
                 Open an image folder or create a new project to get started.
               </div>
@@ -2063,15 +2128,15 @@
 
       <!-- Sidebar (tool palette) -->
       <div id="sidebar">
-        <button class="sidebar-btn active" title="Select (V)">&#9654;</button>
-        <button class="sidebar-btn" title="Hand (H)">&#9995;</button>
-        <button class="sidebar-btn" title="Rect (R)">&#9633;</button>
-        <button class="sidebar-btn" title="Ellipse (O)">&#9675;</button>
-        <button class="sidebar-btn" title="Line (L)">&#8725;</button>
-        <button class="sidebar-btn" title="Note (T)">&#9998;</button>
+        <button class="sidebar-btn active" title="Select (V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg></button>
+        <button class="sidebar-btn" title="Hand (H)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>
+        <button class="sidebar-btn" title="Rect (R)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
+        <button class="sidebar-btn" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg></button>
+        <button class="sidebar-btn" title="Line (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+        <button class="sidebar-btn" title="Note (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></button>
         <div style="flex: 1;"></div>
-        <button class="sidebar-btn" id="web-sidebar-btn" title="Web Collection">&#127760;</button>
-        <button class="sidebar-btn" id="tag-sidebar-btn" title="Tags">&#9776;</button>
+        <button class="sidebar-btn" id="web-sidebar-btn" title="Web Collection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></button>
+        <button class="sidebar-btn" id="tag-sidebar-btn" title="Tags"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8 18.01"/><circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/></svg></button>
       </div>
 
       <!-- Tag Filter Sidebar -->
@@ -2134,7 +2199,7 @@
           <div class="web-panel-header">
             <h3>Web Collection</h3>
             <span id="web-results-count"></span>
-            <button id="web-panel-close-btn" class="panel-close-btn" title="Close">&times;</button>
+            <button id="web-panel-close-btn" class="panel-close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
           <div class="web-search-row">
             <input type="text" id="web-search-input" placeholder="Search for images..." />
@@ -2156,7 +2221,7 @@
           <div class="results-header">
             <h3>Results</h3>
             <span id="results-count"></span>
-            <button id="results-close-btn" class="panel-close-btn" title="Close">&times;</button>
+            <button id="results-close-btn" class="panel-close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
           <div id="results-list"></div>
         </div>
@@ -2180,7 +2245,7 @@
         <div id="suggestion-view">
           <div class="panel-header">
             <h3>AI Suggestions</h3>
-            <button class="panel-close-btn" title="Close">&times;</button>
+            <button class="panel-close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
           <div class="panel-body">
             <img id="suggestion-thumb" class="panel-thumb" alt="" />
@@ -2219,7 +2284,7 @@
         <div id="metadata-view">
           <div class="panel-header">
             <h3>Image Details</h3>
-            <button class="panel-close-btn" title="Close">&times;</button>
+            <button class="panel-close-btn" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
           <div class="panel-body">
             <img id="meta-thumb" class="panel-thumb" alt="" />
@@ -2265,9 +2330,9 @@
       <div class="toolbar-spacer"></div>
       <span id="canvas-item-count"></span>
       <div class="zoom-controls">
-        <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out">&#8722;</button>
+        <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
         <button id="zoom-display" class="zoom-level" title="Reset to 100%">100%</button>
-        <button id="zoom-in-btn" class="zoom-btn" title="Zoom In">&#43;</button>
+        <button id="zoom-in-btn" class="zoom-btn" title="Zoom In"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
       </div>
     </div>
   </div>
@@ -2294,6 +2359,17 @@
   <!-- Analysis Error Toast -->
   <div id="analysis-error"></div>
 
+  <!-- Batch Analysis Progress -->
+  <div id="batch-progress">
+    <div class="batch-progress-header">
+      <span id="batch-progress-text">Analyzing...</span>
+      <button id="batch-progress-cancel">Cancel</button>
+    </div>
+    <div class="batch-progress-bar">
+      <div id="batch-progress-fill"></div>
+    </div>
+  </div>
+
   <!-- New Project Dialog -->
   <div id="new-project-dialog">
     <div class="new-project-card">
@@ -2313,18 +2389,18 @@
   <!-- Context Menu -->
   <div id="context-menu">
     <button class="ctx-item" data-action="open">
-      <span class="ctx-item-icon">&#9654;</span> Open
+      <span class="ctx-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></span> Open
     </button>
     <button class="ctx-item" data-action="finder">
-      <span class="ctx-item-icon">&#128193;</span> Show in Finder
+      <span class="ctx-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></span> Show in Finder
     </button>
     <div class="ctx-divider"></div>
     <button class="ctx-item" data-action="rename">
-      <span class="ctx-item-icon">&#9998;</span> Rename
+      <span class="ctx-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></span> Rename
     </button>
     <div class="ctx-divider"></div>
     <button class="ctx-item destructive" data-action="delete">
-      <span class="ctx-item-icon">&#128465;</span> Delete
+      <span class="ctx-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span> Delete
     </button>
   </div>
 
@@ -2340,22 +2416,22 @@
       <div class="settings-page-left">
         <div class="settings-page-title">Settings</div>
         <button class="settings-cat active" data-cat="general">
-          <span class="cat-icon">&#9776;</span> General
+          <span class="cat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></span> General
         </button>
         <button class="settings-cat" data-cat="ai">
-          <span class="cat-icon">&#9881;</span> AI Provider
+          <span class="cat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></span> AI Provider
         </button>
         <button class="settings-cat" data-cat="web">
-          <span class="cat-icon">&#127760;</span> Web Collection
+          <span class="cat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span> Web Collection
         </button>
         <button class="settings-cat" data-cat="compression">
-          <span class="cat-icon">&#128230;</span> Compression
+          <span class="cat-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Compression
         </button>
       </div>
       <div class="settings-page-right">
         <div class="settings-page-header">
           <span class="settings-breadcrumb" id="settings-breadcrumb">Settings &rsaquo; General</span>
-          <button class="panel-close-btn" id="settings-page-close" title="Close">&times;</button>
+          <button class="panel-close-btn" id="settings-page-close" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div class="settings-page-body">
           <!-- General panel -->
@@ -2443,7 +2519,7 @@
 
   <!-- Lightbox overlay -->
   <div id="lightbox">
-    <button id="lightbox-close">&times;</button>
+    <button id="lightbox-close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <img id="lightbox-img" />
     <div id="lightbox-caption"></div>
     <div id="lightbox-nav">&#8592; &#8594; Navigate &middot; Esc Close</div>
