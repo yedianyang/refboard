@@ -140,6 +140,34 @@ async fn handle_status(State(state): State<Arc<ApiState>>) -> Json<StatusRespons
     })
 }
 
+/// List all known projects (recent + default folder scan).
+/// OpenClaw uses this to let the user pick which board to operate on.
+async fn handle_list_projects(
+    State(state): State<Arc<ApiState>>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::log::log("API", "GET /api/projects");
+
+    // Start with recent projects
+    let mut projects = state.storage.list_recent_projects().await
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot list projects: {e}")))?;
+
+    // Also scan the default Deco folder to find any projects not in recents
+    let home = std::env::var("HOME").unwrap_or_default();
+    let default_folder = format!("{home}/Documents/Deco");
+    if let Ok(scanned) = state.storage.scan_projects_folder(&default_folder).await {
+        let existing_paths: std::collections::HashSet<String> =
+            projects.iter().map(|p| p.path.clone()).collect();
+        for p in scanned {
+            if !existing_paths.contains(&p.path) {
+                projects.push(p);
+            }
+        }
+    }
+
+    crate::log::log("API", &format!("Projects: {} found", projects.len()));
+    Ok(Json(projects))
+}
+
 async fn handle_import(
     State(state): State<Arc<ApiState>>,
     mut multipart: Multipart,
@@ -948,6 +976,7 @@ pub async fn start_server(app: AppHandle, storage: crate::storage::Storage) {
 
     let router = Router::new()
         .route("/api/status", get(handle_status))
+        .route("/api/projects", get(handle_list_projects))
         .route("/api/import", post(handle_import))
         .route("/api/delete", delete(handle_delete))
         .route("/api/move", post(handle_move))
