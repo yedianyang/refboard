@@ -1,6 +1,8 @@
 // Deco 2.0 — Main entry point
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
+import './styles/index.css';
+
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';

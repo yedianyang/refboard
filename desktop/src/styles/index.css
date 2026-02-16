@@ -1,0 +1,11 @@
+/* Deco 2.0 — CSS entry point */
+@import './base.css';
+@import './toolbar.css';
+@import './canvas.css';
+@import './panels.css';
+@import './sidebar.css';
+@import './settings.css';
+@import './search.css';
+@import './collection.css';
+@import './home.css';
+@import './context-menu.css';

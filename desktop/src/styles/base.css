@@ -1,0 +1,88 @@
+/* ---- Theme Variables (macOS-inspired) ---- */
+:root {
+  --bg: #1e1e1e;
+  --surface: rgba(40, 40, 40, 0.82);
+  --surface-solid: #2d2d2d;
+  --surface-card: rgba(44, 44, 44, 0.6);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(64, 156, 255, 0.4);
+  --input-bg: rgba(0, 0, 0, 0.25);
+  --text: #f0f0f0;
+  --text-secondary: #ababab;
+  --text-muted: #666666;
+  --accent: #409cff;
+  --accent-bg: rgba(64, 156, 255, 0.15);
+  --accent-bg-hover: rgba(64, 156, 255, 0.25);
+  --btn-bg: rgba(255, 255, 255, 0.06);
+  --btn-hover: rgba(255, 255, 255, 0.1);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --dialog-bg: rgba(44, 44, 46, 0.97);
+  --canvas-bg: #1e1e1e;
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --chip-border: rgba(255, 255, 255, 0.1);
+  --destructive: #ff453a;
+  --success: #30d158;
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --surface-deep: #161616;
+}
+[data-theme="light"] {
+  --bg: #f5f5f7;
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-solid: #ffffff;
+  --surface-card: rgba(255, 255, 255, 0.7);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 122, 255, 0.3);
+  --input-bg: rgba(0, 0, 0, 0.04);
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #8e8e93;
+  --accent: #007aff;
+  --accent-bg: rgba(0, 122, 255, 0.1);
+  --accent-bg-hover: rgba(0, 122, 255, 0.18);
+  --btn-bg: rgba(0, 0, 0, 0.04);
+  --btn-hover: rgba(0, 0, 0, 0.08);
+  --overlay-bg: rgba(0, 0, 0, 0.25);
+  --dialog-bg: rgba(255, 255, 255, 0.97);
+  --canvas-bg: #ececec;
+  --chip-bg: rgba(0, 0, 0, 0.04);
+  --chip-border: rgba(0, 0, 0, 0.08);
+  --destructive: #ff3b30;
+  --success: #34c759;
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --surface-deep: #f0f0f2;
+}
+
+/* ---- Reset & Base ---- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  user-select: none;
+  -webkit-user-select: none;
+}
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ---- Layout ---- */
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+#app-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
