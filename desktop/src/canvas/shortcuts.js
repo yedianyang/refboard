@@ -195,6 +195,7 @@ export function deleteSelected() {
   requestCull();
   markDirty();
   updateColorPaletteVisibility();
+  window.dispatchEvent(new CustomEvent('deco:cards-deleted'));
 }
 
 export function copySelected() {
@@ -215,6 +216,7 @@ export function pasteFromClipboard() {
   if (state.clipboard.length === 0) return;
   const offset = 30;
   clearSelection();
+  const pastedCards = [];
   for (const item of state.clipboard) {
     const nx = item.x + offset;
     const ny = item.y + offset;
@@ -227,6 +229,7 @@ export function pasteFromClipboard() {
         color: item.data.color,
       });
       setCardSelected(newCard, true);
+      pastedCards.push(newCard);
     } else if (item.isShape) {
       const newCard = createShapeCard(item.data.shapeType, nx, ny, {
         width: item.width,
@@ -237,6 +240,7 @@ export function pasteFromClipboard() {
         lineStyle: item.data.lineStyle,
       });
       setCardSelected(newCard, true);
+      pastedCards.push(newCard);
     } else {
       addImageCard(item.data, nx, ny)
         .then((newCard) => {
@@ -246,6 +250,12 @@ export function pasteFromClipboard() {
           }
         });
     }
+  }
+  if (pastedCards.length > 0) {
+    pushUndo({
+      type: 'delete',
+      entries: pastedCards.map(card => ({ card, pos: { x: card.container.x, y: card.container.y } })),
+    });
   }
   state.clipboard = state.clipboard.map(item => ({
     ...item,

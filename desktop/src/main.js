@@ -586,6 +586,12 @@ async function main() {
     }
   }).catch(() => {});
 
+  // Immediate save after destructive operations (delete)
+  window.addEventListener('deco:cards-deleted', () => saveNow());
+
+  // Save board state before window closes
+  window.addEventListener('beforeunload', () => saveNow());
+
   // Initialize home screen
   const homeScreen = document.getElementById('home-screen');
   initHomeScreen(homeScreen, loading);
@@ -600,6 +606,15 @@ function updateSidebarActive(view) {
 }
 
 let currentProjectPath = null;
+
+/** Immediately persist the current board state (for destructive ops). */
+function saveNow() {
+  if (!currentProjectPath) return;
+  invoke('save_board_state', {
+    projectPath: currentProjectPath,
+    state: getBoardState(),
+  }).catch(() => {});
+}
 
 function setStatus(text) {
   const el = document.getElementById('status-text');
