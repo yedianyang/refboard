@@ -943,8 +943,8 @@ async function initHomeScreen(homeScreen, loading) {
         if (selected) {
           openProject(selected, loading);
         }
-      } catch {
-        // Dialog cancelled or failed
+      } catch (err) {
+        console.error('[Dialog] Open folder failed:', err);
       }
     });
   }

@@ -1,6 +1,7 @@
 //! Deco CLI command definitions and handlers.
 //!
 //! Phase 1 commands: status, list, import, delete, search.
+//! Phase 2 commands: embed, similar, semantic, cluster, info, tags.
 //! All commands call shared business logic directly (no Tauri, no HTTP API).
 
 use clap::{Parser, Subcommand};
@@ -66,8 +67,71 @@ pub enum Command {
         #[arg(short, long)]
         project: String,
         /// Maximum number of results
-        #[arg(short, long, default_value = "20")]
+        #[arg(short = 'n', long, default_value = "20")]
         limit: usize,
+    },
+
+    /// Generate CLIP embeddings for images in a project
+    Embed {
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// Embed all images (including already embedded)
+        #[arg(long)]
+        all: bool,
+    },
+
+    /// Find visually similar images using CLIP cosine similarity
+    Similar {
+        /// Image path to find similarities for
+        image_path: String,
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// Maximum number of results
+        #[arg(short = 'n', long, default_value = "10")]
+        limit: usize,
+    },
+
+    /// Text-to-image semantic search (currently FTS5, CLIP text encoder planned)
+    Semantic {
+        /// Search query
+        query: String,
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// Maximum number of results
+        #[arg(short = 'n', long, default_value = "20")]
+        limit: usize,
+    },
+
+    /// Auto-cluster images by visual similarity
+    Cluster {
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// Number of clusters (not used directly; uses threshold-based greedy clustering)
+        #[arg(short = 'n', long, default_value = "5")]
+        num_clusters: usize,
+        /// Cosine similarity threshold for grouping (0.0-1.0)
+        #[arg(short, long, default_value = "0.7")]
+        threshold: f64,
+    },
+
+    /// Show metadata for a single image
+    Info {
+        /// Image path (full path or filename resolved from project/images/)
+        image_path: String,
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+    },
+
+    /// List all tags in the project with counts
+    Tags {
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
     },
 }
 
@@ -87,6 +151,27 @@ pub async fn run(cli: Cli) -> Result<(), String> {
             project,
             limit,
         } => cmd_search(&query, &project, limit, cli.json),
+        Command::Embed { project, all } => cmd_embed(&project, all, cli.json),
+        Command::Similar {
+            image_path,
+            project,
+            limit,
+        } => cmd_similar(&image_path, &project, limit, cli.json),
+        Command::Semantic {
+            query,
+            project,
+            limit,
+        } => cmd_semantic(&query, &project, limit, cli.json),
+        Command::Cluster {
+            project,
+            num_clusters: _,
+            threshold,
+        } => cmd_cluster(&project, threshold, cli.json),
+        Command::Info {
+            image_path,
+            project,
+        } => cmd_info(&image_path, &project, cli.json),
+        Command::Tags { project } => cmd_tags(&project, cli.json),
     }
 }
 
@@ -331,6 +416,322 @@ fn cmd_search(query: &str, project: &str, limit: usize, json: bool) -> Result<()
 }
 
 // ---------------------------------------------------------------------------
+// Phase 2: CLIP Embedding & Similarity Commands
+// ---------------------------------------------------------------------------
+
+/// Generate CLIP embeddings for images in a project.
+fn cmd_embed(project: &str, _all: bool, json: bool) -> Result<(), String> {
+    let images = crate::scan_images_in(project)?;
+    if images.is_empty() {
+        if json {
+            let output = serde_json::json!({
+                "embedded": 0,
+                "cached": 0,
+                "total": 0,
+            });
+            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        } else {
+            println!("No images found in {project}");
+        }
+        return Ok(());
+    }
+
+    let image_paths: Vec<String> = images.iter().map(|img| img.path.clone()).collect();
+    let total = image_paths.len();
+
+    // Index images first so the metadata table has entries
+    crate::search::index_project_images(project, &images)?;
+
+    let embedded = crate::embed::embed_and_store(project, &image_paths)?;
+    let cached = total - embedded;
+
+    if json {
+        let output = serde_json::json!({
+            "embedded": embedded,
+            "cached": cached,
+            "total": total,
+        });
+        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    } else {
+        println!(
+            "Embedded {} new images ({} already cached)",
+            embedded, cached
+        );
+    }
+
+    Ok(())
+}
+
+/// Find visually similar images using CLIP cosine similarity.
+fn cmd_similar(image_path: &str, project: &str, limit: usize, json: bool) -> Result<(), String> {
+    // Resolve image path: if it's just a filename, prepend project/images/
+    let resolved = resolve_image_path(image_path, project);
+
+    let results = crate::search::find_similar(project, &resolved, limit).map_err(|e| {
+        if e.contains("No embedding found") {
+            format!(
+                "No embedding found for \"{}\". Run `deco embed -p {}` first.",
+                image_path, project
+            )
+        } else {
+            e
+        }
+    })?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&results)
+            .map_err(|e| format!("Cannot serialize results: {e}"))?;
+        println!("{output}");
+    } else {
+        if results.is_empty() {
+            println!("No similar images found");
+        } else {
+            println!("{} similar image(s):", results.len());
+            for r in &results {
+                println!("  {:.4}  {}", r.score, r.name);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Text-to-image semantic search (currently uses FTS5; CLIP text encoder planned).
+fn cmd_semantic(query: &str, project: &str, limit: usize, json: bool) -> Result<(), String> {
+    // Currently delegates to the same FTS5 search as `search`.
+    // A future version will use CLIP text-to-image embeddings for true
+    // cross-modal semantic search.
+    let results = crate::search::search_text(project, query, limit)?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&results)
+            .map_err(|e| format!("Cannot serialize results: {e}"))?;
+        println!("{output}");
+    } else {
+        if results.is_empty() {
+            println!("No results for \"{query}\"");
+        } else {
+            println!("{} result(s) for \"{}\":", results.len(), query);
+            for r in &results {
+                let desc = r
+                    .description
+                    .as_deref()
+                    .unwrap_or("")
+                    .chars()
+                    .take(60)
+                    .collect::<String>();
+                let tags = if r.tags.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", r.tags.join(", "))
+                };
+                println!("  {:.2}  {}{}  {}", r.score, r.name, tags, desc);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Auto-cluster images by visual similarity using greedy agglomerative clustering.
+fn cmd_cluster(project: &str, threshold: f64, json: bool) -> Result<(), String> {
+    let threshold = threshold.clamp(0.0, 1.0);
+    let all_embeddings = crate::search::get_all_embeddings(project)?;
+
+    if all_embeddings.is_empty() {
+        if json {
+            let output = serde_json::json!({
+                "clusters": [],
+                "ungrouped": 0,
+            });
+            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        } else {
+            println!("No embeddings found. Run `deco embed -p {project}` first.");
+        }
+        return Ok(());
+    }
+
+    // Greedy agglomerative clustering (same algorithm as api.rs)
+    let mut assigned = vec![false; all_embeddings.len()];
+    let mut clusters: Vec<(usize, Vec<String>)> = Vec::new();
+
+    for i in 0..all_embeddings.len() {
+        if assigned[i] {
+            continue;
+        }
+        assigned[i] = true;
+
+        let mut group = vec![all_embeddings[i].0.clone()];
+        let seed = &all_embeddings[i].1;
+
+        for j in (i + 1)..all_embeddings.len() {
+            if assigned[j] {
+                continue;
+            }
+            let sim = cosine_sim(seed, &all_embeddings[j].1);
+            if sim >= threshold {
+                assigned[j] = true;
+                group.push(all_embeddings[j].0.clone());
+            }
+        }
+
+        clusters.push((clusters.len(), group));
+    }
+
+    // Separate singletons as ungrouped
+    let ungrouped = clusters.iter().filter(|(_, items)| items.len() == 1).count();
+    let multi_clusters: Vec<(usize, Vec<String>)> = clusters
+        .into_iter()
+        .filter(|(_, items)| items.len() >= 2)
+        .enumerate()
+        .map(|(i, (_, items))| (i, items))
+        .collect();
+
+    if json {
+        let cluster_json: Vec<serde_json::Value> = multi_clusters
+            .iter()
+            .map(|(id, items)| {
+                serde_json::json!({
+                    "id": id,
+                    "items": items.iter().map(|p| {
+                        Path::new(p).file_name().unwrap_or_default().to_string_lossy().to_string()
+                    }).collect::<Vec<_>>(),
+                })
+            })
+            .collect();
+        let output = serde_json::json!({
+            "clusters": cluster_json,
+            "ungrouped": ungrouped,
+        });
+        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    } else {
+        println!(
+            "{} cluster(s) found ({} ungrouped singletons):",
+            multi_clusters.len(),
+            ungrouped
+        );
+        for (id, items) in &multi_clusters {
+            println!("\n  Cluster {} ({} images):", id, items.len());
+            for path in items {
+                let name = Path::new(path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy();
+                println!("    {name}");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Show metadata for a single image.
+fn cmd_info(image_path: &str, project: &str, json: bool) -> Result<(), String> {
+    let resolved = resolve_image_path(image_path, project);
+
+    let meta = crate::search::get_image_metadata(project, &resolved)?
+        .ok_or_else(|| {
+            format!(
+                "No metadata found for \"{}\". Run `deco embed -p {}` to index the project first.",
+                image_path, project
+            )
+        })?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&meta)
+            .map_err(|e| format!("Cannot serialize metadata: {e}"))?;
+        println!("{output}");
+    } else {
+        println!("Name:        {}", meta.name);
+        if let Some(ref desc) = meta.description {
+            println!("Description: {desc}");
+        }
+        if !meta.tags.is_empty() {
+            println!("Tags:        {}", meta.tags.join(", "));
+        }
+        if !meta.style.is_empty() {
+            println!("Style:       {}", meta.style.join(", "));
+        }
+        if !meta.mood.is_empty() {
+            println!("Mood:        {}", meta.mood.join(", "));
+        }
+        if !meta.colors.is_empty() {
+            println!("Colors:      {}", meta.colors.join(", "));
+        }
+        if let Some(ref era) = meta.era {
+            println!("Era:         {era}");
+        }
+        println!("Path:        {}", meta.image_path);
+    }
+
+    Ok(())
+}
+
+/// List all tags in the project with counts.
+fn cmd_tags(project: &str, json: bool) -> Result<(), String> {
+    let tags = crate::search::get_all_tags(project)?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&tags)
+            .map_err(|e| format!("Cannot serialize tags: {e}"))?;
+        println!("{output}");
+    } else {
+        if tags.is_empty() {
+            println!("No tags found in project");
+        } else {
+            for t in &tags {
+                println!("{} ({})", t.tag, t.count);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Resolve an image path: if it's just a filename, prepend {project}/images/.
+fn resolve_image_path(image_path: &str, project: &str) -> String {
+    let p = Path::new(image_path);
+    if p.is_absolute() || p.parent().map(|par| par != Path::new("")).unwrap_or(false) {
+        // Already has a directory component or is absolute
+        image_path.to_string()
+    } else {
+        // Bare filename — resolve to project/images/{filename}
+        Path::new(project)
+            .join("images")
+            .join(image_path)
+            .to_string_lossy()
+            .to_string()
+    }
+}
+
+/// Cosine similarity between two f32 vectors.
+fn cosine_sim(a: &[f32], b: &[f32]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    let mut dot = 0.0f64;
+    let mut na = 0.0f64;
+    let mut nb = 0.0f64;
+    for (x, y) in a.iter().zip(b.iter()) {
+        let x = *x as f64;
+        let y = *y as f64;
+        dot += x * y;
+        na += x * x;
+        nb += y * y;
+    }
+    let denom = na.sqrt() * nb.sqrt();
+    if denom == 0.0 {
+        0.0
+    } else {
+        dot / denom
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -499,5 +900,294 @@ mod tests {
         let result = cmd_delete("to_delete.png", &project, false);
         assert!(result.is_ok());
         assert!(!file_path.exists());
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 2: Argument parsing tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_cli_parse_embed() {
+        let cli = Cli::try_parse_from(["deco", "embed", "-p", "/tmp/test"]).unwrap();
+        match cli.command {
+            Command::Embed { project, all } => {
+                assert_eq!(project, "/tmp/test");
+                assert!(!all);
+            }
+            _ => panic!("Expected Embed command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_embed_all() {
+        let cli = Cli::try_parse_from(["deco", "embed", "-p", "/tmp/test", "--all"]).unwrap();
+        match cli.command {
+            Command::Embed { project, all } => {
+                assert_eq!(project, "/tmp/test");
+                assert!(all);
+            }
+            _ => panic!("Expected Embed command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_similar() {
+        let cli = Cli::try_parse_from([
+            "deco", "similar", "/tmp/test/images/photo.jpg", "-p", "/tmp/test",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Similar {
+                image_path,
+                project,
+                limit,
+            } => {
+                assert_eq!(image_path, "/tmp/test/images/photo.jpg");
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(limit, 10);
+            }
+            _ => panic!("Expected Similar command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_similar_with_limit() {
+        let cli = Cli::try_parse_from([
+            "deco", "similar", "photo.jpg", "-p", "/tmp/test", "-n", "5",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Similar {
+                image_path,
+                project,
+                limit,
+            } => {
+                assert_eq!(image_path, "photo.jpg");
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(limit, 5);
+            }
+            _ => panic!("Expected Similar command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_semantic() {
+        let cli =
+            Cli::try_parse_from(["deco", "semantic", "golden ratio", "-p", "/tmp/test"]).unwrap();
+        match cli.command {
+            Command::Semantic {
+                query,
+                project,
+                limit,
+            } => {
+                assert_eq!(query, "golden ratio");
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(limit, 20);
+            }
+            _ => panic!("Expected Semantic command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_cluster() {
+        let cli = Cli::try_parse_from(["deco", "cluster", "-p", "/tmp/test"]).unwrap();
+        match cli.command {
+            Command::Cluster {
+                project,
+                num_clusters,
+                threshold,
+            } => {
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(num_clusters, 5);
+                assert!((threshold - 0.7).abs() < 1e-6);
+            }
+            _ => panic!("Expected Cluster command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_cluster_with_threshold() {
+        let cli = Cli::try_parse_from([
+            "deco", "cluster", "-p", "/tmp/test", "-n", "8", "-t", "0.85",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Cluster {
+                project,
+                num_clusters,
+                threshold,
+            } => {
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(num_clusters, 8);
+                assert!((threshold - 0.85).abs() < 1e-6);
+            }
+            _ => panic!("Expected Cluster command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_info() {
+        let cli =
+            Cli::try_parse_from(["deco", "info", "photo.jpg", "-p", "/tmp/test"]).unwrap();
+        match cli.command {
+            Command::Info {
+                image_path,
+                project,
+            } => {
+                assert_eq!(image_path, "photo.jpg");
+                assert_eq!(project, "/tmp/test");
+            }
+            _ => panic!("Expected Info command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_tags() {
+        let cli = Cli::try_parse_from(["deco", "tags", "-p", "/tmp/test"]).unwrap();
+        match cli.command {
+            Command::Tags { project } => {
+                assert_eq!(project, "/tmp/test");
+            }
+            _ => panic!("Expected Tags command"),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 2: Helper tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_resolve_image_path_bare_filename() {
+        let resolved = resolve_image_path("photo.jpg", "/tmp/project");
+        assert_eq!(resolved, "/tmp/project/images/photo.jpg");
+    }
+
+    #[test]
+    fn test_resolve_image_path_absolute() {
+        let resolved = resolve_image_path("/full/path/to/photo.jpg", "/tmp/project");
+        assert_eq!(resolved, "/full/path/to/photo.jpg");
+    }
+
+    #[test]
+    fn test_resolve_image_path_with_dir() {
+        let resolved = resolve_image_path("subdir/photo.jpg", "/tmp/project");
+        assert_eq!(resolved, "subdir/photo.jpg");
+    }
+
+    #[test]
+    fn test_cosine_sim_identical() {
+        let a = vec![1.0f32, 0.0, 0.0];
+        let b = vec![1.0f32, 0.0, 0.0];
+        assert!((cosine_sim(&a, &b) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_cosine_sim_orthogonal() {
+        let a = vec![1.0f32, 0.0, 0.0];
+        let b = vec![0.0f32, 1.0, 0.0];
+        assert!(cosine_sim(&a, &b).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_cosine_sim_empty() {
+        let a: Vec<f32> = vec![];
+        let b: Vec<f32> = vec![];
+        assert_eq!(cosine_sim(&a, &b), 0.0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 2: Functional tests (using tempdir + search DB)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_tags_empty_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        let result = cmd_tags(&project, false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_tags_with_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        // Insert test data
+        let conn = crate::search::open_db(&project).unwrap();
+        crate::search::upsert_image(
+            &conn,
+            &crate::search::ImageMetadataRow {
+                image_path: "/test/a.jpg".to_string(),
+                name: "a.jpg".to_string(),
+                description: None,
+                tags: vec!["art-deco".to_string(), "sculpture".to_string()],
+                style: vec![],
+                mood: vec![],
+                colors: vec![],
+                era: None,
+            },
+        )
+        .unwrap();
+
+        let result = cmd_tags(&project, true);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_info_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        // Ensure DB is initialized
+        let _conn = crate::search::open_db(&project).unwrap();
+
+        let result = cmd_info("nonexistent.jpg", &project, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_info_with_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        let conn = crate::search::open_db(&project).unwrap();
+        let img_path = format!("{}/images/sculpture.jpg", project);
+        crate::search::upsert_image(
+            &conn,
+            &crate::search::ImageMetadataRow {
+                image_path: img_path.clone(),
+                name: "sculpture.jpg".to_string(),
+                description: Some("A bronze dancer".to_string()),
+                tags: vec!["art-deco".to_string(), "sculpture".to_string()],
+                style: vec!["geometric".to_string()],
+                mood: vec!["elegant".to_string()],
+                colors: vec!["#D4AF37".to_string()],
+                era: Some("1920s".to_string()),
+            },
+        )
+        .unwrap();
+
+        let result = cmd_info(&img_path, &project, false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_cluster_empty_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+        let _conn = crate::search::open_db(&project).unwrap();
+
+        let result = cmd_cluster(&project, 0.7, false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_embed_empty_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        let result = cmd_embed(&project, false, false);
+        assert!(result.is_ok());
     }
 }
