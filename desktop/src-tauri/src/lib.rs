@@ -156,6 +156,49 @@ fn import_clipboard_image(
     import_image_bytes(data, extension, project_path)
 }
 
+/// Delete an image and all associated data (thumbnail, search metadata, embeddings).
+#[tauri::command]
+async fn delete_image(project_path: String, image_path: String) -> Result<(), String> {
+    let path = Path::new(&image_path);
+
+    // 1. Delete the original image file
+    if path.is_file() {
+        fs::remove_file(path)
+            .map_err(|e| format!("Cannot delete image file: {e}"))?;
+    }
+
+    // 2. Delete thumbnails (try common extensions)
+    if let Some(stem) = path.file_stem() {
+        let thumb_dir = Path::new(&project_path).join("thumbnails");
+        if thumb_dir.is_dir() {
+            let stem_str = stem.to_string_lossy();
+            // Thumbnails may have a different extension than the original
+            for ext in &["jpg", "jpeg", "png", "webp"] {
+                let thumb = thumb_dir.join(format!("{stem_str}.{ext}"));
+                if thumb.exists() {
+                    let _ = fs::remove_file(&thumb);
+                }
+            }
+            // Also try exact filename match
+            if let Some(filename) = path.file_name() {
+                let thumb_exact = thumb_dir.join(filename);
+                if thumb_exact.exists() {
+                    let _ = fs::remove_file(&thumb_exact);
+                }
+            }
+        }
+    }
+
+    // 3. Delete from search database (metadata + embeddings)
+    if let Err(e) = search::delete_image_data(&project_path, &image_path) {
+        // Log but don't fail — the file is already deleted
+        crate::log::log("DELETE", &format!("DB cleanup warning: {e}"));
+    }
+
+    crate::log::log("DELETE", &format!("Deleted image: {}", image_path));
+    Ok(())
+}
+
 /// Read project metadata via storage backend.
 #[tauri::command]
 async fn read_metadata(
@@ -461,6 +504,7 @@ pub fn run() {
             scan_images,
             import_images,
             import_clipboard_image,
+            delete_image,
             read_metadata,
             write_metadata,
             create_project,

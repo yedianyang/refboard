@@ -254,6 +254,21 @@ pub fn get_image_metadata(
 }
 
 // ---------------------------------------------------------------------------
+// Deletion
+// ---------------------------------------------------------------------------
+
+/// Delete an image's metadata and embedding from the search database.
+/// FTS5 triggers handle cleaning up the `images_fts` table automatically.
+pub fn delete_image_data(project_path: &str, image_path: &str) -> Result<(), String> {
+    let conn = open_db(project_path)?;
+    conn.execute("DELETE FROM embeddings WHERE path = ?1", params![image_path])
+        .map_err(|e| format!("Cannot delete embedding: {e}"))?;
+    conn.execute("DELETE FROM images WHERE path = ?1", params![image_path])
+        .map_err(|e| format!("Cannot delete image metadata: {e}"))?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Full-Text Search
 // ---------------------------------------------------------------------------
 

@@ -601,6 +601,9 @@ export function getBoardState() {
     cardPaths: Array.from(g.cards).map((c) => (c.isText || c.isShape) ? c.data.id : c.data.path),
   }));
 
+  // Save z-order as array of card keys in display-list order (bottom to top)
+  const zOrder = state.allCards.map((c) => (c.isText || c.isShape) ? c.data.id : c.data.path);
+
   return {
     version: 2,
     viewport: {
@@ -612,6 +615,7 @@ export function getBoardState() {
     textAnnotations,
     shapeAnnotations,
     groups,
+    zOrder,
   };
 }
 
@@ -689,16 +693,48 @@ export function restoreBoardState(savedState) {
     updateZoomDisplay();
   }
 
-  if (savedState.groups && savedState.groups.length > 0) {
+  // Restore z-order (display-list order) if saved
+  if (savedState.zOrder && savedState.zOrder.length > 0) {
     const cardByKey = new Map();
     for (const card of state.allCards) {
       const key = (card.isText || card.isShape) ? card.data.id : card.data.path;
       cardByKey.set(key, card);
     }
+
+    // Re-sort allCards and re-add to world in saved order
+    const ordered = [];
+    for (const key of savedState.zOrder) {
+      const card = cardByKey.get(key);
+      if (card) {
+        ordered.push(card);
+        cardByKey.delete(key);
+      }
+    }
+    // Append any cards not in zOrder (new images added since last save)
+    for (const card of cardByKey.values()) {
+      ordered.push(card);
+    }
+    state.allCards.length = 0;
+    for (const card of ordered) {
+      state.allCards.push(card);
+      // Re-add to world to match z-order
+      if (card.container.parent === state.world) {
+        state.world.removeChild(card.container);
+      }
+      state.world.addChild(card.container);
+    }
+  }
+
+  if (savedState.groups && savedState.groups.length > 0) {
+    const cardByKey2 = new Map();
+    for (const card of state.allCards) {
+      const key = (card.isText || card.isShape) ? card.data.id : card.data.path;
+      cardByKey2.set(key, card);
+    }
     for (const g of savedState.groups) {
       const cards = new Set();
       for (const path of g.cardPaths || []) {
-        const card = cardByKey.get(path);
+        const card = cardByKey2.get(path);
         if (card) cards.add(card);
       }
       if (cards.size >= 2) {

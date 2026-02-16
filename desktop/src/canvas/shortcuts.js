@@ -195,7 +195,15 @@ export function deleteSelected() {
   requestCull();
   markDirty();
   updateColorPaletteVisibility();
-  window.dispatchEvent(new CustomEvent('deco:cards-deleted'));
+
+  // Collect image paths for real file deletion (text/shape annotations are canvas-only)
+  const imagePaths = entries
+    .filter(({ card }) => !card.isText && !card.isShape && card.data?.path)
+    .map(({ card }) => card.data.path);
+
+  window.dispatchEvent(new CustomEvent('deco:cards-deleted', {
+    detail: { imagePaths },
+  }));
 }
 
 export function copySelected() {
@@ -315,7 +323,14 @@ export function bringForward() {
       parent.removeChild(card.container);
       parent.addChild(card.container);
     }
+    // Move to end of allCards array
+    const idx = state.allCards.indexOf(card);
+    if (idx !== -1) {
+      state.allCards.splice(idx, 1);
+      state.allCards.push(card);
+    }
   }
+  markDirty();
 }
 
 export function sendBackward() {
@@ -325,7 +340,14 @@ export function sendBackward() {
       parent.removeChild(card.container);
       parent.addChildAt(card.container, 0);
     }
+    // Move to beginning of allCards array
+    const idx = state.allCards.indexOf(card);
+    if (idx !== -1) {
+      state.allCards.splice(idx, 1);
+      state.allCards.unshift(card);
+    }
   }
+  markDirty();
 }
 
 // ============================================================

@@ -375,6 +375,7 @@ async function main() {
       if (homeScreen) homeScreen.classList.remove('hidden');
       if (main) main.classList.add('home-view');
       updateSidebarActive('home');
+      window.dispatchEvent(new CustomEvent('deco:refresh-home'));
     });
   }
 
@@ -586,8 +587,17 @@ async function main() {
     }
   }).catch(() => {});
 
-  // Immediate save after destructive operations (delete)
-  window.addEventListener('deco:cards-deleted', () => saveNow());
+  // Immediate save after destructive operations (delete) + real file deletion
+  window.addEventListener('deco:cards-deleted', (e) => {
+    saveNow();
+    const imagePaths = e.detail?.imagePaths || [];
+    if (currentProjectPath && imagePaths.length > 0) {
+      for (const imgPath of imagePaths) {
+        invoke('delete_image', { projectPath: currentProjectPath, imagePath: imgPath })
+          .catch((err) => console.warn('[DELETE] Failed to delete image file:', imgPath, err));
+      }
+    }
+  });
 
   // Save board state before window closes
   window.addEventListener('beforeunload', () => saveNow());
@@ -836,6 +846,9 @@ async function initHomeScreen(homeScreen, loading) {
       refreshProjectList();
     }
   });
+
+  // Refresh when navigating back to home or after deletions
+  window.addEventListener('deco:refresh-home', () => refreshProjectList());
 
   // Grid/list view toggle
   const gridBtn = document.getElementById('home-grid-btn');

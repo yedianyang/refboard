@@ -333,6 +333,26 @@ async fn handle_delete(
     std::fs::remove_file(&file_path)
         .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete file: {e}")))?;
 
+    // Delete thumbnails
+    if let Some(stem) = file_path.file_stem() {
+        let thumb_dir = project_dir.join("thumbnails");
+        if thumb_dir.is_dir() {
+            let stem_str = stem.to_string_lossy();
+            for ext in &["jpg", "jpeg", "png", "webp"] {
+                let thumb = thumb_dir.join(format!("{stem_str}.{ext}"));
+                if thumb.exists() { let _ = std::fs::remove_file(&thumb); }
+            }
+            let thumb_exact = thumb_dir.join(&filename);
+            if thumb_exact.exists() { let _ = std::fs::remove_file(&thumb_exact); }
+        }
+    }
+
+    // Delete from search database (metadata + embeddings)
+    let image_path_str = file_path.to_string_lossy().to_string();
+    if let Err(e) = crate::search::delete_image_data(&project_path, &image_path_str) {
+        crate::log::log("API", &format!("DB cleanup warning: {e}"));
+    }
+
     crate::log::log("API", &format!("Deleted: {}", file_path.display()));
 
     // Emit event so frontend can remove the card from canvas
