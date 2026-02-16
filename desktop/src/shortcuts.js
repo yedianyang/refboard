@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getSelection, getBoardState } from './canvas/index.js';
 import { openSettings, analyzeCard, analyzeBatch, openGenerateDialog } from './panels.js';
 import { findMoreLike } from './collection.js';
+import { openFindBar, isFindBarOpen, closeFindBar } from './find-bar.js';
 
 /**
  * Initialize global keyboard shortcuts.
@@ -37,11 +38,14 @@ export function initShortcuts(deps) {
       return;
     }
 
-    // Cmd+F: focus search
+    // Cmd+F: toggle find bar
     if (meta && e.key === 'f' && !e.shiftKey) {
       e.preventDefault();
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) searchInput.focus();
+      if (isFindBarOpen()) {
+        closeFindBar();
+      } else {
+        openFindBar();
+      }
       return;
     }
 

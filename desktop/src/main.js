@@ -16,6 +16,7 @@ import { compressImageBlob, compressImageFromPath } from './compress.js';
 import { createGeneratePlaceholder, replaceGeneratePlaceholder, showGeneratePlaceholderError } from './generate-ui.js';
 import { initFloatingToolbar } from './floating-toolbar.js';
 import { initShortcuts } from './shortcuts.js';
+import { initFindBar } from './find-bar.js';
 import { initHomeScreen } from './home.js';
 
 async function main() {
@@ -289,6 +290,9 @@ async function main() {
 
   // ---- Floating Selection Toolbar ----
   initFloatingToolbar();
+
+  // ---- Find Bar (Cmd+F) ----
+  initFindBar();
 
   // ---- Keyboard Shortcuts ----
   initShortcuts({

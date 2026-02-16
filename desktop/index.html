@@ -292,10 +292,24 @@
           <kbd>Cmd</kbd>+<kbd>G</kbd> group &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> ungroup &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> tidy up<br>
           <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> analyze &nbsp; <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> find online<br>
           <kbd>Cmd</kbd>+<kbd>S</kbd> save &nbsp; <kbd>T</kbd> text &nbsp; <kbd>R</kbd> rect &nbsp; <kbd>O</kbd> ellipse &nbsp; <kbd>L</kbd> line<br>
-          <kbd>Cmd</kbd>+<kbd>,</kbd> settings &nbsp; <kbd>Cmd</kbd>+<kbd>\</kbd> sidebar &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect<br>
+          <kbd>Cmd</kbd>+<kbd>F</kbd> find &nbsp; <kbd>Cmd</kbd>+<kbd>,</kbd> settings &nbsp; <kbd>Cmd</kbd>+<kbd>\</kbd> sidebar &nbsp; <kbd>G</kbd> grid &nbsp; <kbd>M</kbd> minimap &nbsp; <kbd>Esc</kbd> deselect<br>
           <kbd>&larr;&uarr;&darr;&rarr;</kbd> nudge 1px &nbsp; <kbd>Shift</kbd>+arrows 10px
         </div>
         <button id="hints-toggle" title="Keyboard shortcuts">?</button>
+
+        <!-- Find Bar (Cmd+F) — macOS-style bottom search -->
+        <div id="find-bar">
+          <div class="find-bar-inner">
+            <svg class="find-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="find-bar-input" placeholder="Find on board..." spellcheck="false" />
+            <span id="find-bar-count"></span>
+            <div class="find-bar-nav">
+              <button id="find-bar-prev" class="find-bar-btn" title="Previous (Shift+Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+              <button id="find-bar-next" class="find-bar-btn" title="Next (Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+            </div>
+            <button id="find-bar-close" class="find-bar-btn" title="Close (Esc)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+        </div>
       </div>
 
       <!-- Right Panel (Suggestion + Metadata) -->

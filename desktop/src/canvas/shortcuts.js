@@ -532,9 +532,10 @@ export function showCanvasContextMenu(clientX, clientY) {
 
   menu.innerHTML = items.map((item) => {
     if (item.divider) return '<div class="ctx-divider"></div>';
-    const cls = item.destructive ? 'ctx-item destructive' : 'ctx-item';
+    const cls = item.destructive ? 'ctx-item destructive' : (item.disabled ? 'ctx-item disabled' : 'ctx-item');
     const shortcut = item.shortcut ? `<span class="ctx-item-shortcut">${item.shortcut}</span>` : '';
-    return `<button class="${cls}" data-action="${item.action}"><span class="ctx-item-icon">${item.icon}</span>${item.label}${shortcut}</button>`;
+    const disabled = item.disabled ? ' disabled' : '';
+    return `<button class="${cls}"${disabled} data-action="${item.action}"><span class="ctx-item-icon">${item.icon}</span>${item.label}${shortcut}</button>`;
   }).join('');
 
   menu.style.display = 'block';
