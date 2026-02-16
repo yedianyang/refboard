@@ -2,6 +2,7 @@
 name = "deco-desktop"
 version = "2.0.0"
 edition = "2021"
+default-run = "deco-desktop"
 
 [lib]
 name = "deco_desktop_lib"
