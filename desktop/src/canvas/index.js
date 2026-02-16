@@ -140,6 +140,8 @@ export {
   changeSelectionColor,
   changeShapeStrokeWidth,
   changeTextFontSize,
+  toggleTextBold,
+  toggleTextItalic,
   changeSelectionOpacity,
   toggleSelectionFill,
   toggleSelectionLineStyle,

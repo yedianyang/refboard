@@ -415,6 +415,42 @@
 
     /* Color Palette removed — now in floating toolbar */
 
+    /* Context-aware: hide data-context buttons by default, updateToolbarContext() shows them */
+    #floating-toolbar [data-context] {
+      display: none;
+    }
+
+    .ftb-font-opt {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 32px;
+    }
+    .ftb-font-opt:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+    [data-theme="light"] .ftb-font-opt:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .ftb-font-opt.active {
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+    #ftb-font-size-popup {
+      flex-direction: column;
+      padding: 4px;
+      min-width: 50px;
+    }
+
     /* ---- Properties Bar ---- */
     #props-bar {
       display: none;
@@ -2536,18 +2572,20 @@
       <div id="canvas-container">
         <!-- Floating Selection Toolbar (shown when cards selected) -->
         <div id="floating-toolbar">
-          <button class="ftb-btn" id="ftb-lock" title="Lock" data-action="lock">
+          <!-- Common: all types -->
+          <button class="ftb-btn" id="ftb-lock" title="Lock" data-action="lock" data-context="all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </button>
-          <!-- Shape-only controls: Dash, Fill, Color swatches -->
-          <div class="ftb-separator ftb-annotation-only" style="display:none;"></div>
-          <button class="ftb-btn ftb-annotation-only" id="ftb-dash" title="Dash" data-action="toggle-dash" style="display:none;">
+          <!-- Shape-only: Dash, Fill -->
+          <div class="ftb-separator" data-context="shape,line"></div>
+          <button class="ftb-btn" id="ftb-dash" title="Dash" data-action="toggle-dash" data-context="shape,line">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h3"/><path d="M10.5 12h3"/><path d="M16 12h3"/></svg>
           </button>
-          <button class="ftb-btn ftb-annotation-only" id="ftb-fill-toggle" title="Fill" data-action="toggle-fill" style="display:none;">
+          <button class="ftb-btn" id="ftb-fill-toggle" title="Fill" data-action="toggle-fill" data-context="shape">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
           </button>
-          <button class="ftb-btn ftb-annotation-only" id="ftb-stroke-btn" title="Stroke" data-action="toggle-stroke" style="display:none;">
+          <!-- Stroke: shape + line -->
+          <button class="ftb-btn" id="ftb-stroke-btn" title="Stroke" data-action="toggle-stroke" data-context="shape,line">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 14h20" stroke-width="3"/><path d="M2 8h20" stroke-width="5"/></svg>
           </button>
           <!-- Stroke width popup -->
@@ -2559,7 +2597,8 @@
             <button class="ftb-stroke-opt" data-sw="6"><span class="ftb-stroke-line" style="height:6px;"></span><span>6px</span></button>
             <button class="ftb-stroke-opt" data-sw="8"><span class="ftb-stroke-line" style="height:8px;"></span><span>8px</span></button>
           </div>
-          <button class="ftb-btn ftb-annotation-only" id="ftb-color-btn" title="Color" data-action="toggle-colors" style="display:none;">
+          <!-- Color: shape + text + line -->
+          <button class="ftb-btn" id="ftb-color-btn" title="Color" data-action="toggle-colors" data-context="shape,text,line">
             <span class="ftb-color-indicator" id="ftb-color-indicator" style="background:#4a9eff;"></span>
           </button>
           <!-- Color swatch popup -->
@@ -2575,19 +2614,45 @@
             <div class="ftb-swatch" data-color="0x888899" style="background:#888899;" title="Gray"></div>
             <div class="ftb-swatch" data-color="0x1a1a2e" style="background:#1a1a2e;border:1px solid var(--border-strong);" title="Dark"></div>
           </div>
-          <div class="ftb-separator"></div>
-          <button class="ftb-btn" id="ftb-align" title="Align" data-action="align">
+          <!-- Text-only: Font Size, Bold/Italic -->
+          <div class="ftb-separator" data-context="text"></div>
+          <button class="ftb-btn" id="ftb-font-size" title="Font Size" data-action="toggle-font-size" data-context="text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>
+          </button>
+          <!-- Font size popup -->
+          <div class="ftb-submenu ftb-color-popup" id="ftb-font-size-popup">
+            <button class="ftb-font-opt" data-fs="12">12</button>
+            <button class="ftb-font-opt" data-fs="14">14</button>
+            <button class="ftb-font-opt" data-fs="16">16</button>
+            <button class="ftb-font-opt" data-fs="18">18</button>
+            <button class="ftb-font-opt" data-fs="22">22</button>
+            <button class="ftb-font-opt" data-fs="28">28</button>
+            <button class="ftb-font-opt" data-fs="36">36</button>
+          </div>
+          <button class="ftb-btn" id="ftb-bold" title="Bold" data-action="toggle-bold" data-context="text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></svg>
+          </button>
+          <button class="ftb-btn" id="ftb-italic" title="Italic" data-action="toggle-italic" data-context="text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>
+          </button>
+          <!-- Common: Align, Copy, Delete -->
+          <div class="ftb-separator" data-context="all"></div>
+          <button class="ftb-btn" id="ftb-align" title="Align" data-action="align" data-context="all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="14" x="2" y="5" rx="2"/><rect width="6" height="10" x="16" y="7" rx="2"/><path d="M12 2v20"/></svg>
           </button>
-          <div class="ftb-separator"></div>
-          <button class="ftb-btn" id="ftb-copy" title="Copy" data-action="copy">
+          <div class="ftb-separator" data-context="all"></div>
+          <button class="ftb-btn" id="ftb-copy" title="Copy" data-action="copy" data-context="all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
           </button>
-          <button class="ftb-btn destructive" id="ftb-delete" title="Delete" data-action="delete">
+          <button class="ftb-btn destructive" id="ftb-delete" title="Delete" data-action="delete" data-context="all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
           </button>
-          <div class="ftb-separator"></div>
-          <button class="ftb-btn" id="ftb-more" title="More" data-action="more">
+          <!-- Image-only: Analyze, More -->
+          <div class="ftb-separator" data-context="image"></div>
+          <button class="ftb-btn" id="ftb-analyze" title="Analyze" data-action="analyze-batch" data-context="image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          </button>
+          <button class="ftb-btn" id="ftb-more" title="More" data-action="more" data-context="image">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           </button>
           <!-- Alignment submenu (for multi-select) -->
@@ -2973,6 +3038,9 @@
                 <option value="google">Google AI</option>
                 <option value="moonshot">Moonshot</option>
                 <option value="deepseek">DeepSeek</option>
+                <option value="qwen">Qwen</option>
+                <option value="together">Together AI</option>
+                <option value="groq">Groq</option>
               </select>
             </div>
             <div class="settings-group" id="settings-api-key-group">

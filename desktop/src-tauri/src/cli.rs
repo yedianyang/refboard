@@ -133,6 +133,48 @@ pub enum Command {
         #[arg(short, long)]
         project: String,
     },
+
+    /// List all known projects (recent + default folder)
+    Projects,
+
+    /// Move an item's position on the board
+    Move {
+        /// Image filename on the board
+        filename: String,
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// X coordinate
+        #[arg(long)]
+        x: f64,
+        /// Y coordinate
+        #[arg(long)]
+        y: f64,
+    },
+
+    /// Update item metadata (tags, description, styles, moods, era)
+    Update {
+        /// Image filename
+        filename: String,
+        /// Project directory path
+        #[arg(short, long)]
+        project: String,
+        /// Description text
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Comma-separated tags
+        #[arg(long)]
+        tags: Option<String>,
+        /// Comma-separated styles
+        #[arg(long)]
+        styles: Option<String>,
+        /// Comma-separated moods
+        #[arg(long)]
+        moods: Option<String>,
+        /// Era string
+        #[arg(long)]
+        era: Option<String>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +214,22 @@ pub async fn run(cli: Cli) -> Result<(), String> {
             project,
         } => cmd_info(&image_path, &project, cli.json),
         Command::Tags { project } => cmd_tags(&project, cli.json),
+        Command::Projects => cmd_projects(cli.json),
+        Command::Move {
+            filename,
+            project,
+            x,
+            y,
+        } => cmd_move(&filename, &project, x, y, cli.json),
+        Command::Update {
+            filename,
+            project,
+            description,
+            tags,
+            styles,
+            moods,
+            era,
+        } => cmd_update(&filename, &project, description, tags, styles, moods, era, cli.json),
     }
 }
 
@@ -689,6 +747,106 @@ fn cmd_tags(project: &str, json: bool) -> Result<(), String> {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3: Projects, Move, Update Commands
+// ---------------------------------------------------------------------------
+
+/// List all known projects (recent + default Deco folder).
+fn cmd_projects(json: bool) -> Result<(), String> {
+    let projects = crate::ops::list_all_projects()?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&projects)
+            .map_err(|e| format!("Cannot serialize project list: {e}"))?;
+        println!("{output}");
+    } else {
+        if projects.is_empty() {
+            println!("No projects found");
+        } else {
+            println!("{} project(s):", projects.len());
+            for p in &projects {
+                println!("  {} ({} images)  {}", p.name, p.image_count, p.path);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Move an item's position on the board.
+fn cmd_move(filename: &str, project: &str, x: f64, y: f64, json: bool) -> Result<(), String> {
+    crate::ops::move_board_item(project, filename, x, y)?;
+
+    if json {
+        let output = serde_json::json!({
+            "moved": filename,
+            "project": project,
+            "x": x,
+            "y": y,
+        });
+        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    } else {
+        println!("Moved {filename} to ({x}, {y})");
+    }
+
+    Ok(())
+}
+
+/// Update metadata for an image item.
+fn cmd_update(
+    filename: &str,
+    project: &str,
+    description: Option<String>,
+    tags: Option<String>,
+    styles: Option<String>,
+    moods: Option<String>,
+    era: Option<String>,
+    json: bool,
+) -> Result<(), String> {
+    // Parse comma-separated strings into Vec<String>
+    let parse_csv = |s: String| -> Vec<String> {
+        s.split(',')
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .collect()
+    };
+
+    let fields = crate::ops::UpdateFields {
+        description,
+        tags: tags.map(parse_csv),
+        styles: styles.map(parse_csv),
+        moods: moods.map(parse_csv),
+        era,
+    };
+
+    let meta = crate::ops::update_item_metadata(project, filename, fields)?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&meta)
+            .map_err(|e| format!("Cannot serialize metadata: {e}"))?;
+        println!("{output}");
+    } else {
+        println!("Updated: {filename}");
+        if let Some(ref desc) = meta.description {
+            println!("  Description: {desc}");
+        }
+        if !meta.tags.is_empty() {
+            println!("  Tags: {}", meta.tags.join(", "));
+        }
+        if !meta.style.is_empty() {
+            println!("  Styles: {}", meta.style.join(", "));
+        }
+        if !meta.mood.is_empty() {
+            println!("  Moods: {}", meta.mood.join(", "));
+        }
+        if let Some(ref era) = meta.era {
+            println!("  Era: {era}");
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -1189,5 +1347,210 @@ mod tests {
 
         let result = cmd_embed(&project, false, false);
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 3: Projects, Move, Update tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_cli_parse_projects() {
+        let cli = Cli::try_parse_from(["deco", "projects"]).unwrap();
+        match cli.command {
+            Command::Projects => {}
+            _ => panic!("Expected Projects command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_move() {
+        let cli = Cli::try_parse_from([
+            "deco", "move", "photo.png", "-p", "/tmp/test", "--x", "100", "--y", "200",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Move {
+                filename,
+                project,
+                x,
+                y,
+            } => {
+                assert_eq!(filename, "photo.png");
+                assert_eq!(project, "/tmp/test");
+                assert!((x - 100.0).abs() < 1e-6);
+                assert!((y - 200.0).abs() < 1e-6);
+            }
+            _ => panic!("Expected Move command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_update() {
+        let cli = Cli::try_parse_from([
+            "deco",
+            "update",
+            "photo.png",
+            "-p",
+            "/tmp/test",
+            "-d",
+            "A nice photo",
+            "--tags",
+            "art,modern",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Update {
+                filename,
+                project,
+                description,
+                tags,
+                styles,
+                moods,
+                era,
+            } => {
+                assert_eq!(filename, "photo.png");
+                assert_eq!(project, "/tmp/test");
+                assert_eq!(description, Some("A nice photo".to_string()));
+                assert_eq!(tags, Some("art,modern".to_string()));
+                assert!(styles.is_none());
+                assert!(moods.is_none());
+                assert!(era.is_none());
+            }
+            _ => panic!("Expected Update command"),
+        }
+    }
+
+    #[test]
+    fn test_projects_runs_without_crash() {
+        // cmd_projects reads from ~/.deco/recent.json and ~/Documents/Deco,
+        // so it should succeed (returning empty or populated list).
+        let result = cmd_projects(false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_move_via_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+        let deco_dir = dir.path().join(".deco");
+        std::fs::create_dir_all(&deco_dir).unwrap();
+
+        let board = serde_json::json!({
+            "items": [
+                {"name": "photo.png", "x": 0, "y": 0},
+            ]
+        });
+        std::fs::write(
+            deco_dir.join("board.json"),
+            serde_json::to_string_pretty(&board).unwrap(),
+        )
+        .unwrap();
+
+        let result = cmd_move("photo.png", &project, 150.0, 250.0, false);
+        assert!(result.is_ok());
+
+        // Verify position was written
+        let contents = std::fs::read_to_string(deco_dir.join("board.json")).unwrap();
+        let updated: serde_json::Value = serde_json::from_str(&contents).unwrap();
+        let item = &updated["items"][0];
+        assert_eq!(item["x"].as_f64().unwrap(), 150.0);
+        assert_eq!(item["y"].as_f64().unwrap(), 250.0);
+    }
+
+    #[test]
+    fn test_move_item_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+        let deco_dir = dir.path().join(".deco");
+        std::fs::create_dir_all(&deco_dir).unwrap();
+
+        let board = serde_json::json!({"items": []});
+        std::fs::write(
+            deco_dir.join("board.json"),
+            serde_json::to_string(&board).unwrap(),
+        )
+        .unwrap();
+
+        let result = cmd_move("nonexistent.png", &project, 0.0, 0.0, false);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Item not found"));
+    }
+
+    #[test]
+    fn test_update_via_cmd() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        // Initialize DB
+        let _conn = crate::search::open_db(&project).unwrap();
+
+        let result = cmd_update(
+            "test.png",
+            &project,
+            Some("A beautiful painting".to_string()),
+            Some("art,modern,abstract".to_string()),
+            Some("impressionism".to_string()),
+            None,
+            Some("1920s".to_string()),
+            false,
+        );
+        assert!(result.is_ok());
+
+        // Verify the data was stored
+        let img_path = format!("{}/images/test.png", project);
+        let meta = crate::search::get_image_metadata(&project, &img_path)
+            .unwrap()
+            .expect("metadata should exist");
+        assert_eq!(meta.description, Some("A beautiful painting".to_string()));
+        assert_eq!(meta.tags, vec!["art", "modern", "abstract"]);
+        assert_eq!(meta.style, vec!["impressionism"]);
+        assert!(meta.mood.is_empty());
+        assert_eq!(meta.era, Some("1920s".to_string()));
+    }
+
+    #[test]
+    fn test_update_partial_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().to_string_lossy().to_string();
+
+        // Initialize DB and insert initial data
+        let conn = crate::search::open_db(&project).unwrap();
+        let img_path = format!("{}/images/photo.jpg", project);
+        crate::search::upsert_image(
+            &conn,
+            &crate::search::ImageMetadataRow {
+                image_path: img_path.clone(),
+                name: "photo.jpg".to_string(),
+                description: Some("Original description".to_string()),
+                tags: vec!["original".to_string()],
+                style: vec!["baroque".to_string()],
+                mood: vec!["calm".to_string()],
+                colors: vec!["#FF0000".to_string()],
+                era: Some("1600s".to_string()),
+            },
+        )
+        .unwrap();
+
+        // Update only tags — other fields should be preserved
+        let result = cmd_update(
+            "photo.jpg",
+            &project,
+            None,
+            Some("updated,tags".to_string()),
+            None,
+            None,
+            None,
+            true,
+        );
+        assert!(result.is_ok());
+
+        let meta = crate::search::get_image_metadata(&project, &img_path)
+            .unwrap()
+            .expect("metadata should exist");
+        assert_eq!(meta.description, Some("Original description".to_string()));
+        assert_eq!(meta.tags, vec!["updated", "tags"]);
+        assert_eq!(meta.style, vec!["baroque"]);
+        assert_eq!(meta.mood, vec!["calm"]);
+        assert_eq!(meta.era, Some("1600s".to_string()));
     }
 }

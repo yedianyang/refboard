@@ -4,7 +4,7 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
 import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
@@ -944,7 +944,10 @@ async function initHomeScreen(homeScreen, loading) {
       nameEl.replaceWith(input);
       input.focus();
       input.select();
+      let renameFinished = false;
       const finishRename = async () => {
+        if (renameFinished) return;
+        renameFinished = true;
         const newName = input.value.trim() || oldName;
         const span = document.createElement('div');
         span.className = 'home-project-name';
@@ -1292,15 +1295,44 @@ function initFloatingToolbar() {
     lastSelectionSize = count;
   }
 
+  function getSelectionType(cards) {
+    if (!cards || cards.size === 0) return 'none';
+    const types = new Set();
+    for (const card of cards) {
+      if (card.isText) types.add('text');
+      else if (card.isShape) {
+        const st = card.shapeType || card._shapeType || card.data?.shapeType || '';
+        if (st === 'line') types.add('line');
+        else types.add('shape');
+      } else types.add('image');
+    }
+    if (types.size > 1) return 'mixed';
+    return types.values().next().value || 'image';
+  }
+
+  function updateToolbarContext(selType) {
+    if (!toolbar) return;
+    toolbar.querySelectorAll('[data-context]').forEach(el => {
+      const contexts = el.dataset.context.split(',');
+      const visible = contexts.includes('all') || contexts.includes(selType) || (selType === 'mixed' && !contexts.includes('all'));
+      el.style.display = visible ? '' : 'none';
+    });
+    // For 'mixed' selection, only show 'all' context items
+    if (selType === 'mixed') {
+      toolbar.querySelectorAll('[data-context]').forEach(el => {
+        const contexts = el.dataset.context.split(',');
+        el.style.display = contexts.includes('all') ? '' : 'none';
+      });
+    }
+  }
+
   function updateAnnotationControls() {
     const sel = getSelection();
-    const hasAnnotation = Array.from(sel).some(c => c.isShape || c.isText);
-    const hasShape = Array.from(sel).some(c => c.isShape);
+    const selType = getSelectionType(sel);
+    updateToolbarContext(selType);
 
-    // Show/hide annotation-only elements
-    toolbar.querySelectorAll('.ftb-annotation-only').forEach(el => {
-      el.style.display = hasAnnotation ? '' : 'none';
-    });
+    const hasShape = Array.from(sel).some(c => c.isShape);
+    const hasText = Array.from(sel).some(c => c.isText);
 
     if (hasShape) {
       // Sync dash toggle state
@@ -1342,6 +1374,27 @@ function initFloatingToolbar() {
         });
       }
     }
+
+    if (hasText) {
+      // Sync bold/italic toggle states
+      const boldBtn = document.getElementById('ftb-bold');
+      const italicBtn = document.getElementById('ftb-italic');
+      const firstText = Array.from(sel).find(c => c.isText);
+      if (boldBtn && firstText) {
+        boldBtn.classList.toggle('toggled', !!firstText.data.bold);
+      }
+      if (italicBtn && firstText) {
+        italicBtn.classList.toggle('toggled', !!firstText.data.italic);
+      }
+
+      // Sync font size active option
+      if (firstText) {
+        const fs = firstText.data.fontSize || 14;
+        toolbar.querySelectorAll('.ftb-font-opt').forEach(o => {
+          o.classList.toggle('active', parseInt(o.dataset.fs, 10) === fs);
+        });
+      }
+    }
   }
 
   // Observe selection changes via requestAnimationFrame loop
@@ -1375,6 +1428,18 @@ function initFloatingToolbar() {
   // --- Button Handlers ---
 
   toolbar.addEventListener('click', (e) => {
+    // Handle font size option clicks
+    const fontOpt = e.target.closest('.ftb-font-opt');
+    if (fontOpt) {
+      e.stopPropagation();
+      const fs = parseInt(fontOpt.dataset.fs, 10);
+      changeTextFontSize(fs);
+      toolbar.querySelectorAll('.ftb-font-opt').forEach(o => o.classList.remove('active'));
+      fontOpt.classList.add('active');
+      closeSubmenus();
+      return;
+    }
+
     // Handle stroke width option clicks
     const strokeOpt = e.target.closest('.ftb-stroke-opt');
     if (strokeOpt) {
@@ -1438,6 +1503,25 @@ function initFloatingToolbar() {
         // Toggle alignment submenu
         toggleSubmenu('ftb-align-submenu', btn);
         break;
+      case 'toggle-font-size':
+        toggleSubmenu('ftb-font-size-popup', btn);
+        break;
+      case 'toggle-bold':
+        toggleTextBold();
+        updateAnnotationControls();
+        break;
+      case 'toggle-italic':
+        toggleTextItalic();
+        updateAnnotationControls();
+        break;
+      case 'analyze-batch': {
+        const sel = getSelection();
+        const imageCards = Array.from(sel).filter(c => !c.isText && !c.isShape);
+        if (imageCards.length > 0) {
+          handleContextAction('analyze-batch');
+        }
+        break;
+      }
       case 'more':
         // Show context menu with more options
         showMoreMenu(btn);

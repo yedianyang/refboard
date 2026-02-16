@@ -30,6 +30,9 @@ const PROVIDER_PRESETS = {
   google:     { backend: 'openai',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',   model: 'gemini-2.0-flash',                label: 'Google AI',         needsKey: true  },
   moonshot:   { backend: 'openai',    baseUrl: 'https://api.moonshot.cn/v1',                         model: 'moonshot-v1-8k-vision-preview',   label: 'Moonshot',          needsKey: true  },
   deepseek:   { backend: 'openai',    baseUrl: 'https://api.deepseek.com/v1',                        model: 'deepseek-chat',                   label: 'DeepSeek',          needsKey: true  },
+  qwen:       { backend: 'openai',    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-vl-max',                     label: 'Qwen',              needsKey: true  },
+  together:   { backend: 'openai',    baseUrl: 'https://api.together.xyz/v1',                      model: 'meta-llama/Llama-Vision-Free',    label: 'Together AI',       needsKey: true  },
+  groq:       { backend: 'openai',    baseUrl: 'https://api.groq.com/openai/v1',                   model: 'llava-v1.5-7b-4096-preview',      label: 'Groq',              needsKey: true  },
 };
 
 // ============================================================
@@ -603,6 +606,9 @@ function detectFrontendProvider(config) {
   if (ep.includes('generativelanguage.googleapis.com')) return 'google';
   if (ep.includes('moonshot.cn')) return 'moonshot';
   if (ep.includes('deepseek.com')) return 'deepseek';
+  if (ep.includes('dashscope.aliyuncs.com')) return 'qwen';
+  if (ep.includes('together.xyz')) return 'together';
+  if (ep.includes('groq.com')) return 'groq';
   return 'openai';
 }
 

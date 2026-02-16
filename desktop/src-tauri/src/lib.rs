@@ -3,6 +3,7 @@ mod api;
 pub mod cli;
 mod embed;
 pub mod log;
+pub mod ops;
 mod search;
 pub mod storage;
 mod web;

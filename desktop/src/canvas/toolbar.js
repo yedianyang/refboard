@@ -123,6 +123,30 @@ export function changeTextFontSize(size) {
   markDirty();
 }
 
+export function toggleTextBold() {
+  for (const card of state.selection) {
+    if (card.isText && card.textObj) {
+      const isBold = card.data.bold || false;
+      card.data.bold = !isBold;
+      card.textObj.style.fontWeight = card.data.bold ? 'bold' : 'normal';
+      autoSizeTextCard(card);
+    }
+  }
+  markDirty();
+}
+
+export function toggleTextItalic() {
+  for (const card of state.selection) {
+    if (card.isText && card.textObj) {
+      const isItalic = card.data.italic || false;
+      card.data.italic = !isItalic;
+      card.textObj.style.fontStyle = card.data.italic ? 'italic' : 'normal';
+      autoSizeTextCard(card);
+    }
+  }
+  markDirty();
+}
+
 export function changeSelectionOpacity(value) {
   for (const card of state.selection) {
     card.container.alpha = value;
@@ -579,6 +603,8 @@ export function getBoardState() {
     height: card.cardHeight,
     ...(card.locked ? { locked: true } : {}),
     ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
+    ...(card.data.bold ? { bold: true } : {}),
+    ...(card.data.italic ? { italic: true } : {}),
   }));
 
   const shapeAnnotations = state.allCards.filter(c => c.isShape).map((card) => ({
@@ -656,6 +682,14 @@ export function restoreBoardState(savedState) {
         width: t.width,
         height: t.height,
       });
+      if (card && t.bold) {
+        card.data.bold = true;
+        if (card.textObj) card.textObj.style.fontWeight = 'bold';
+      }
+      if (card && t.italic) {
+        card.data.italic = true;
+        if (card.textObj) card.textObj.style.fontStyle = 'italic';
+      }
       if (card && t.locked) setCardLocked(card, true);
       if (card && t.opacity != null && t.opacity !== 1) {
         card.container.alpha = t.opacity;

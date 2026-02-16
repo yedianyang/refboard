@@ -877,7 +877,7 @@ async fn handle_cluster(
     Json(payload): Json<ClusterRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     let project_path = payload.project_path;
-    let threshold = payload.threshold.clamp(0.0, 1.0);
+    let threshold = payload.threshold;
 
     crate::log::log("API", &format!("POST /api/cluster → threshold: {threshold}"));
 
@@ -888,80 +888,24 @@ async fn handle_cluster(
     .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Task join: {e}")))?
     .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    if all_embeddings.is_empty() {
-        return Ok(Json(ClusterResponse {
-            cluster_count: 0,
-            ungrouped: 0,
-            clusters: Vec::new(),
-        }));
-    }
+    let result = crate::ops::greedy_cluster(&all_embeddings, threshold);
 
-    // Greedy clustering
-    let mut assigned = vec![false; all_embeddings.len()];
-    let mut clusters: Vec<Cluster> = Vec::new();
-
-    for i in 0..all_embeddings.len() {
-        if assigned[i] {
-            continue;
-        }
-        assigned[i] = true;
-
-        let mut group = vec![all_embeddings[i].0.clone()];
-        let seed = &all_embeddings[i].1;
-
-        for j in (i + 1)..all_embeddings.len() {
-            if assigned[j] {
-                continue;
-            }
-            let sim = cosine_sim(seed, &all_embeddings[j].1);
-            if sim >= threshold {
-                assigned[j] = true;
-                group.push(all_embeddings[j].0.clone());
-            }
-        }
-
-        clusters.push(Cluster {
-            id: clusters.len(),
-            size: group.len(),
-            images: group,
-        });
-    }
-
-    // Separate singletons as "ungrouped"
-    let ungrouped = clusters.iter().filter(|c| c.size == 1).count();
-    // Only return clusters with 2+ images
-    let multi_clusters: Vec<Cluster> = clusters
+    let clusters: Vec<Cluster> = result
+        .clusters
         .into_iter()
-        .filter(|c| c.size >= 2)
-        .enumerate()
-        .map(|(i, mut c)| { c.id = i; c })
+        .map(|g| Cluster {
+            id: g.id,
+            size: g.size,
+            images: g.images,
+        })
         .collect();
 
-    crate::log::log("API", &format!("Cluster: {} groups, {} ungrouped", multi_clusters.len(), ungrouped));
+    crate::log::log("API", &format!("Cluster: {} groups, {} ungrouped", clusters.len(), result.ungrouped));
     Ok(Json(ClusterResponse {
-        cluster_count: multi_clusters.len(),
-        ungrouped,
-        clusters: multi_clusters,
+        cluster_count: clusters.len(),
+        ungrouped: result.ungrouped,
+        clusters,
     }))
-}
-
-/// Cosine similarity between two f32 vectors.
-fn cosine_sim(a: &[f32], b: &[f32]) -> f64 {
-    if a.len() != b.len() || a.is_empty() {
-        return 0.0;
-    }
-    let mut dot = 0.0f64;
-    let mut na = 0.0f64;
-    let mut nb = 0.0f64;
-    for (x, y) in a.iter().zip(b.iter()) {
-        let x = *x as f64;
-        let y = *y as f64;
-        dot += x * y;
-        na += x * x;
-        nb += y * y;
-    }
-    let denom = na.sqrt() * nb.sqrt();
-    if denom == 0.0 { 0.0 } else { dot / denom }
 }
 
 // ---------------------------------------------------------------------------
