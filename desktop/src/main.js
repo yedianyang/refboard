@@ -8,7 +8,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
 import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog, isAutoAnalyzeEnabled } from './panels.js';
-import { initSearch, setProject, updateSearchMetadata, findSimilar, clusterProject } from './search.js';
+import { initSearch, setProject, updateSearchMetadata, findSimilar, clusterProject, searchByColor } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
 // Extracted modules
@@ -241,6 +241,12 @@ async function main() {
   // Cluster button in tag sidebar
   document.getElementById('cluster-btn')?.addEventListener('click', () => {
     clusterProject(0.7);
+  });
+
+  // Color search in tag sidebar
+  document.getElementById('color-search-btn')?.addEventListener('click', () => {
+    const picker = document.getElementById('color-search-picker');
+    if (picker) searchByColor(picker.value);
   });
 
   // Initialize web collection

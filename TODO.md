@@ -87,7 +87,7 @@
 | ✅ | **Cmd+F 画布搜索栏** | macOS 风格底部 Find Bar，客户端过滤图片 (dac99e9) |
 | ✅ | **Auto-tag on import** | Settings 开关 + 导入/粘贴自动触发 AI 批量分析 (bf8c443) |
 | ✅ | **Smart clusters UI** | Tag sidebar "Cluster" 按钮 + 结果面板 + 颜色标记 |
-| ⬜ | **Color palette search** | 自动提取主色板 + 按颜色搜索画布图片 |
+| ✅ | **Color palette search** | 颜色选择器 + RGB 距离搜索匹配图片 |
 | ✅ | **Text-to-image search** | Find Bar "AI" 模式切换 + FTS5 语义搜索 |
 | ⬜ | 截图/GIF | README 视觉演示素材 |
 | ❌ | ~~npm 发布准备~~ | v1 CLI 已删除，不再需要 |

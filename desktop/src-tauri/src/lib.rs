@@ -587,6 +587,7 @@ pub fn run() {
             search::cmd_find_similar,
             search::cmd_update_search_metadata,
             search::cmd_cluster_project,
+            search::cmd_search_by_color,
             web::cmd_web_search,
             web::cmd_find_more_like,
             web::cmd_download_web_image,

@@ -581,6 +581,48 @@ export async function semanticSearch(query) {
 }
 
 // ============================================================
+// Color Palette Search
+// ============================================================
+
+/**
+ * Search images by color similarity.
+ * @param {string} hexColor - Hex color like "#ff6b6b"
+ * @param {number} threshold - RGB distance threshold (0-442, default 60)
+ */
+export async function searchByColor(hexColor, threshold = 60) {
+  if (!currentProjectPath || !hexColor) return [];
+
+  const statusEl = document.getElementById('status-text');
+  if (statusEl) statusEl.textContent = `Searching for color ${hexColor}...`;
+
+  try {
+    const results = await invoke('cmd_search_by_color', {
+      projectPath: currentProjectPath,
+      color: hexColor,
+      threshold,
+    });
+
+    searchResults = results;
+    renderSearchResults(results);
+    showResultsPanel(true);
+
+    if (onFilterCallback && results.length > 0) {
+      onFilterCallback(results.map((r) => r.imagePath));
+    }
+
+    if (statusEl) statusEl.textContent = results.length > 0
+      ? `${results.length} image${results.length !== 1 ? 's' : ''} matching ${hexColor}`
+      : `No images with color ${hexColor}`;
+
+    return results;
+  } catch (err) {
+    if (statusEl) statusEl.textContent = 'Color search failed: ' + err;
+    console.warn('Color search failed:', err);
+    return [];
+  }
+}
+
+// ============================================================
 // Public Getters
 // ============================================================
 

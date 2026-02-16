@@ -737,6 +737,89 @@ pub async fn cmd_update_search_metadata(
     storage.upsert_image_metadata(&project_path, &metadata).await
 }
 
+/// Search images by color similarity.
+/// Finds images whose extracted color palette contains a color close to the query.
+#[tauri::command]
+pub async fn cmd_search_by_color(
+    project_path: String,
+    color: String,
+    threshold: Option<f64>,
+) -> Result<Vec<SearchResult>, String> {
+    let threshold = threshold.unwrap_or(60.0); // RGB euclidean distance threshold
+    let query_rgb = hex_to_rgb(&color).ok_or_else(|| format!("Invalid hex color: {color}"))?;
+
+    let conn = open_db(&project_path)?;
+    let mut stmt = conn
+        .prepare("SELECT path, name, description, tags, colors FROM images WHERE colors != ''")
+        .map_err(|e| format!("Color search query failed: {e}"))?;
+
+    let mut results: Vec<(SearchResult, f64)> = stmt
+        .query_map([], |row| {
+            let colors_str: String = row.get(4)?;
+            let tags_str: String = row.get(3)?;
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                tags_str,
+                colors_str,
+            ))
+        })
+        .map_err(|e| format!("Color search failed: {e}"))?
+        .filter_map(|r| r.ok())
+        .filter_map(|(path, name, desc, tags_str, colors_str)| {
+            let mut best_dist = f64::MAX;
+            for hex in colors_str.split_whitespace() {
+                if let Some(rgb) = hex_to_rgb(hex) {
+                    let dist = color_distance(query_rgb, rgb);
+                    if dist < best_dist {
+                        best_dist = dist;
+                    }
+                }
+            }
+            if best_dist <= threshold {
+                Some((
+                    SearchResult {
+                        image_path: path,
+                        name,
+                        score: 1.0 - (best_dist / threshold).min(1.0),
+                        description: desc,
+                        tags: tags_str.split_whitespace().map(String::from).collect(),
+                    },
+                    best_dist,
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    let results: Vec<SearchResult> = results.into_iter().map(|(r, _)| r).collect();
+    crate::log::log("SEARCH", &format!("Color search for {} → {} results", color, results.len()));
+    Ok(results)
+}
+
+/// Parse hex color string to (r, g, b) tuple.
+fn hex_to_rgb(hex: &str) -> Option<(u8, u8, u8)> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some((r, g, b))
+}
+
+/// Euclidean distance between two RGB colors.
+fn color_distance(a: (u8, u8, u8), b: (u8, u8, u8)) -> f64 {
+    let dr = a.0 as f64 - b.0 as f64;
+    let dg = a.1 as f64 - b.1 as f64;
+    let db = a.2 as f64 - b.2 as f64;
+    (dr * dr + dg * dg + db * db).sqrt()
+}
+
 /// Cluster project images by CLIP embedding similarity.
 #[tauri::command]
 pub async fn cmd_cluster_project(
