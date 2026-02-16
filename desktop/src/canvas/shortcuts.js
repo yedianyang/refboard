@@ -108,9 +108,9 @@ export function setupKeyboard() {
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
-    if (e.key === 'z' && meta && !e.shiftKey) { undo(); e.preventDefault(); return; }
-    if (e.key === 'z' && meta && e.shiftKey) { redo(); e.preventDefault(); return; }
-    if (e.key === 'y' && meta) { redo(); e.preventDefault(); return; }
+    if ((e.key === 'z' || e.key === 'Z') && meta && !e.shiftKey) { undo(); e.preventDefault(); return; }
+    if ((e.key === 'z' || e.key === 'Z') && meta && e.shiftKey) { redo(); e.preventDefault(); return; }
+    if ((e.key === 'y' || e.key === 'Y') && meta) { redo(); e.preventDefault(); return; }
 
     if (e.key === 'c' && meta && !e.shiftKey) { copySelected(); e.preventDefault(); return; }
     if (e.key === 'v' && meta && !e.shiftKey && state.clipboard.length > 0) { pasteFromClipboard(); e.preventDefault(); return; }
@@ -120,16 +120,16 @@ export function setupKeyboard() {
     if (e.key === 'd' && meta) { duplicateSelected(); e.preventDefault(); return; }
 
     if (e.key === 'g' && meta && !e.shiftKey) { groupSelected(); e.preventDefault(); return; }
-    if (e.key === 'u' && meta && e.shiftKey) { ungroupSelected(); e.preventDefault(); return; }
+    if ((e.key === 'u' || e.key === 'U') && meta && e.shiftKey) { ungroupSelected(); e.preventDefault(); return; }
 
     if (e.key === 'l' && meta && !e.shiftKey) { toggleLockSelected(); e.preventDefault(); return; }
 
     if (e.key === ']' && meta) { bringForward(); e.preventDefault(); return; }
     if (e.key === '[' && meta) { sendBackward(); e.preventDefault(); return; }
 
-    if (e.key === 't' && meta && e.shiftKey) { tidyUp(); e.preventDefault(); return; }
+    if ((e.key === 't' || e.key === 'T') && meta && e.shiftKey) { tidyUp(); e.preventDefault(); return; }
 
-    if (e.key === 'e' && meta && e.shiftKey) {
+    if ((e.key === 'e' || e.key === 'E') && meta && e.shiftKey) {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('deco:export-png'));
       return;

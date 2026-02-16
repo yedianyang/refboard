@@ -138,10 +138,14 @@ export function resizeCardTo(card, w, h) {
   }
 
   if (card.bg) {
-    card.bg.clear()
-      .roundRect(0, 0, w, h, CARD_RADIUS)
-      .fill({ color: THEME.cardBg })
-      .stroke({ color: THEME.cardBorder, width: 1 });
+    if (card.isText) {
+      card.bg.clear(); // Text cards have no visible background
+    } else {
+      card.bg.clear()
+        .roundRect(0, 0, w, h, CARD_RADIUS)
+        .fill({ color: THEME.cardBg })
+        .stroke({ color: THEME.cardBorder, width: 1 });
+    }
   }
 
   if (card.hoverBorder) {
@@ -189,8 +193,6 @@ export function getCornerPositions(card) {
 // ============================================================
 
 export function createTextCard(content, x, y, opts = {}) {
-  const w = opts.width || TEXT_DEFAULT_WIDTH;
-  const h = opts.height || TEXT_DEFAULT_HEIGHT;
   const fontSize = opts.fontSize || 14;
   const color = opts.color != null ? opts.color : null;
   const id = opts.id || `text-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -198,8 +200,8 @@ export function createTextCard(content, x, y, opts = {}) {
   const card = {
     container: new Container(),
     data: { type: 'text', id, text: content, fontSize, color },
-    cardWidth: w,
-    cardHeight: h,
+    cardWidth: 0,
+    cardHeight: 0,
     isText: true,
   };
 
@@ -207,25 +209,23 @@ export function createTextCard(content, x, y, opts = {}) {
   card.container.cursor = 'pointer';
   card.container.position.set(x, y);
 
-  const bg = new Graphics()
-    .roundRect(0, 0, w, h, CARD_RADIUS)
-    .fill({ color: THEME.cardBg, alpha: 0.7 })
-    .stroke({ color: THEME.cardBorder, width: 1 });
+  // Transparent background — text cards have no visible bg/border
+  const bg = new Graphics();
   card.bg = bg;
 
-  const hoverBorder = new Graphics()
-    .roundRect(-2, -2, w + 4, h + 4, CARD_RADIUS + 2)
-    .stroke({ color: THEME.cardHover, width: 2 });
+  const hoverBorder = new Graphics();
   hoverBorder.visible = false;
   card.hoverBorder = hoverBorder;
 
   const textFill = color != null ? '#' + color.toString(16).padStart(6, '0') : THEME.text;
+  // Use explicit width if restoring saved state; otherwise use a wide wrap and auto-size later
+  const wrapWidth = opts.width ? opts.width - TEXT_PADDING * 2 : 800;
   const textStyle = new TextStyle({
     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
     fontSize,
     fill: textFill,
     wordWrap: true,
-    wordWrapWidth: w - TEXT_PADDING * 2,
+    wordWrapWidth: wrapWidth,
     lineHeight: Math.round(fontSize * 1.5),
   });
   const textObj = new Text({ text: content || 'Type here...', style: textStyle });
@@ -234,6 +234,18 @@ export function createTextCard(content, x, y, opts = {}) {
   card.textObj = textObj;
 
   card.container.addChild(bg, hoverBorder, textObj);
+
+  // Size card to fit text content (no fixed default box)
+  const w = opts.width || Math.max(TEXT_MIN_WIDTH, Math.ceil(textObj.width) + TEXT_PADDING * 2);
+  const h = opts.height || Math.max(fontSize + TEXT_PADDING * 2, Math.ceil(textObj.height) + TEXT_PADDING * 2);
+  card.cardWidth = w;
+  card.cardHeight = h;
+
+  // Update wordWrapWidth to match final width
+  textObj.style.wordWrapWidth = w - TEXT_PADDING * 2;
+
+  hoverBorder.roundRect(-2, -2, w + 4, h + 4, CARD_RADIUS + 2)
+    .stroke({ color: THEME.cardHover, width: 2 });
   card.container.hitArea = new Rectangle(-2, -2, w + 4, h + 4);
 
   card.container.on('pointerover', () => {
@@ -256,19 +268,25 @@ export function createTextCard(content, x, y, opts = {}) {
 
 export function autoSizeTextCard(card) {
   if (!card.isText || !card.textObj) return;
-  const measuredH = card.textObj.height + TEXT_PADDING * 2;
-  const newH = Math.max(TEXT_DEFAULT_HEIGHT, measuredH);
-  if (Math.abs(newH - card.cardHeight) < 2) return;
-  card.cardHeight = newH;
+  const measuredW = Math.max(TEXT_MIN_WIDTH, Math.ceil(card.textObj.width) + TEXT_PADDING * 2);
+  const measuredH = Math.max(card.data.fontSize + TEXT_PADDING * 2, Math.ceil(card.textObj.height) + TEXT_PADDING * 2);
+  if (Math.abs(measuredW - card.cardWidth) < 2 && Math.abs(measuredH - card.cardHeight) < 2) return;
+  card.cardWidth = measuredW;
+  card.cardHeight = measuredH;
 
-  card.bg.clear()
-    .roundRect(0, 0, card.cardWidth, newH, CARD_RADIUS)
-    .fill({ color: THEME.cardBg, alpha: 0.7 })
-    .stroke({ color: THEME.cardBorder, width: 1 });
+  // No bg fill/stroke for text cards — keep bg clear
+  card.bg.clear();
   card.hoverBorder.clear()
-    .roundRect(-2, -2, card.cardWidth + 4, newH + 4, CARD_RADIUS + 2)
+    .roundRect(-2, -2, measuredW + 4, measuredH + 4, CARD_RADIUS + 2)
     .stroke({ color: THEME.cardHover, width: 2 });
-  card.container.hitArea = new Rectangle(-2, -2, card.cardWidth + 4, newH + 4);
+  card.container.hitArea = new Rectangle(-2, -2, measuredW + 4, measuredH + 4);
+
+  // Update selection border if present
+  if (card.selectionBorder) {
+    card.selectionBorder.clear()
+      .roundRect(-4, -4, measuredW + 8, measuredH + 8, 10)
+      .stroke({ color: THEME.selectBorder, width: 2.5 });
+  }
 }
 
 export function addTextCard(content, x, y, opts) {
@@ -289,11 +307,12 @@ export function startTextEdit(card) {
 
   const textarea = document.createElement('textarea');
   textarea.value = card.data.text || '';
+  const editMinW = Math.max(screenW - TEXT_PADDING * 2 * state.viewport.scale, 150);
   textarea.style.cssText = `
     position: fixed;
     left: ${screenX + TEXT_PADDING * state.viewport.scale}px;
     top: ${screenY + TEXT_PADDING * state.viewport.scale}px;
-    width: ${screenW - TEXT_PADDING * 2 * state.viewport.scale}px;
+    width: ${editMinW}px;
     min-height: ${screenH - TEXT_PADDING * 2 * state.viewport.scale}px;
     background: transparent;
     border: none;

@@ -299,6 +299,7 @@ export function startCardDrag(card, e) {
       startPositions,
       lastWorld: wp,
       moved: false,
+      clickCard: card, // Track which card was clicked for double-click detection
     };
     return;
   }
@@ -487,7 +488,10 @@ export function finishDrag(e) {
       break;
     }
     case 'multicard': {
-      if (state.dragState.moved) {
+      if (!state.dragState.moved && state.dragState.clickCard) {
+        // No movement — treat as click (supports double-click to enter group edit / text edit)
+        handleCardClick(state.dragState.clickCard, e);
+      } else if (state.dragState.moved) {
         const entries = state.dragState.cards.map((card) => ({
           card,
           from: state.dragState.startPositions.get(card),
@@ -503,6 +507,8 @@ export function finishDrag(e) {
         for (const group of movedGroups) updateGroupBounds(group);
         markDirty();
       }
+      hideResizeHandles();
+      if (state.selection.size === 1) showResizeHandles(Array.from(state.selection)[0]);
       break;
     }
     case 'selectRect': {
