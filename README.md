@@ -1,10 +1,10 @@
-# RefBoard
+# Deco
 
 AI-powered visual reference board for designers, artists, and creative professionals.
 
 ---
 
-## RefBoard 2.0 Desktop App
+## Deco 2.0 Desktop App
 
 A native macOS desktop application built with **Tauri 2.0** and **PixiJS 8** for collecting, analyzing, and organizing visual references on an infinite canvas.
 
@@ -47,7 +47,7 @@ The release build outputs to `desktop/src-tauri/target/release/bundle/`.
 
 ### Quick Start
 
-1. Open RefBoard
+1. Open Deco
 2. Enter a folder path containing images in the toolbar, click **Open**
 3. Your images appear as cards on the canvas
 4. Click a card to select it, then click **Analyze with AI** in the metadata panel
@@ -121,40 +121,40 @@ In Settings, add a **Brave Search API Key** (`BSA...`). Get a free key at [brave
 #### Data Storage
 
 ```
-~/.refboard/
+~/.deco/
 ├── config.json          # AI + web collection settings
 └── recent.json          # Recent projects list
 
 your-project/
 ├── images/              # Image files
-└── .refboard/
+└── .deco/
     ├── search.db        # SQLite FTS5 index + metadata + embeddings
     └── board.json       # Saved board state (positions, groups, viewport)
 ```
 
 ---
 
-## RefBoard v1 (CLI)
+## Deco v1 (CLI)
 
 The original command-line tool for generating self-contained HTML reference boards.
 
 ### Installation
 
 ```bash
-npm install -g refboard
+npm install -g deco
 ```
 
 ### Quick Start
 
 ```bash
 # Create project
-refboard init my-refs
+deco init my-refs
 
 # Import images
-refboard import ~/Downloads/references --tags "inspiration"
+deco import ~/Downloads/references --tags "inspiration"
 
 # Build
-refboard build
+deco build
 
 # Open board.html in browser
 ```
@@ -163,23 +163,23 @@ refboard build
 
 | Command | Description |
 |---------|-------------|
-| `refboard init [dir]` | Create new project |
-| `refboard add <image>` | Add single image |
-| `refboard import <folder>` | Import all images from folder |
-| `refboard build` | Generate HTML board |
-| `refboard watch` | Watch and auto-rebuild |
-| `refboard list` | List all items |
-| `refboard remove <n>` | Remove item by index |
-| `refboard meta <n> [opts]` | Edit item metadata |
-| `refboard status` | Show project summary |
-| `refboard home` | Open project dashboard |
-| `refboard analyze <image>` | AI-powered image analysis |
-| `refboard auto-tag --all` | Batch auto-tag via AI |
-| `refboard search --similar <img>` | Find similar images |
-| `refboard ask "question"` | Ask AI about your board |
-| `refboard config <key> <val>` | Manage configuration |
-| `refboard serve` | Start local dev server with livereload |
-| `refboard save-positions` | Persist card positions |
+| `deco init [dir]` | Create new project |
+| `deco add <image>` | Add single image |
+| `deco import <folder>` | Import all images from folder |
+| `deco build` | Generate HTML board |
+| `deco watch` | Watch and auto-rebuild |
+| `deco list` | List all items |
+| `deco remove <n>` | Remove item by index |
+| `deco meta <n> [opts]` | Edit item metadata |
+| `deco status` | Show project summary |
+| `deco home` | Open project dashboard |
+| `deco analyze <image>` | AI-powered image analysis |
+| `deco auto-tag --all` | Batch auto-tag via AI |
+| `deco search --similar <img>` | Find similar images |
+| `deco ask "question"` | Ask AI about your board |
+| `deco config <key> <val>` | Manage configuration |
+| `deco serve` | Start local dev server with livereload |
+| `deco save-positions` | Persist card positions |
 
 ### CLI Options
 
@@ -198,7 +198,7 @@ refboard build
 ### Programmatic API
 
 ```js
-import { generateBoard, findImages, autoLayout, loadMetadata } from 'refboard';
+import { generateBoard, findImages, autoLayout, loadMetadata } from 'deco';
 
 await generateBoard({
   inputDir: './my-project',

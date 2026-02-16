@@ -1,4 +1,4 @@
-//! Web Collection module for RefBoard 2.0
+//! Web Collection module for Deco 2.0
 //!
 //! Provides:
 //! - Brave Search API integration (image search + web search)
@@ -256,7 +256,7 @@ async fn download_image_to_project(
     // Download the image
     let resp = client
         .get(image_url)
-        .header("User-Agent", "RefBoard/2.0 (Desktop Image Collector)")
+        .header("User-Agent", "Deco/2.0 (Desktop Image Collector)")
         .send()
         .await
         .map_err(|e| format!("Download failed: {e}"))?;
@@ -346,7 +346,7 @@ fn filename_from_url(url: &str) -> String {
 
 fn load_web_config() -> WebCollectionConfig {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    let path = Path::new(&home).join(".refboard").join("config.json");
+    let path = Path::new(&home).join(".deco").join("config.json");
     if !path.exists() {
         return WebCollectionConfig::default();
     }
@@ -366,7 +366,7 @@ fn load_web_config() -> WebCollectionConfig {
 
 fn save_web_config(config: &WebCollectionConfig) -> Result<(), String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    let path = Path::new(&home).join(".refboard").join("config.json");
+    let path = Path::new(&home).join(".deco").join("config.json");
 
     // Read existing config, merge web section
     let mut full: serde_json::Value = if path.exists() {

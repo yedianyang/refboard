@@ -28,7 +28,7 @@ permissionMode: bypassPermissions
 | `lib/generator.js` | 图片检测、base64、模板渲染 |
 | `lib/ai-provider.js` | CLI AI 集成 |
 | `lib/server.js` | CLI serve 命令 |
-| `bin/refboard.js` | CLI 命令实现 |
+| `bin/deco.js` | CLI 命令实现 |
 
 ## 架构模式
 
@@ -73,7 +73,7 @@ struct ApiResponse<T> {
 ```rust
 // ✅ 正确：自定义错误类型
 #[derive(Debug, thiserror::Error)]
-enum RefboardError {
+enum DecoError {
     #[error("File not found: {0}")]
     FileNotFound(String),
     #[error("AI provider error: {0}")]

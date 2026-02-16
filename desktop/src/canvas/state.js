@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Canvas Shared State & Constants
+// Deco 2.0 — Canvas Shared State & Constants
 
 export const state = {
   app: null,
@@ -24,7 +24,7 @@ export const state = {
   currentTool: 'select',
   gridVisible: true,
   minimapVisible: false,
-  activeAnnotationColor: parseInt(localStorage.getItem('refboard-annotation-color') || '0x4a9eff', 16) || 0x4a9eff,
+  activeAnnotationColor: parseInt(localStorage.getItem('deco-annotation-color') || '0x4a9eff', 16) || 0x4a9eff,
 
   editingGroup: null,
   clipboard: [],

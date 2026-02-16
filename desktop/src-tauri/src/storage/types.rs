@@ -21,7 +21,7 @@ pub struct AppConfig {
     pub web: Option<WebCollectionConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_port: Option<u16>,
-    /// Default folder to scan for projects on startup (e.g. ~/Documents/RefBoard).
+    /// Default folder to scan for projects on startup (e.g. ~/Documents/Deco).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projects_folder: Option<String>,
     /// Storage path for local AI models (CLIP, ONNX). Default: system cache.

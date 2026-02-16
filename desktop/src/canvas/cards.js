@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Card CRUD, Text/Shape, Resize, Texture
+// Deco 2.0 — Card CRUD, Text/Shape, Resize, Texture
 
 import { Container, Sprite, Graphics, Assets, Rectangle, Text, TextStyle } from 'pixi.js';
 import { convertFileSrc } from '@tauri-apps/api/core';

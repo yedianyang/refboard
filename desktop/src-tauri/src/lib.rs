@@ -192,7 +192,7 @@ async fn list_projects(
     storage.list_recent_projects().await
 }
 
-/// Scan a folder for RefBoard projects.
+/// Scan a folder for Deco projects.
 #[tauri::command]
 async fn scan_projects_folder(
     storage: tauri::State<'_, storage::Storage>,

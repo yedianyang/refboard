@@ -1,4 +1,4 @@
-# RefBoard 2.0 — Product Requirements Document
+# Deco 2.0 — Product Requirements Document
 
 > **AI-driven visual reference collector + human-organizable moodboard**
 
@@ -10,9 +10,9 @@
 
 ## 1. Vision
 
-RefBoard is the reference collection tool that sits upstream of the design process. Designers, artists, and creative professionals collect visual references before creating — RefBoard makes that process intelligent.
+Deco is the reference collection tool that sits upstream of the design process. Designers, artists, and creative professionals collect visual references before creating — Deco makes that process intelligent.
 
-**RefBoard collects and organizes references. Figma creates designs.**
+**Deco collects and organizes references. Figma creates designs.**
 
 The core loop:
 
@@ -31,7 +31,7 @@ The core loop:
    └───────────────────────────────────────────────────┘
 ```
 
-RefBoard 1.x proved the concept as a CLI tool generating static HTML boards. RefBoard 2.0 becomes a native desktop app with real-time AI integration, WebGL canvas performance, and an active collection workflow — not just organizing what you already have, but helping you discover what you don't yet know you need.
+Deco 1.x proved the concept as a CLI tool generating static HTML boards. Deco 2.0 becomes a native desktop app with real-time AI integration, WebGL canvas performance, and an active collection workflow — not just organizing what you already have, but helping you discover what you don't yet know you need.
 
 ---
 
@@ -49,7 +49,7 @@ RefBoard 1.x proved the concept as a CLI tool generating static HTML boards. Ref
 - Want to discover connections between works
 
 ### Tertiary: AI/Creative Tool Builders
-- Use RefBoard as a visual context provider for AI workflows
+- Use Deco as a visual context provider for AI workflows
 - Programmatic access via CLI and API
 
 ---
@@ -61,10 +61,10 @@ RefBoard 1.x proved the concept as a CLI tool generating static HTML boards. Ref
 | # | Story | Priority |
 |---|-------|----------|
 | U1 | As a designer, I can drag images from Finder/browser onto the canvas so I can quickly add references | P0 |
-| U2 | As a designer, I can paste an image URL and RefBoard downloads it automatically | P0 |
+| U2 | As a designer, I can paste an image URL and Deco downloads it automatically | P0 |
 | U3 | As a designer, I can drag a folder to import all images at once | P0 |
 | U4 | As a designer, I can paste from clipboard (Cmd+V) to add screenshots | P1 |
-| U5 | As a designer, I can import from a URL and RefBoard extracts all images from the page | P2 |
+| U5 | As a designer, I can import from a URL and Deco extracts all images from the page | P2 |
 
 ### AI Analysis
 
@@ -82,7 +82,7 @@ RefBoard 1.x proved the concept as a CLI tool generating static HTML boards. Ref
 |---|-------|----------|
 | U11 | As a designer, I can search my board by text (title, tags, description) | P0 |
 | U12 | As a designer, I can search by visual similarity — "find images that look like this one" | P0 |
-| U13 | As a designer, I can click "find more like this" on any image and RefBoard searches the web for similar references | P1 |
+| U13 | As a designer, I can click "find more like this" on any image and Deco searches the web for similar references | P1 |
 | U14 | As a designer, web search results appear in a panel and I can drag them onto my board | P1 |
 | U15 | As a designer, I can search across multiple boards | P2 |
 
@@ -189,7 +189,7 @@ Image Added
 
 **Web Collection (Associative Search)**
 - User selects image + clicks "Find more like this"
-- RefBoard generates search queries from image analysis
+- Deco generates search queries from image analysis
 - Searches via Brave Search API (image search + web search)
 - Optional: browser automation (Playwright) for Pinterest, Dribbble, Behance
 - Results displayed in a side panel with preview thumbnails
@@ -471,7 +471,7 @@ AI analysis pipeline (same as local import)
 ### Project Structure
 
 ```
-~/.refboard/
+~/.deco/
 ├── config.json              # Global settings (AI keys, defaults)
 ├── recent.json              # Recent projects list
 └── projects/
@@ -627,7 +627,7 @@ AI analysis pipeline (same as local import)
 - [ ] Export (board as PNG, metadata as JSON, images as ZIP)
 - [ ] Onboarding flow (first launch experience)
 - [ ] DMG packaging and distribution
-- [ ] CLI compatibility (refboard v1 projects importable)
+- [ ] CLI compatibility (deco v1 projects importable)
 - [ ] Documentation site
 
 **Exit criteria**: Ship .dmg to 10 beta users → no critical bugs for 1 week
@@ -709,7 +709,7 @@ AI analysis pipeline (same as local import)
 
 ## 10. Competitive Landscape
 
-| Tool | Strengths | Weakness vs RefBoard 2.0 |
+| Tool | Strengths | Weakness vs Deco 2.0 |
 |------|-----------|--------------------------|
 | **PureRef** | Lightweight, fast, desktop-native | No AI, no search, no web collection, no metadata |
 | **Eagle** | File management, tagging, browser extension | Manual tagging, no AI analysis, no canvas layout |
@@ -718,7 +718,7 @@ AI analysis pipeline (same as local import)
 | **Figma** | Industry standard for design | Not a reference tool — overkill for collection |
 | **Miro** | Great canvas, collaboration | Not image-focused, no AI vision, no similarity search |
 
-**RefBoard's moat**: AI-first reference collection. No competitor combines vision AI analysis, similarity search, web collection, and a performant infinite canvas in a local-first desktop app.
+**Deco's moat**: AI-first reference collection. No competitor combines vision AI analysis, similarity search, web collection, and a performant infinite canvas in a local-first desktop app.
 
 ---
 

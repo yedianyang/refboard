@@ -1,4 +1,4 @@
-# RefBoard 创建项目流程图
+# Deco 创建项目流程图
 
 ## 当前流程（有 Bug）
 
@@ -21,7 +21,7 @@
 │  ┌─────────────────────────────────────────────┐                            │
 │  │  Project Name: [___Art Deco___________]     │                            │
 │  │                                             │                            │
-│  │  Path Preview: ~/Documents/RefBoard/Art Deco/                            │
+│  │  Path Preview: ~/Documents/Deco/Art Deco/                            │
 │  │                                             │                            │
 │  │           [Cancel]  [Create]                │                            │
 │  └─────────────────────────────────────────────┘                            │
@@ -58,7 +58,7 @@
 │                                                                             │
 │  catch (err) {                                                              │
 │    const home = await getHomePath();                                        │
-│    const path = `${home}Documents/RefBoard/${name}`;  // ❌ 路径拼接问题     │
+│    const path = `${home}Documents/Deco/${name}`;  // ❌ 路径拼接问题     │
 │    openProject(path, loading);  // 目录不存在，报错                          │
 │  }                                                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -90,7 +90,7 @@
 │  ┌─────────────────────────────────────────────┐                            │
 │  │  Project Name: [___Art Deco___________]     │                            │
 │  │                                             │                            │
-│  │  Path Preview: ~/Documents/RefBoard/Art Deco/                            │
+│  │  Path Preview: ~/Documents/Deco/Art Deco/                            │
 │  │                                             │                            │
 │  │           [Cancel]  [Create]                │                            │
 │  └─────────────────────────────────────────────┘                            │
@@ -103,7 +103,7 @@
 │                                                                             │
 │  // 方案 A: 前端构造路径                                                     │
 │  const home = await getHomePath();                                          │
-│  const path = `${home}/Documents/RefBoard/${name}`;                         │
+│  const path = `${home}/Documents/Deco/${name}`;                         │
 │  await invoke('create_project', { name, path })                             │
 │                                                                             │
 │  // 或方案 B: 后端自动构造路径                                               │
@@ -124,7 +124,7 @@
 │      fs::create_dir_all(path/thumbnails/)                                   │
 │                                                                             │
 │      // 2. 写入配置文件                                                      │
-│      write(refboard.json)   // 项目配置                                     │
+│      write(deco.json)   // 项目配置                                     │
 │      write(metadata.json)   // 元数据                                       │
 │      write(board.json)      // 画布状态                                     │
 │                                                                             │
@@ -153,9 +153,9 @@
 ## 项目目录结构
 
 ```
-~/Documents/RefBoard/
+~/Documents/Deco/
 └── Art Deco/                    # 项目根目录
-    ├── refboard.json            # 项目配置 (version, name, created)
+    ├── deco.json            # 项目配置 (version, name, created)
     ├── metadata.json            # 项目元数据 (name, path, tags, image_count)
     ├── board.json               # 画布状态 (viewport, items, groups, annotations)
     ├── images/                  # 原始图片
@@ -174,7 +174,7 @@
 - const result = await invoke('cmd_create_project', { name });
 + const home = await getHomePath();
 + const basePath = home.endsWith('/') ? home : home + '/';
-+ const path = `${basePath}Documents/RefBoard/${name}`;
++ const path = `${basePath}Documents/Deco/${name}`;
 + const result = await invoke('create_project', { name, path });
 ```
 
@@ -187,7 +187,7 @@ fn cmd_create_project(name: String) -> Result<ProjectInfo, String> {
         .ok_or("Cannot find home directory")?;
     let path = home
         .join("Documents")
-        .join("RefBoard")
+        .join("Deco")
         .join(&name);
     create_project(name, path.to_string_lossy().to_string())
 }

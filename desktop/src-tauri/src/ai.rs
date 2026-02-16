@@ -32,7 +32,7 @@ pub struct AnalysisResult {
     pub era: Option<String>,
 }
 
-/// AI provider configuration stored in ~/.refboard/config.json.
+/// AI provider configuration stored in ~/.deco/config.json.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AiProviderConfig {
@@ -650,7 +650,7 @@ fn create_provider(
 }
 
 // ---------------------------------------------------------------------------
-// Config Persistence (~/.refboard/config.json)
+// Config Persistence (~/.deco/config.json)
 // ---------------------------------------------------------------------------
 
 /// Full app config file structure.
@@ -663,7 +663,7 @@ struct AppConfig {
 
 fn config_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    Path::new(&home).join(".refboard").join("config.json")
+    Path::new(&home).join(".deco").join("config.json")
 }
 
 fn load_app_config() -> AppConfig {

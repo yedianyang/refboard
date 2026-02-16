@@ -1,8 +1,8 @@
-# CLAUDE.md — RefBoard 项目规范
+# CLAUDE.md — Deco 项目规范
 
 ## 项目概述
 
-RefBoard 是一个 AI 驱动的视觉参考收集器 + 可整理的 Moodboard 工具。支持图片导入、AI 分析打标签、CLIP 相似图搜索、Web 图片采集。
+Deco 是一个 AI 驱动的视觉参考收集器 + 可整理的 Moodboard 工具。支持图片导入、AI 分析打标签、CLIP 相似图搜索、Web 图片采集。
 
 ## 技术栈
 
@@ -16,7 +16,7 @@ RefBoard 是一个 AI 驱动的视觉参考收集器 + 可整理的 Moodboard �
 ## 项目结构
 
 ```
-refboard/
+deco/
 ├── desktop/                    # v2.0 Desktop App (Tauri)
 │   ├── src/
 │   │   ├── main.js            # 入口 + Home 页面 + 项目管理
@@ -59,7 +59,7 @@ cargo clippy                   # Lint
 
 # v1 CLI（可选）
 npm install                    # 根目录
-node bin/refboard.js help      # CLI 帮助
+node bin/deco.js help      # CLI 帮助
 ```
 
 ## 代码规范
@@ -74,8 +74,8 @@ node bin/refboard.js help      # CLI 帮助
 - Tauri 命令用 `#[tauri::command]`，薄包装，业务逻辑放 helper 函数
 - 错误处理返回 `Result<T, String>`
 - 不要在 lib 函数里 panic，用 `?` 传播错误
-- SQLite 数据库：`{project}/.refboard/search.db`
-- 画布状态：`{project}/.refboard/board.json`
+- SQLite 数据库：`{project}/.deco/search.db`
+- 画布状态：`{project}/.deco/board.json`
 
 ### 日志规范 (Logging)
 
@@ -94,7 +94,7 @@ crate::log::log("TAG", &format!("操作描述: {}", value));
 | `IMPORT` | 图片导入 |
 | `SEARCH` | 搜索相关 |
 
-**日志位置：** `~/.refboard/debug.log`（同时输出 stdout）
+**日志位置：** `~/.deco/debug.log`（同时输出 stdout）
 
 **记录时机：**
 - ✅ 关键操作开始/完成
@@ -314,7 +314,7 @@ console.log(result.field1, result.field2);
 ## 注意事项
 
 ### 必须遵守
-- **不要修改** `~/.refboard/config.json` 的结构（向后兼容）
+- **不要修改** `~/.deco/config.json` 的结构（向后兼容）
 - **HTTP API** 只监听 localhost (安全)
 - **图片压缩** 必须保留 alpha 通道
 - **CLIP 模型** 启动后 3 秒延迟加载（不阻塞 UI）
@@ -325,10 +325,10 @@ console.log(result.field1, result.field2);
 - Tauri 2.0 的 `asset://` 协议路径需要 `convertFileSrc()`
 
 ### 关键路径
-- 项目存储：`~/Documents/RefBoard/{project}/`
-- 全局配置：`~/.refboard/config.json`
+- 项目存储：`~/Documents/Deco/{project}/`
+- 全局配置：`~/.deco/config.json`
 - 缩略图缓存：`{project}/.thumbnails/`
-- 搜索数据库：`{project}/.refboard/search.db`
+- 搜索数据库：`{project}/.deco/search.db`
 
 ## 踩坑经验 (Lessons Learned)
 

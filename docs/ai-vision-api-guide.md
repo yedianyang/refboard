@@ -1,4 +1,4 @@
-# AI Vision API Integration Guide for Rust (RefBoard 2.0)
+# AI Vision API Integration Guide for Rust (Deco 2.0)
 
 > Rust code examples for calling vision APIs from the Tauri backend.
 > Covers Anthropic Claude, OpenAI GPT-4o, and Ollama local models.
@@ -967,7 +967,7 @@ const result = await invoke('analyze_image', {
 
 ## 10. Trade-offs & Recommendations
 
-### Provider Comparison for RefBoard
+### Provider Comparison for Deco
 
 | Aspect | Anthropic Claude | OpenAI GPT-4o | Ollama (Local) |
 |--------|-----------------|---------------|----------------|

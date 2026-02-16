@@ -1,4 +1,4 @@
-// RefBoard 2.0 — AI Panels & Settings
+// Deco 2.0 — AI Panels & Settings
 // Suggestion panel, metadata panel, and settings dialog
 // Wired to Rust backend via Tauri IPC: analyze_image, get_ai_config, set_ai_config, check_ollama
 
@@ -807,15 +807,15 @@ function loadCompressionSettings() {
   const options = document.getElementById('settings-compress-options');
 
   if (toggle) {
-    toggle.checked = localStorage.getItem('refboard-compress') !== 'off';
+    toggle.checked = localStorage.getItem('deco-compress') !== 'off';
   }
   if (quality) {
-    const q = parseFloat(localStorage.getItem('refboard-compress-quality') || '0.82');
+    const q = parseFloat(localStorage.getItem('deco-compress-quality') || '0.82');
     quality.value = q;
     if (qualityLabel) qualityLabel.textContent = Math.round(q * 100) + '%';
   }
   if (maxdim) {
-    maxdim.value = localStorage.getItem('refboard-compress-maxdim') || '2048';
+    maxdim.value = localStorage.getItem('deco-compress-maxdim') || '2048';
   }
   if (options && toggle) {
     options.style.display = toggle.checked ? '' : 'none';
@@ -828,13 +828,13 @@ function saveCompressionSettings() {
   const maxdim = document.getElementById('settings-compress-maxdim');
 
   if (toggle) {
-    localStorage.setItem('refboard-compress', toggle.checked ? 'on' : 'off');
+    localStorage.setItem('deco-compress', toggle.checked ? 'on' : 'off');
   }
   if (quality) {
-    localStorage.setItem('refboard-compress-quality', quality.value);
+    localStorage.setItem('deco-compress-quality', quality.value);
   }
   if (maxdim) {
-    localStorage.setItem('refboard-compress-maxdim', maxdim.value);
+    localStorage.setItem('deco-compress-maxdim', maxdim.value);
   }
 }
 

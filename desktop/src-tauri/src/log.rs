@@ -1,6 +1,6 @@
-//! Unified logging for RefBoard.
+//! Unified logging for Deco.
 //!
-//! All `[CLIP]` and `[AI]` logs write to both stdout and `~/.refboard/debug.log`.
+//! All `[CLIP]` and `[AI]` logs write to both stdout and `~/.deco/debug.log`.
 //! Log file is truncated on open if it exceeds 5MB.
 
 use std::fs::{self, OpenOptions};
@@ -11,10 +11,10 @@ const MAX_LOG_SIZE: u64 = 5 * 1024 * 1024; // 5MB
 
 fn log_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-    PathBuf::from(home).join(".refboard").join("debug.log")
+    PathBuf::from(home).join(".deco").join("debug.log")
 }
 
-/// Write a tagged log line to stdout and ~/.refboard/debug.log.
+/// Write a tagged log line to stdout and ~/.deco/debug.log.
 pub fn log(tag: &str, msg: &str) {
     let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
     let line = format!("[{timestamp}] [{tag}] {msg}");

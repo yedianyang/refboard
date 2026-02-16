@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Group Management
+// Deco 2.0 — Group Management
 
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { state, THEME } from './state.js';

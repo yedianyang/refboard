@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Search & Similarity
+// Deco 2.0 — Search & Similarity
 // Search bar, tag filter sidebar, search results panel, find-similar action
 
 import { invoke } from '@tauri-apps/api/core';
@@ -365,7 +365,7 @@ function renderSearchResults(results) {
     item.addEventListener('click', () => {
       // Emit custom event for canvas to handle
       window.dispatchEvent(
-        new CustomEvent('refboard:scroll-to-card', {
+        new CustomEvent('deco:scroll-to-card', {
           detail: { path: result.imagePath },
         })
       );

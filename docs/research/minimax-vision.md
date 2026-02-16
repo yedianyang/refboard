@@ -1,7 +1,7 @@
-# MiniMax AI Vision Research — RefBoard Integration Assessment
+# MiniMax AI Vision Research — Deco Integration Assessment
 
 > Date: 2026-02-15
-> Researcher: RefBoard Research Agent
+> Researcher: Deco Research Agent
 
 ---
 
@@ -51,7 +51,7 @@ MiniMax offers viable vision/multimodal models for image analysis at significant
 | **Claude Sonnet 4.5** | $3.00 | $15.00 | Yes |
 | **Claude Opus 4.5** | $5.00 | $25.00 | Yes |
 
-### Cost Analysis for RefBoard Use Case
+### Cost Analysis for Deco Use Case
 
 Typical image analysis call (1 image + prompt → description + tags):
 - Input: ~1,500 tokens (image ~1,200 + prompt ~300)
@@ -143,7 +143,7 @@ MiniMax-01 is also available on **OpenRouter** at the same pricing ($0.20/$1.10)
 | OCRBench | 865 | Text recognition in images |
 | MEGA-Bench | 47.4% | General comprehension |
 
-### RefBoard-Relevant Capabilities
+### Deco-Relevant Capabilities
 
 Based on benchmarks and architecture:
 
@@ -159,7 +159,7 @@ Based on benchmarks and architecture:
 
 ### Limitations
 
-1. **No embedding endpoint** — MiniMax does not expose a `/v1/embeddings` API, so it cannot be used for CLIP-like similarity search. RefBoard must continue using a separate embedding provider.
+1. **No embedding endpoint** — MiniMax does not expose a `/v1/embeddings` API, so it cannot be used for CLIP-like similarity search. Deco must continue using a separate embedding provider.
 2. **Art/design-specific quality unknown** — Benchmarks focus on documents, charts, and general knowledge. No published benchmarks for art style, color palette, or design element recognition.
 3. **Non-standard image format** — The `[Image base64:...]` inline syntax requires a custom adapter, not compatible with existing OpenAI-format providers.
 
@@ -182,7 +182,7 @@ Based on benchmarks and architecture:
 - No separate vision-specific rate limits documented
 - Image generation (separate service): 10 RPM
 
-For RefBoard's use case (analyzing images one at a time or in small batches), these limits are more than sufficient.
+For Deco's use case (analyzing images one at a time or in small batches), these limits are more than sufficient.
 
 ---
 
@@ -202,9 +202,9 @@ For RefBoard's use case (analyzing images one at a time or in small batches), th
 
 ---
 
-## 8. Recommendations for RefBoard
+## 8. Recommendations for Deco
 
-### Should RefBoard add MiniMax as an AI Provider?
+### Should Deco add MiniMax as an AI Provider?
 
 **Verdict: Yes, but as a low-priority option via OpenRouter.**
 
@@ -213,12 +213,12 @@ For RefBoard's use case (analyzing images one at a time or in small batches), th
 1. **Primary vision provider: GPT-4o mini** ($0.15/$0.60)
    - Cheapest per-image cost
    - Best documentation and SDK support
-   - Standard OpenAI API format (already supported by RefBoard)
+   - Standard OpenAI API format (already supported by Deco)
    - Sufficient quality for description + tagging
 
 2. **Quality provider: Claude Haiku 4.5** ($1.00/$5.00)
    - Best subjective quality for art/design analysis
-   - Anthropic API (already supported by RefBoard)
+   - Anthropic API (already supported by Deco)
    - 5x more expensive but noticeably better for nuanced style detection
 
 3. **Budget alternative: MiniMax-VL-01 via OpenRouter** ($0.20/$1.10)
@@ -265,7 +265,7 @@ For RefBoard's use case (analyzing images one at a time or in small batches), th
   $0.15/M                        $5.00/M
 ```
 
-MiniMax-VL-01 sits between GPT-4o mini and Claude Haiku in both cost and quality. For RefBoard, GPT-4o mini offers better value unless MiniMax's specific strengths (1M context, OCR) are needed.
+MiniMax-VL-01 sits between GPT-4o mini and Claude Haiku in both cost and quality. For Deco, GPT-4o mini offers better value unless MiniMax's specific strengths (1M context, OCR) are needed.
 
 ---
 

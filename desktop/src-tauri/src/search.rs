@@ -1,10 +1,10 @@
-//! Search & Similarity module for RefBoard 2.0
+//! Search & Similarity module for Deco 2.0
 //!
 //! Provides:
 //! - SQLite-backed metadata indexing with FTS5 full-text search
 //! - Tag collection and filtering
 //! - Embedding storage (BLOB) and brute-force cosine similarity
-//! - Per-project database stored at `{project_path}/.refboard/search.db`
+//! - Per-project database stored at `{project_path}/.deco/search.db`
 
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -57,7 +57,7 @@ pub struct ImageMetadataRow {
 
 fn db_path(project_path: &str) -> PathBuf {
     Path::new(project_path)
-        .join(".refboard")
+        .join(".deco")
         .join("search.db")
 }
 
@@ -68,7 +68,7 @@ pub fn open_db(project_path: &str) -> Result<Connection, String> {
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Cannot create .refboard dir: {e}"))?;
+            .map_err(|e| format!("Cannot create .deco dir: {e}"))?;
     }
 
     let conn = Connection::open(&path)

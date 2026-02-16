@@ -1,14 +1,14 @@
 # Apple macOS Design Resources — Comprehensive Report
 
 > Date: 2026-02-15
-> Researcher: RefBoard Research Agent
+> Researcher: Deco Research Agent
 > Source: https://developer.apple.com/design/resources/#macos-apps
 
 ---
 
 ## 1. Summary
 
-Apple provides extensive design resources for macOS app development: Figma/Sketch UI kits, SF Symbols (6,900+ icons), SF Pro font family, Icon Composer for Liquid Glass icons, and comprehensive Human Interface Guidelines. For RefBoard (a document-based canvas app), the most relevant resources are the **macOS 26 Figma UI Kit**, **SF Symbols 7**, **SF Pro font**, and the HIG sections on **toolbars**, **sidebars**, and **windows**. Apple's latest design language, **Liquid Glass** (WWDC 2025), introduces translucent materials with dynamic light refraction — relevant for RefBoard's sidebar and toolbar styling.
+Apple provides extensive design resources for macOS app development: Figma/Sketch UI kits, SF Symbols (6,900+ icons), SF Pro font family, Icon Composer for Liquid Glass icons, and comprehensive Human Interface Guidelines. For Deco (a document-based canvas app), the most relevant resources are the **macOS 26 Figma UI Kit**, **SF Symbols 7**, **SF Pro font**, and the HIG sections on **toolbars**, **sidebars**, and **windows**. Apple's latest design language, **Liquid Glass** (WWDC 2025), introduces translucent materials with dynamic light refraction — relevant for Deco's sidebar and toolbar styling.
 
 ---
 
@@ -35,7 +35,7 @@ Apple provides extensive design resources for macOS app development: Figma/Sketc
 | **New York** | Serif, reading contexts | Editorial/body text |
 | **SF Arabic/Armenian/Georgian/Hebrew** | Localization | Multilingual support |
 
-**CSS usage for RefBoard (web-rendered in Tauri WebView):**
+**CSS usage for Deco (web-rendered in Tauri WebView):**
 ```css
 font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans-serif;
 ```
@@ -54,7 +54,7 @@ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans
 - Draw animations, variable rendering, gradients
 - Automatic scale selection in toolbars
 
-**Categories relevant to RefBoard:**
+**Categories relevant to Deco:**
 - Editing: crop, rotate, slider, paintbrush
 - Media: photo, rectangle.stack, square.grid.2x2
 - Objects: folder, doc, tray
@@ -71,7 +71,7 @@ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans
 
 ### 2.5 Product Bezels
 
-Marketing assets for all Apple devices including iMac, MacBook Air M3, MacBook Pro M4. Available in Sketch, Photoshop, and PNG formats. Useful for RefBoard screenshots and marketing materials.
+Marketing assets for all Apple devices including iMac, MacBook Air M3, MacBook Pro M4. Available in Sketch, Photoshop, and PNG formats. Useful for Deco screenshots and marketing materials.
 
 ---
 
@@ -79,7 +79,7 @@ Marketing assets for all Apple devices including iMac, MacBook Air M3, MacBook P
 
 ### 3.1 Foundational Principles
 
-| Principle | Description | RefBoard Application |
+| Principle | Description | Deco Application |
 |-----------|-------------|---------------------|
 | **Clarity** | Every element serves a purpose; avoid unnecessary complexity | Clean toolbar with only essential tools |
 | **Deference** | UI helps users focus on content, minimize chrome | Canvas takes maximum space; panels collapse |
@@ -107,7 +107,7 @@ Apple's new unified design language replaces the frosted glass / vibrancy system
 - Completely transparent menu bar
 - Adaptive tinting from content beneath
 
-**For Tauri WebView (RefBoard):**
+**For Tauri WebView (Deco):**
 - Use `backdrop-filter: blur()` + semi-transparent backgrounds to approximate
 - CSS: `-webkit-backdrop-filter: blur(20px); background: rgba(30,30,30,0.7);`
 - Respect `prefers-reduced-transparency` media query
@@ -125,7 +125,7 @@ Apple's new unified design language replaces the frosted glass / vibrancy system
 
 ### 4.1 Window Architecture
 
-RefBoard is a **document-based canvas app** (like Figma, Sketch, Photoshop). The standard macOS pattern:
+Deco is a **document-based canvas app** (like Figma, Sketch, Photoshop). The standard macOS pattern:
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -145,7 +145,7 @@ RefBoard is a **document-based canvas app** (like Figma, Sketch, Photoshop). The
 ```
 
 **Window Types:**
-- **Document window** — one per open project/file (RefBoard: one per board)
+- **Document window** — one per open project/file (Deco: one per board)
 - **Panel / Inspector** — floating or attached auxiliary window
 - **Sheet** — modal attached to parent window (for save dialogs, settings)
 - **Popover** — contextual UI anchored to a control
@@ -164,12 +164,12 @@ RefBoard is a **document-based canvas app** (like Figma, Sketch, Photoshop). The
 
 **Toolbar Styles:**
 
-| Style | Height | Use Case | RefBoard Recommendation |
+| Style | Height | Use Case | Deco Recommendation |
 |-------|--------|----------|------------------------|
-| **Unified** | ~52pt | Standard apps | Default for RefBoard |
+| **Unified** | ~52pt | Standard apps | Default for Deco |
 | **Unified Compact** | ~38pt | Compact UI | Good for maximizing canvas |
 | **Expanded** | ~72pt | Document apps with prominent toolbar | If adding drawing tools |
-| **Preference** | Varies | Settings windows | For RefBoard Settings |
+| **Preference** | Varies | Settings windows | For Deco Settings |
 
 **Best Practices:**
 - Most-used items toward the left
@@ -180,7 +180,7 @@ RefBoard is a **document-based canvas app** (like Figma, Sketch, Photoshop). The
 - Use `NSTrackingSeparatorToolbarItem` for column dividers
 - Bottom bar for secondary sidebar actions (add/remove/info)
 
-**RefBoard Toolbar Recommendation:**
+**Deco Toolbar Recommendation:**
 ```
 │ ●●● │ ☰ │ "Art Deco Power" ▾ │  [V] [H] [T] [R] [O] │  🔍  ⚙  ◧ │
 │      │ Sidebar│  Doc Title     │  Select Hand Text     │ Search  Inspector
@@ -192,7 +192,7 @@ RefBoard is a **document-based canvas app** (like Figma, Sketch, Photoshop). The
 **Usage:**
 - Sidebars are for **navigation** and **object selection**
 - Typically used in "shoebox" apps (Photos, Music) — less common in document-based apps
-- RefBoard use: project file list, layer list, tag filters
+- Deco use: project file list, layer list, tag filters
 
 **Specifications:**
 
@@ -229,7 +229,7 @@ The trailing panel for viewing/editing properties of the selected item:
 - **Content:** Properties, metadata, attributes of selected object
 - **Behavior:** Push content inward (don't overlay)
 
-**For RefBoard:** Image info panel (filename, dimensions, tags, AI description, similar images button).
+**For Deco:** Image info panel (filename, dimensions, tags, AI description, similar images button).
 
 ---
 
@@ -305,7 +305,7 @@ The trailing panel for viewing/editing properties of the selected item:
 | Double-click | Open / edit | Standard for document items |
 | Right-click | Context menu | Required for all interactive elements |
 | Scroll (2 finger) | Scroll content | Vertical and horizontal |
-| Pinch | Zoom | Canvas zoom for RefBoard |
+| Pinch | Zoom | Canvas zoom for Deco |
 | Drag | Move / rearrange | With visual feedback |
 | Option+drag | Duplicate | Standard macOS pattern |
 | Cmd+drag | Multi-select or special drag | App-specific |
@@ -325,7 +325,7 @@ The trailing panel for viewing/editing properties of the selected item:
 
 ---
 
-## 7. Recommendations for RefBoard
+## 7. Recommendations for Deco
 
 ### 7.1 Immediate Actions
 
@@ -336,7 +336,7 @@ The trailing panel for viewing/editing properties of the selected item:
 ### 7.2 UI Architecture (following macOS conventions)
 
 ```
-RefBoard Window Layout:
+Deco Window Layout:
 ┌─────────────────────────────────────────────────────┐
 │ ●●● ☰  "Project Name" ▾  [V][H][T][R]  🔍 ⚙ ◧   │ Unified toolbar (~52pt)
 ├────────┬────────────────────────────────────┬───────┤

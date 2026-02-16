@@ -18,12 +18,12 @@ const DEFAULT_API_PORT: u16 = 7890;
 /// Local filesystem storage backend.
 ///
 /// Stores data as:
-/// - Per-project SQLite (`{project}/.refboard/search.db`) for metadata + search + embeddings
-/// - Per-project JSON (`{project}/.refboard/board.json`) for board state
-/// - App-level JSON (`~/.refboard/config.json`) for config
-/// - App-level JSON (`~/.refboard/recent.json`) for recent projects
+/// - Per-project SQLite (`{project}/.deco/search.db`) for metadata + search + embeddings
+/// - Per-project JSON (`{project}/.deco/board.json`) for board state
+/// - App-level JSON (`~/.deco/config.json`) for config
+/// - App-level JSON (`~/.deco/recent.json`) for recent projects
 pub struct LocalStorage {
-    /// Base data directory (`~/.refboard/`).
+    /// Base data directory (`~/.deco/`).
     data_dir: PathBuf,
 }
 
@@ -31,7 +31,7 @@ impl LocalStorage {
     pub fn new() -> Self {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         Self {
-            data_dir: PathBuf::from(home).join(".refboard"),
+            data_dir: PathBuf::from(home).join(".deco"),
         }
     }
 
@@ -66,17 +66,17 @@ impl StorageProvider for LocalStorage {
             fs::create_dir_all(project_dir.join("thumbnails"))
                 .map_err(|e| format!("Cannot create thumbnails directory: {e}"))?;
 
-            // Write refboard.json (project config)
-            let refboard_config = serde_json::json!({
+            // Write deco.json (project config)
+            let deco_config = serde_json::json!({
                 "version": 2,
                 "name": &name,
                 "created": crate::chrono_now_iso(),
             });
             fs::write(
-                project_dir.join("refboard.json"),
-                serde_json::to_string_pretty(&refboard_config).unwrap(),
+                project_dir.join("deco.json"),
+                serde_json::to_string_pretty(&deco_config).unwrap(),
             )
-            .map_err(|e| format!("Cannot write refboard.json: {e}"))?;
+            .map_err(|e| format!("Cannot write deco.json: {e}"))?;
 
             // Write metadata.json
             let metadata = crate::ProjectMetadata {
@@ -94,9 +94,9 @@ impl StorageProvider for LocalStorage {
                 .map_err(|e| format!("Cannot write metadata.json: {e}"))?;
 
             // Write board.json (empty canvas state)
-            let refboard_dir = project_dir.join(".refboard");
-            fs::create_dir_all(&refboard_dir)
-                .map_err(|e| format!("Cannot create .refboard dir: {e}"))?;
+            let deco_dir = project_dir.join(".deco");
+            fs::create_dir_all(&deco_dir)
+                .map_err(|e| format!("Cannot create .deco dir: {e}"))?;
             let board = serde_json::json!({
                 "version": 2,
                 "viewport": { "x": 0, "y": 0, "zoom": 1.0 },
@@ -105,7 +105,7 @@ impl StorageProvider for LocalStorage {
                 "annotations": [],
             });
             fs::write(
-                refboard_dir.join("board.json"),
+                deco_dir.join("board.json"),
                 serde_json::to_string_pretty(&board).unwrap(),
             )
             .map_err(|e| format!("Cannot write board.json: {e}"))?;
@@ -230,10 +230,10 @@ impl StorageProvider for LocalStorage {
         let state = state.clone();
 
         tokio::task::spawn_blocking(move || {
-            let refboard_dir = Path::new(&project_path).join(".refboard");
-            fs::create_dir_all(&refboard_dir)
-                .map_err(|e| format!("Cannot create .refboard dir: {e}"))?;
-            let board_path = refboard_dir.join("board.json");
+            let deco_dir = Path::new(&project_path).join(".deco");
+            fs::create_dir_all(&deco_dir)
+                .map_err(|e| format!("Cannot create .deco dir: {e}"))?;
+            let board_path = deco_dir.join("board.json");
             let json = serde_json::to_string_pretty(&state)
                 .map_err(|e| format!("Cannot serialize board state: {e}"))?;
             fs::write(&board_path, json)
@@ -252,7 +252,7 @@ impl StorageProvider for LocalStorage {
 
         tokio::task::spawn_blocking(move || {
             let board_path = Path::new(&project_path)
-                .join(".refboard")
+                .join(".deco")
                 .join("board.json");
             if !board_path.exists() {
                 return Ok(None);
@@ -557,12 +557,12 @@ impl StorageProvider for LocalStorage {
                     continue;
                 }
 
-                // Check for RefBoard project markers
-                let has_refboard_json = path.join("refboard.json").exists();
+                // Check for Deco project markers
+                let has_deco_json = path.join("deco.json").exists();
                 let has_metadata = path.join("metadata.json").exists();
-                let has_dot_refboard = path.join(".refboard").is_dir();
+                let has_dot_deco = path.join(".deco").is_dir();
 
-                if has_refboard_json || has_metadata || has_dot_refboard {
+                if has_deco_json || has_metadata || has_dot_deco {
                     let image_count = crate::count_images_in(&path);
                     projects.push(crate::ProjectInfo {
                         name,

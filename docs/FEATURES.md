@@ -1,4 +1,4 @@
-# RefBoard 功能清单
+# Deco 功能清单
 
 ## 设计原则
 > **信息收集和插入功能优先为 AI 考虑**
@@ -16,7 +16,7 @@
 - 使用 vision model API 分析图片
 - 提取：主题、风格、颜色、物体、情绪等
 - 自动生成 tags 并写入 metadata.json
-- AI agent 可通过 CLI 调用：`refboard add <image> --analyze`
+- AI agent 可通过 CLI 调用：`deco add <image> --analyze`
 
 **输出格式：**
 ```json
@@ -36,8 +36,8 @@
 **实现思路：**
 - 每个 item 在 metadata.json 中存储 `position: { x, y }`
 - 拖拽结束时自动保存到 metadata.json
-- AI agent 可通过 CLI 设置位置：`refboard meta <n> --position "100,200"`
-- 支持批量布局：`refboard layout --grid` / `refboard layout --cluster`
+- AI agent 可通过 CLI 设置位置：`deco meta <n> --position "100,200"`
+- 支持批量布局：`deco layout --grid` / `deco layout --cluster`
 
 **数据结构：**
 ```json
@@ -57,7 +57,7 @@
 - 侧边栏显示所有 tags，点击过滤
 - 搜索框支持多关键词组合
 - "聚合模式"：相同 tag 的图片自动靠近
-- AI agent 可调用：`refboard filter --tags "bronze,1920s"` 或 `refboard cluster --by tags`
+- AI agent 可调用：`deco filter --tags "bronze,1920s"` 或 `deco cluster --by tags`
 
 **UI 交互：**
 - 点击 tag → 高亮相关图片，淡化其他
@@ -73,7 +73,7 @@
 - 类型：`text`
 - 支持：标题、正文、列表
 - 可调整大小、字体、颜色
-- AI agent 可调用：`refboard add-text "注释内容" --position "100,200" --style title`
+- AI agent 可调用：`deco add-text "注释内容" --position "100,200" --style title`
 
 **数据结构：**
 ```json
@@ -101,7 +101,7 @@
 - 类型：矩形、圆形、箭头、连接线
 - 可调整颜色、边框、透明度
 - 用于：圈选分组、指向关联、区域划分
-- AI agent 可调用：`refboard add-shape rect --position "100,200" --size "400,300" --label "青铜雕塑"`
+- AI agent 可调用：`deco add-shape rect --position "100,200" --size "400,300" --label "青铜雕塑"`
 
 **数据结构：**
 ```json
@@ -127,14 +127,14 @@
 
 | 命令 | 功能 |
 |------|------|
-| `refboard add <image> --analyze` | 添加图片并自动分析 |
-| `refboard meta <n> --position "x,y"` | 设置图片位置 |
-| `refboard layout --grid` | 网格布局 |
-| `refboard layout --cluster --by tags` | 按标签聚合布局 |
-| `refboard filter --tags "a,b"` | 过滤显示 |
-| `refboard add-text "内容" --position "x,y"` | 添加文本框 |
-| `refboard add-shape rect --position "x,y"` | 添加图形框 |
-| `refboard export --format json` | 导出结构化数据 |
+| `deco add <image> --analyze` | 添加图片并自动分析 |
+| `deco meta <n> --position "x,y"` | 设置图片位置 |
+| `deco layout --grid` | 网格布局 |
+| `deco layout --cluster --by tags` | 按标签聚合布局 |
+| `deco filter --tags "a,b"` | 过滤显示 |
+| `deco add-text "内容" --position "x,y"` | 添加文本框 |
+| `deco add-shape rect --position "x,y"` | 添加图形框 |
+| `deco export --format json` | 导出结构化数据 |
 
 ---
 
@@ -228,7 +228,7 @@ const fieldTypes = {
 
 ### 配置示例
 
-**refboard.json:**
+**deco.json:**
 ```json
 {
   "infoPanel": {
@@ -303,22 +303,22 @@ const fieldTypes = {
 
 **CLI 支持：**
 ```bash
-refboard search --similar <image>
-refboard search --tags "art-deco,bronze"
-refboard search --artist "Lee Lawrie"
+deco search --similar <image>
+deco search --tags "art-deco,bronze"
+deco search --artist "Lee Lawrie"
 ```
 
 ---
 
 ## v2.0 Desktop — AI Architecture
 
-RefBoard 2.0 uses two complementary AI subsystems: **CLIP** for local visual understanding and **AI Vision** for rich semantic analysis via cloud APIs.
+Deco 2.0 uses two complementary AI subsystems: **CLIP** for local visual understanding and **AI Vision** for rich semantic analysis via cloud APIs.
 
 ### Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        RefBoard 2.0 Desktop                        │
+│                        Deco 2.0 Desktop                        │
 ├─────────────────────────────┬───────────────────────────────────────┤
 │   CLIP (Local)              │   AI Vision (Remote API)              │
 │   fastembed + ONNX Runtime  │   Anthropic / OpenAI / Ollama         │
@@ -390,7 +390,7 @@ Local image embedding using CLIP ViT-B/32 via fastembed (ONNX Runtime). Provides
 
 ### Warmup Behavior
 
-The CLIP model is loaded lazily — it initializes on first use. To avoid lag when the user first pastes an image or opens a project, RefBoard warms up the model in the background:
+The CLIP model is loaded lazily — it initializes on first use. To avoid lag when the user first pastes an image or opens a project, Deco warms up the model in the background:
 
 ```
 App Start
@@ -420,7 +420,7 @@ setTimeout(() => {
 
 ### Embedding Storage
 
-Embeddings are stored in the per-project SQLite database (`{project}/.refboard/search.db`) in the `embeddings` table:
+Embeddings are stored in the per-project SQLite database (`{project}/.deco/search.db`) in the `embeddings` table:
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -455,7 +455,7 @@ AI Vision provides rich semantic analysis of images: description, tags, style, m
 
 ### Configuration
 
-AI provider settings are stored in `~/.refboard/config.json`:
+AI provider settings are stored in `~/.deco/config.json`:
 
 ```json
 {
@@ -491,9 +491,9 @@ For fully local AI analysis with no cloud dependency:
 1. Install [Ollama](https://ollama.com/)
 2. Pull a vision model: `ollama pull llava`
 3. Start the server: `ollama serve`
-4. In RefBoard Settings, select **Ollama** and verify endpoint is `http://localhost:11434`
+4. In Deco Settings, select **Ollama** and verify endpoint is `http://localhost:11434`
 
-RefBoard can check Ollama availability via the `check_ollama` command (calls `/api/tags`).
+Deco can check Ollama availability via the `check_ollama` command (calls `/api/tags`).
 
 ### Analysis Output
 

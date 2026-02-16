@@ -1,4 +1,4 @@
-// RefBoard 2.0 — PixiJS 8 Infinite Canvas Engine
+// Deco 2.0 — PixiJS 8 Infinite Canvas Engine
 // M3: Multi-select, resize, undo/redo, groups, auto-layout, minimap, keyboard shortcuts
 
 import { Application, Container, Graphics } from 'pixi.js';

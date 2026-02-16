@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Color Palette, Props Bar, Theme, UI Helpers, Lightbox, Board State, Filtering, Export
+// Deco 2.0 — Color Palette, Props Bar, Theme, UI Helpers, Lightbox, Board State, Filtering, Export
 
 import { Rectangle, Graphics, Container, Text, TextStyle } from 'pixi.js';
 import { invoke } from '@tauri-apps/api/core';
@@ -36,7 +36,7 @@ export function hasAnnotationSelected() {
 
 export function setAnnotationColor(colorHex) {
   state.activeAnnotationColor = colorHex;
-  localStorage.setItem('refboard-annotation-color', '0x' + colorHex.toString(16));
+  localStorage.setItem('deco-annotation-color', '0x' + colorHex.toString(16));
   document.querySelectorAll('.color-swatch').forEach((sw) => {
     const swColor = parseInt(sw.dataset.color, 16);
     sw.classList.toggle('active', swColor === colorHex);
@@ -449,7 +449,7 @@ export function scrollToCard(imagePath) {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('refboard:scroll-to-card', (e) => {
+  window.addEventListener('deco:scroll-to-card', (e) => {
     if (e.detail?.path) scrollToCard(e.detail.path);
   });
 }

@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Viewport, Pan/Zoom, Grid, Culling, Minimap
+// Deco 2.0 — Viewport, Pan/Zoom, Grid, Culling, Minimap
 
 import { Assets, Sprite, Graphics } from 'pixi.js';
 import { state, THEME, CARD_PADDING, TEXTURE_UNLOAD_PAD, MINIMAP } from './state.js';

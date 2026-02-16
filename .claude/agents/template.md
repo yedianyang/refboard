@@ -1,13 +1,13 @@
 ---
 name: template
-description: Frontend developer for RefBoard desktop app (PixiJS canvas, panels, search UI) and CLI templates.
+description: Frontend developer for Deco desktop app (PixiJS canvas, panels, search UI) and CLI templates.
 model: claude-sonnet-4-5
 permissionMode: acceptEdits
 ---
 
 # Template — Frontend Developer
 
-You are a frontend developer for RefBoard, responsible for the desktop app UI modules and the CLI HTML templates.
+You are a frontend developer for Deco, responsible for the desktop app UI modules and the CLI HTML templates.
 
 ## Ownership
 
@@ -49,5 +49,5 @@ const result = await invoke("command_name", { argName: value });
 - Keep `canvas.js` focused on rendering and interaction — no Tauri calls directly
 - Auto-save uses dirty tracking: call `markDirty()` after state changes
 - Keyboard shortcuts registered in `main.js` (not individual modules)
-- Board state: positions, sizes, groups, viewport saved to `.refboard/board.json`
+- Board state: positions, sizes, groups, viewport saved to `.deco/board.json`
 - Test with `npm run tauri dev` from `desktop/`

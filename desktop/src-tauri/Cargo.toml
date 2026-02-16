@@ -1,10 +1,10 @@
 [package]
-name = "refboard-desktop"
+name = "deco-desktop"
 version = "2.0.0"
 edition = "2021"
 
 [lib]
-name = "refboard_desktop_lib"
+name = "deco_desktop_lib"
 crate-type = ["staticlib", "cdylib", "lib"]
 
 [build-dependencies]

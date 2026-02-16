@@ -1,4 +1,4 @@
-# RefBoard 2.0 User Guide
+# Deco 2.0 User Guide
 
 A native macOS desktop app for collecting, analyzing, and organizing visual references on an infinite canvas.
 
@@ -60,7 +60,7 @@ The release build outputs to `desktop/src-tauri/target/release/bundle/`. The `.d
 
 1. Enter the full path to a folder containing images in the path field at the top of the window.
 2. Click **Open**.
-3. RefBoard scans the folder recursively for image files (PNG, JPEG, WebP, GIF, SVG, BMP, AVIF, TIFF) and displays them as cards on the canvas.
+3. Deco scans the folder recursively for image files (PNG, JPEG, WebP, GIF, SVG, BMP, AVIF, TIFF) and displays them as cards on the canvas.
 
 If a saved board state exists (from a previous session), card positions, groups, and the viewport are automatically restored.
 
@@ -75,14 +75,14 @@ Create a new project from the Home screen:
 1. Click **+ New Project** (or press **Cmd+N** while on the Home screen).
 2. A dialog appears with a **Project Name** field and a path preview.
 3. Enter a name (e.g., "Art Deco Power").
-4. The path preview updates in real time: `~/Documents/RefBoard/Art Deco Power/`.
+4. The path preview updates in real time: `~/Documents/Deco/Art Deco Power/`.
 5. Click **Create** (or press **Enter**).
 
-RefBoard creates the project directory structure:
+Deco creates the project directory structure:
 
 ```
-~/Documents/RefBoard/Art Deco Power/
-├── refboard.json         # Project config (version, name, created)
+~/Documents/Deco/Art Deco Power/
+├── deco.json         # Project config (version, name, created)
 ├── metadata.json         # Image metadata
 ├── board.json            # Canvas state (viewport, items, groups)
 ├── images/               # Image files
@@ -131,7 +131,7 @@ Compression settings can be adjusted in the app (stored in localStorage).
 
 ## Canvas Navigation
 
-RefBoard uses an infinite canvas similar to Figma, Miro, and PureRef.
+Deco uses an infinite canvas similar to Figma, Miro, and PureRef.
 
 ### Pan
 
@@ -228,7 +228,7 @@ Press **Cmd+Shift+T** to tidy up cards into an even grid layout.
 
 ## AI Analysis
 
-RefBoard can analyze images using AI vision models to generate:
+Deco can analyze images using AI vision models to generate:
 - **Description** -- a natural language description of the image
 - **Tags** -- categorization labels (e.g., "art-deco", "sculpture", "bronze")
 - **Style** -- visual style keywords (e.g., "geometric", "minimalist")
@@ -290,7 +290,7 @@ Press **Escape** or clear the search field to remove the filter.
 
 1. Select an image card on the canvas.
 2. In the metadata panel, click **Find Similar**.
-3. RefBoard searches the project for images with similar metadata.
+3. Deco searches the project for images with similar metadata.
 4. Results appear ranked by similarity score. Click a result to navigate to it on the canvas.
 
 Similarity is computed using:
@@ -325,7 +325,7 @@ Downloaded images are saved to the project's `images/` directory with deduplicat
 
 1. Select an analyzed image card (one that has been through AI analysis).
 2. Click **Find Online** in the metadata panel (or press **Cmd+Shift+F**).
-3. RefBoard generates search queries from the image's description, tags, style, and mood.
+3. Deco generates search queries from the image's description, tags, style, and mood.
 4. Web results appear in the collection panel.
 
 ---
@@ -334,12 +334,12 @@ Downloaded images are saved to the project's `images/` directory with deduplicat
 
 ### Auto-Save
 
-RefBoard automatically saves the board state every 30 seconds when changes are detected. The state includes:
+Deco automatically saves the board state every 30 seconds when changes are detected. The state includes:
 - Card positions and sizes
 - Groups (names and members)
 - Viewport position and zoom level
 
-The state is saved to `{project}/.refboard/board.json`.
+The state is saved to `{project}/.deco/board.json`.
 
 ### Manual Save
 
@@ -384,7 +384,7 @@ Open Settings via the gear icon in the toolbar. Settings are organized in two se
 |-------|-------------|
 | Brave Search API Key | Your Brave Search subscription token |
 
-Settings are stored in `~/.refboard/config.json`.
+Settings are stored in `~/.deco/config.json`.
 
 ---
 
@@ -445,20 +445,20 @@ Settings are stored in `~/.refboard/config.json`.
 
 ### Default Storage Location
 
-New projects are created under `~/Documents/RefBoard/` by default.
+New projects are created under `~/Documents/Deco/` by default.
 
 ### Project Data
 
-Each project stores its data in the project directory and a `.refboard/` subdirectory:
+Each project stores its data in the project directory and a `.deco/` subdirectory:
 
 ```
-~/Documents/RefBoard/My Project/
-├── refboard.json           # Project config (version, name, created date)
+~/Documents/Deco/My Project/
+├── deco.json           # Project config (version, name, created date)
 ├── metadata.json           # Image metadata (descriptions, tags, etc.)
 ├── board.json              # Canvas state (viewport, items, groups, annotations)
 ├── images/                 # Image files (originals + imported)
 ├── thumbnails/             # Generated thumbnails (WebP, 256px)
-├── .refboard/
+├── .deco/
 │   ├── search.db           # SQLite database (FTS5 index, metadata, CLIP embeddings)
 │   └── board.json          # Saved board state (positions, groups, viewport)
 ├── export.json             # Metadata export (when exported)
@@ -468,7 +468,7 @@ Each project stores its data in the project directory and a `.refboard/` subdire
 ### Global Settings
 
 ```
-~/.refboard/
+~/.deco/
 ├── config.json             # AI provider + web collection settings
 └── recent.json             # Recent projects list (max 20)
 ```
@@ -506,7 +506,7 @@ The SQLite database (`search.db`) contains:
 
 **Board layout not restored**
 - The board state is only saved when changes are detected. A fresh project with no interactions has no saved state
-- Check that `{project}/.refboard/board.json` exists
+- Check that `{project}/.deco/board.json` exists
 
 **App window is slow or laggy**
 - Close other GPU-intensive applications

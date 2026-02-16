@@ -1,4 +1,4 @@
-//! Unified storage backend for RefBoard 2.0.
+//! Unified storage backend for Deco 2.0.
 //!
 //! Provides a `StorageProvider` trait that abstracts all persistence:
 //! - Project metadata and configuration
@@ -24,7 +24,7 @@ pub use types::{AppConfig, RecentProject};
 /// Type alias for the storage provider used throughout the app.
 pub type Storage = Arc<dyn StorageProvider>;
 
-/// Trait abstracting all RefBoard persistence operations.
+/// Trait abstracting all Deco persistence operations.
 ///
 /// All methods are async to support both local (SQLite/JSON) and future
 /// cloud (HTTP/PostgreSQL) backends. The local implementation uses
@@ -163,7 +163,7 @@ pub trait StorageProvider: Send + Sync {
     /// Get the HTTP API port from config.
     async fn get_api_port(&self) -> u16;
 
-    /// Scan a folder for RefBoard projects (subdirectories with refboard.json, metadata.json, or .refboard/).
+    /// Scan a folder for Deco projects (subdirectories with deco.json, metadata.json, or .deco/).
     async fn scan_projects_folder(
         &self,
         folder: &str,

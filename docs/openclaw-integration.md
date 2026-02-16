@@ -1,10 +1,10 @@
 # OpenClaw Gateway Integration Guide
 
-> RefBoard <-> OpenClaw Gateway API 对接文档
+> Deco <-> OpenClaw Gateway API 对接文档
 
 ## 1. 概述
 
-OpenClaw 是一个自托管的个人 AI 助手平台。其 Gateway 进程运行在本地（默认端口 **18789**），通过 WebSocket 和 HTTP 复用端口。它暴露了 **OpenAI 兼容的 `/v1/chat/completions` HTTP 端点**，可供 RefBoard 等外部应用调用。
+OpenClaw 是一个自托管的个人 AI 助手平台。其 Gateway 进程运行在本地（默认端口 **18789**），通过 WebSocket 和 HTTP 复用端口。它暴露了 **OpenAI 兼容的 `/v1/chat/completions` HTTP 端点**，可供 Deco 等外部应用调用。
 
 本地安装确认运行在 `http://127.0.0.1:18789`，配置文件位于 `~/.openclaw/openclaw.json`。
 
@@ -271,13 +271,13 @@ class OpenClawAdapter extends BaseAdapter {
 
 ---
 
-## 9. RefBoard 接入清单
+## 9. Deco 接入清单
 
 使用 OpenClaw 前的检查项：
 
 1. **启用 HTTP 端点** — 添加 `gateway.http.endpoints.chatCompletions.enabled: true` 到 `~/.openclaw/openclaw.json`
 2. **确保 Gateway 运行** — OpenClaw macOS app 或 `openclaw gateway` 必须启动
-3. **配置 Gateway token** — 通过 `refboard.json`、`OPENCLAW_GATEWAY_TOKEN` 环境变量、或自动从 `~/.openclaw/openclaw.json` 读取
+3. **配置 Gateway token** — 通过 `deco.json`、`OPENCLAW_GATEWAY_TOKEN` 环境变量、或自动从 `~/.openclaw/openclaw.json` 读取
 4. **确保 vision 能力** — 默认 agent 使用支持 vision 的模型（如 `anthropic/claude-sonnet-4`）
 5. **不使用 OpenClaw 做 embeddings** — 需要 embeddings 时使用单独的 provider
 

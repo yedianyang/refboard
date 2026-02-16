@@ -1,4 +1,4 @@
-# RefBoard Team
+# Deco Team
 
 > 团队协作看板 — Agents 在此沟通
 
@@ -15,7 +15,7 @@
 | **M4 Web Collection** | ✅ Done | 8993dc4 | Brave Search + AI 查询 + 下载管理 |
 | **M5 Polish & Ship** | ✅ Done | - | Auto-save、快捷键、Export、DMG 打包 |
 
-**代码位置:** `~/Projects/refboard/desktop/`
+**代码位置:** `~/Projects/deco/desktop/`
 
 ---
 
@@ -221,15 +221,15 @@ TODO.md 已更新。@Tester 可以开始验证这些功能。
 [02:14] @Tester: CLI 全面测试完成，**CLI 完全不可用**，发现 2 个 Critical Bug + 2 个 Minor Issue。详见 `docs/test-report.md`
 
 ### BUG-001 (CRITICAL) @Generator
-`bin/refboard.js:7` 导入了 `savePositions` 和 `loadPositions`，但 `lib/generator.js` 没有导出这两个函数。
+`bin/deco.js:7` 导入了 `savePositions` 和 `loadPositions`，但 `lib/generator.js` 没有导出这两个函数。
 **所有 17 个命令全部无法运行**，Node 报 SyntaxError 拒绝加载模块。
 ```
 SyntaxError: The requested module '../lib/generator.js' does not provide an export named 'loadPositions'
 ```
-复现: `node bin/refboard.js help`
+复现: `node bin/deco.js help`
 
 ### BUG-002 (CRITICAL) @Generator
-`bin/refboard.js:31-37` 注册了 7 个命令处理函数，但这些函数从未定义：
+`bin/deco.js:31-37` 注册了 7 个命令处理函数，但这些函数从未定义：
 `analyzeCommand`, `autoTagCommand`, `searchCommand`, `askCommand`, `configCommand`, `agentCommand`, `savePositionsCommand`
 即使 BUG-001 修复后，这 7 个命令也会 ReferenceError 崩溃。
 
@@ -275,25 +275,25 @@ TODO.md 已更新。@Tester 可以验证信息面板和主题切换功能。
 
 **BUG 修复：**
 - **BUG-001 已修复** — `lib/generator.js` 新增并导出 `savePositions()` 和 `loadPositions()` 函数
-- **BUG-002 已修复** — `bin/refboard.js` 实现了全部 7 个缺失的命令函数
+- **BUG-002 已修复** — `bin/deco.js` 实现了全部 7 个缺失的命令函数
 
 **已完成任务：**
 
 1. **拖拽位置持久化 (P0)** — 完整的位置保存链路：
    - `savePositions(inputDir, positionsById)` — 将 card ID 映射回文件名，写入 metadata.json
    - `loadPositions(inputDir)` — 从 metadata.json 读取已保存的位置
-   - CLI `refboard save-positions --file positions.json` — 从文件或 stdin 读取位置数据
+   - CLI `deco save-positions --file positions.json` — 从文件或 stdin 读取位置数据
    - 模板新增 **⬇ Save 按钮** + `S` 键盘快捷键 — 导出 positions.json 文件
    - 工作流：模板导出 → CLI 写入 metadata.json → 下次 build 读取
 
 2. **AI Provider 统一接口 (P0)** — CLI 命令全部实现：
-   - `refboard analyze <image>` — 通过 AI Provider 分析图片，返回描述+标签
-   - `refboard auto-tag [--all]` — 批量自动标签生成，跳过已有标签的图片
-   - `refboard search <query>` — 文本搜索 metadata（标题/艺术家/描述/标签）
-   - `refboard search --similar <img>` — 相似图片搜索框架（embedding-based）
-   - `refboard ask "question"` — 对 board 提问，AI 基于所有 items 上下文回答
-   - `refboard config [key] [value]` — 读写 refboard.json 配置（支持嵌套 key）
-   - `refboard agent add/layout/export` — 外部 agent 操作接口
+   - `deco analyze <image>` — 通过 AI Provider 分析图片，返回描述+标签
+   - `deco auto-tag [--all]` — 批量自动标签生成，跳过已有标签的图片
+   - `deco search <query>` — 文本搜索 metadata（标题/艺术家/描述/标签）
+   - `deco search --similar <img>` — 相似图片搜索框架（embedding-based）
+   - `deco ask "question"` — 对 board 提问，AI 基于所有 items 上下文回答
+   - `deco config [key] [value]` — 读写 deco.json 配置（支持嵌套 key）
+   - `deco agent add/layout/export` — 外部 agent 操作接口
 
 3. **公共 API 更新** — `index.js` 新增导出：
    - `savePositions`, `loadPositions` from generator
@@ -339,7 +339,7 @@ TODO.md 已更新。@Tester 请重新验证 — 所有 CLI 命令现在应该可
 4. **Miro 独特** — Mouse/Trackpad 模式切换(解决滚轮行为歧义)、Frame 区域导航
 5. **Figma 独特** — 智能辅助线(对齐+等距)、Alt距离测量、数字键透明度、Tidy Up
 
-**对 RefBoard 的建议：**
+**对 Deco 的建议：**
 - P0: Space+拖拽平移、滚轮缩放、框选、等比缩放、Undo/Redo、Tidy Up/Pack、智能对齐线
 - P1: Alt+拖拽复制、Minimap导航、灰度切换、数字键透明度、命令面板
 - P2: 非破坏裁剪、绘图标注、旋转、URL抓图、幻灯片模式
@@ -351,13 +351,13 @@ TODO.md Researcher 部分已全部更新为 ✅。
 @Designer @Template 建议看 research.md Section 5 的快捷键映射和交互建议。
 @Metro 研究任务完成，请查收！
 
-[14:52] @Metro: 🆕 新需求！ **`refboard serve` 命令**
+[14:52] @Metro: 🆕 新需求！ **`deco serve` 命令**
 
 **背景：** 用户希望打开/刷新 mood board 时自动用最新模板重新渲染，而不是手动 `build`。
 
 **需求：**
 ```bash
-refboard serve [--port 3000]
+deco serve [--port 3000]
 ```
 
 **功能：**
@@ -396,7 +396,7 @@ refboard serve [--port 3000]
 - 输出：`docs/tauri-guide.md`
 
 @Generator — 等 Researcher 完成后：
-- 在 `~/Projects/refboard-tauri-spike/` 初始化项目
+- 在 `~/Projects/deco-tauri-spike/` 初始化项目
 - 实现读取 metadata.json 的 Rust command
 - 前端调用并显示
 
@@ -417,11 +417,11 @@ refboard serve [--port 3000]
 
 [04:15] @Metro: 🔧 **AI Provider 双路径需求**
 
-RefBoard 的 AI 功能需要支持两种使用方式：
+Deco 的 AI 功能需要支持两种使用方式：
 
 **路径 1：OpenClaw Gateway 代理** (优先)
 ```
-RefBoard → OpenClaw Gateway (localhost:18789) → 任意模型
+Deco → OpenClaw Gateway (localhost:18789) → 任意模型
 ```
 - 用户不需要管理 API key
 - OpenClaw 统一代理所有 AI 调用
@@ -429,10 +429,10 @@ RefBoard → OpenClaw Gateway (localhost:18789) → 任意模型
 
 **路径 2：直连 API**
 ```
-RefBoard → OpenAI / Anthropic / MiniMax / Google
+Deco → OpenAI / Anthropic / MiniMax / Google
 ```
 - 用户自己配置 endpoint + API key
-- 适合独立使用 RefBoard（不装 OpenClaw）
+- 适合独立使用 Deco（不装 OpenClaw）
 - 当前实现基本可用，需要测试验证
 
 **@Generator 任务：**
@@ -452,7 +452,7 @@ RefBoard → OpenAI / Anthropic / MiniMax / Google
 复现：
 ```bash
 echo '{"file1.jpg": {"x": 100, "y": 100}, "file2.jpg": {"x": 200, "y": 200}}' > /tmp/pos.json
-refboard save-positions --file /tmp/pos.json
+deco save-positions --file /tmp/pos.json
 # 只有 file1 的位置被保存
 ```
 
@@ -521,7 +521,7 @@ Template 当前无剩余任务。@Metro 如有新需求随时分配
 3. **画布交互** — 鼠标滚轮缩放（光标为中心）、拖拽平移
 4. **自动布局** — `F` 键 Fit view、`T` 键 Tile 排列
 5. **图片拖入** — 从文件系统拖放图片到画布，自动创建卡片
-6. **视觉风格** — 与 RefBoard v1 一致：暗色系、圆角卡片、gold accent
+6. **视觉风格** — 与 Deco v1 一致：暗色系、圆角卡片、gold accent
 
 **验收标准对照：**
 - [x] PixiJS 能渲染图片 — 使用 Canvas 生成的 demo 纹理 + 支持拖入真实图片
@@ -583,7 +583,7 @@ Node 报错: `SyntaxError: Duplicate export of 'renderBoard'`
 
 **新功能：**
 
-8. **`refboard serve [--port 3000]`** — 本地开发服务器：
+8. **`deco serve [--port 3000]`** — 本地开发服务器：
    - `GET /` → 动态渲染 board（无需手动 build）
    - `/images/*` → 代理本地图片文件
    - SSE livereload — metadata/images 变化自动刷新
@@ -595,7 +595,7 @@ Node 报错: `SyntaxError: Duplicate export of 'renderBoard'`
 - `lib/generator.js` — savePositions 修复 + renderBoard 提取 + ISSUE-001 修复
 - `lib/ai-provider.js` — config 兼容 + openclaw auth + 连接错误处理
 - `lib/server.js` — 新建（HTTP 服务器 + SSE livereload）
-- `bin/refboard.js` — serve 命令 + BUG-004 修复 + help 更新
+- `bin/deco.js` — serve 命令 + BUG-004 修复 + help 更新
 
 TODO.md 已更新。@Tester 全部 bug 已修复，请重新验证。@Metro serve 命令可用，Tauri spike 等 Researcher 完成后开始。
 
@@ -674,7 +674,7 @@ TODO.md Researcher 部分已更新。
 **问题 3：储存逻辑重构** ⭐
 用户建议统一储存位置：
 ```
-~/Documents/RefBoard/          ← 默认储存位置（Settings 可改）
+~/Documents/Deco/          ← 默认储存位置（Settings 可改）
 ├── Art Deco Power/            ← 项目文件夹
 │   ├── metadata.json
 │   ├── images/
@@ -685,7 +685,7 @@ TODO.md Researcher 部分已更新。
 ```
 
 **新的项目流程：**
-1. 首次启动 → 设置默认储存位置（默认 ~/Documents/RefBoard/）
+1. 首次启动 → 设置默认储存位置（默认 ~/Documents/Deco/）
 2. 点 New Project → 输入项目名 → 自动创建子文件夹
 3. Home 页面显示所有项目卡片（缩略图 + 名称 + 日期）
 4. Settings 可修改默认储存位置
@@ -785,7 +785,7 @@ fn import_clipboard_image(data: Vec<u8>, mime_type: String, project: String) -> 
 
 ### HTTP API `/api/import` @Generator
 
-**用途：** OpenClaw 等外部工具实时添加图片到 RefBoard
+**用途：** OpenClaw 等外部工具实时添加图片到 Deco
 
 **接口设计：**
 ```
@@ -811,7 +811,7 @@ position: {x, y} (可选，放置位置)
 
 **OpenClaw 调用示例：**
 ```bash
-# 下载图片并添加到 RefBoard
+# 下载图片并添加到 Deco
 curl -o /tmp/art-deco.jpg "https://example.com/sculpture.jpg"
 curl -X POST http://localhost:1420/api/import \
   -F "file=@/tmp/art-deco.jpg" \
@@ -943,7 +943,7 @@ Home (主页) → Canvas (画布页)
 **技术方案：**
 - 前端：新增 `src/home.js`，条件渲染 Home vs Canvas
 - Rust：新增 `list_recent_projects()`, `create_project()`, `delete_project()` commands
-- 数据：`~/.refboard/recent.json` 存储最近打开的项目路径
+- 数据：`~/.deco/recent.json` 存储最近打开的项目路径
 
 **分工：**
 - @Designer — Home 页面 UI 设计
@@ -994,7 +994,7 @@ Home (主页) → Canvas (画布页)
 [14:30] @Docs: v2.0 Desktop 文档更新完成 (M0/M1/M2)
 
 **已完成：**
-1. **README.md** -- 新增 RefBoard 2.0 Desktop App 章节（Tauri 2.0 + PixiJS 8 + AI + Search），v1 CLI 部分保留并标记为 "RefBoard v1 (CLI)"
+1. **README.md** -- 新增 Deco 2.0 Desktop App 章节（Tauri 2.0 + PixiJS 8 + AI + Search），v1 CLI 部分保留并标记为 "Deco v1 (CLI)"
 2. **CHANGELOG.md** -- 新增 v2.0.0-alpha.0/1/2 版本记录（M0 Foundation, M1 AI Integration, M2 Search & Similarity），保留全部 v1 历史
 3. **docs/user-guide.md** -- 新建用户指南：安装、项目打开、画布导航、AI 分析、搜索、Tag 过滤、Find Similar、快捷键表
 4. **TEAM.md** -- M2 状态更新为 Done，Docs 状态更新
@@ -1036,7 +1036,7 @@ commits: `f892bb8`, `c143b10`
 4. 认证方式
 5. 速率限制
 6. 与直连 API 的优缺点对比
-7. RefBoard 集成建议（代码示例）
+7. Deco 集成建议（代码示例）
 
 **参考：** https://openrouter.ai/docs
 
@@ -1067,7 +1067,7 @@ Settings > LLM
 **功能需求：**
 1. 选择 Provider → 显示对应配置表单
 2. 预填默认值（如 OpenAI baseURL = https://api.openai.com/v1）
-3. Save → 保存到 `~/.refboard/config.json`
+3. Save → 保存到 `~/.deco/config.json`
 4. Test → 调用简单 API 验证连接
 5. 密码框切换显示/隐藏
 
@@ -1217,8 +1217,8 @@ Content-Type: multipart/form-data
 [02-15 13:20] @Metro: 📁 **参考图片绝对路径**
 
 ```
-/Users/metro/Projects/refboard/docs/reference/memoai-sidebar.jpg
-/Users/metro/Projects/refboard/docs/reference/memoai-settings.jpg
+/Users/metro/Projects/deco/docs/reference/memoai-sidebar.jpg
+/Users/metro/Projects/deco/docs/reference/memoai-settings.jpg
 ```
 
 @Designer 用 Read 工具查看这两张图片，按其风格设计 AI Vision 配置面板。
@@ -1263,7 +1263,7 @@ POST /api/delete
 - 清理所有 CLI 相关文件
 
 **涉及文件（预估）：**
-- `bin/refboard.js` — CLI 入口
+- `bin/deco.js` — CLI 入口
 - `lib/` — CLI 库代码
 - `index.js` — 如果是 CLI 导出
 - `package.json` — bin 字段、CLI 相关依赖
@@ -1401,7 +1401,7 @@ POST /api/delete
 
 ### 任务 2：HTTP API 文档 (OpenClaw 集成)
 
-**目的：** 让 OpenClaw 等外部工具能操作 RefBoard
+**目的：** 让 OpenClaw 等外部工具能操作 Deco
 
 **输出：** `docs/api-reference.md`（更新/重写）
 
@@ -1472,7 +1472,7 @@ curl -X POST http://localhost:1420/api/import \
 
 @Docs 在完成文档后，请思考并输出一份方案：
 
-**主题：如何让 OpenClaw 更好地参与 RefBoard 面板交互？**
+**主题：如何让 OpenClaw 更好地参与 Deco 面板交互？**
 
 **核心需求（当前阶段）：**
 
@@ -1508,7 +1508,7 @@ curl -X POST http://localhost:1420/api/import \
    | 获取状态 | GET /api/board | 当前画布全部状态 |
 
 3. **使用场景示例**
-   - 「把这张图加到 RefBoard」→ POST /api/import
+   - 「把这张图加到 Deco」→ POST /api/import
    - 「给所有图片打标签」→ POST /api/analyze-batch
    - 「把相似的图片分到一组」→ POST /api/group
    - 「这张图描述是 xxx」→ PATCH /api/item/:id
@@ -1699,27 +1699,27 @@ Jingxi 验收清单:
 
 **核心原则：HTTP API 有的功能，CLI 必须也有。**
 
-RefBoard 提供两个外部接口，功能必须 1:1 对等：
+Deco 提供两个外部接口，功能必须 1:1 对等：
 - **HTTP API** (`localhost:7890`) — 给 GUI、浏览器扩展、第三方 app 用
-- **CLI** (`refboard` 命令) — 给 LLM agent (OpenClaw)、脚本自动化、CI 用
+- **CLI** (`deco` 命令) — 给 LLM agent (OpenClaw)、脚本自动化、CI 用
 
 #### 功能对照表
 
 | 功能 | HTTP API | CLI | 状态 |
 |------|----------|-----|------|
-| 导入图片 | `POST /api/import` | `refboard import <path>` | ⬜ CLI 待建 |
-| 删除图片 | `POST /api/delete` | `refboard delete <id>` | ⬜ CLI 待建 |
-| 列出图片 | `GET /api/items` | `refboard list` | ⬜ CLI 待建 |
-| 图片详情 | `GET /api/item/:id` | `refboard info <id>` | ⬜ CLI 待建 |
-| 移动图片 | `POST /api/move` | `refboard move <id> --x 100 --y 200` | ⬜ CLI 待建 |
-| 更新元数据 | `PATCH /api/item/:id` | `refboard update <id> --tags "a,b"` | ⬜ CLI 待建 |
-| AI 分析 | `POST /api/analyze` | `refboard analyze <id> [--all]` | ⬜ CLI 待建 |
-| 搜索 | `GET /api/search` | `refboard search <query>` | ⬜ CLI 待建 |
-| CLIP 相似搜索 | `POST /api/similar` | `refboard similar <id> [--top 5]` | ⬜ CLI 待建 |
-| 语义搜索 | `POST /api/search-semantic` | `refboard search --semantic <query>` | ⬜ CLI 待建 |
-| CLIP 嵌入 | `POST /api/embed` | `refboard embed <id>` | ⬜ CLI 待建 |
-| 聚类 | `POST /api/cluster` | `refboard cluster [--k 5]` | ⬜ CLI 待建 |
-| 项目状态 | `GET /api/status` | `refboard status` | ⬜ CLI 待建 |
+| 导入图片 | `POST /api/import` | `deco import <path>` | ⬜ CLI 待建 |
+| 删除图片 | `POST /api/delete` | `deco delete <id>` | ⬜ CLI 待建 |
+| 列出图片 | `GET /api/items` | `deco list` | ⬜ CLI 待建 |
+| 图片详情 | `GET /api/item/:id` | `deco info <id>` | ⬜ CLI 待建 |
+| 移动图片 | `POST /api/move` | `deco move <id> --x 100 --y 200` | ⬜ CLI 待建 |
+| 更新元数据 | `PATCH /api/item/:id` | `deco update <id> --tags "a,b"` | ⬜ CLI 待建 |
+| AI 分析 | `POST /api/analyze` | `deco analyze <id> [--all]` | ⬜ CLI 待建 |
+| 搜索 | `GET /api/search` | `deco search <query>` | ⬜ CLI 待建 |
+| CLIP 相似搜索 | `POST /api/similar` | `deco similar <id> [--top 5]` | ⬜ CLI 待建 |
+| 语义搜索 | `POST /api/search-semantic` | `deco search --semantic <query>` | ⬜ CLI 待建 |
+| CLIP 嵌入 | `POST /api/embed` | `deco embed <id>` | ⬜ CLI 待建 |
+| 聚类 | `POST /api/cluster` | `deco cluster [--k 5]` | ⬜ CLI 待建 |
+| 项目状态 | `GET /api/status` | `deco status` | ⬜ CLI 待建 |
 
 #### 架构原则
 

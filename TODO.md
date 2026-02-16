@@ -1,4 +1,4 @@
-# RefBoard TODO
+# Deco TODO
 
 > 最后更新: 2026-02-16
 
@@ -38,7 +38,7 @@
 | ✅ | 相似图片 | CLIP embedding 相似度搜索 |
 | ✅ | Web 收集 | Brave Search 在线找图 + 下载到项目 |
 | ✅ | Undo/Redo | Cmd+Z / Cmd+Shift+Z |
-| ✅ | Auto-save | 定时保存画布状态到 .refboard/board.json |
+| ✅ | Auto-save | 定时保存画布状态到 .deco/board.json |
 | ✅ | 键盘快捷键 | 完整快捷键体系 (Cmd+S 保存, Del 删除, Cmd+D 复制等) |
 | ✅ | Export | 导出项目 metadata 为 JSON |
 | ✅ | 拖拽导入 | Finder 拖图片到画布，自动复制到 images/ |
@@ -90,7 +90,7 @@
 | 状态 | 任务 | 说明 |
 |------|------|------|
 | ✅ | 深色/浅色主题切换 | D 键切换，localStorage 持久化 |
-| ⬜ | 批量布局命令 | `refboard layout --grid/--cluster` (v1 CLI) |
+| ⬜ | 批量布局命令 | `deco layout --grid/--cluster` (v1 CLI) |
 | ✅ | 图片导入压缩 | 导入时自动压缩，保留透明图层 (alpha channel) |
 | ⬜ | DMG 打包修复 | `bundle_dmg.sh` 签名/打包流程 |
 
@@ -123,7 +123,7 @@
 
 **目标：** 提供一个设置界面，让用户配置用于图片分析的 AI Provider
 
-**入口：** Settings > AI Vision（或菜单栏 RefBoard > Settings > AI Vision）
+**入口：** Settings > AI Vision（或菜单栏 Deco > Settings > AI Vision）
 
 #### UI 结构
 
@@ -183,11 +183,11 @@
 - [ ] macOS 风格：磨砂玻璃背景、圆角、系统字体
 
 **后端 (Rust):**
-- [ ] `cmd_get_ai_config()` — 读取 `~/.refboard/config.json`
+- [ ] `cmd_get_ai_config()` — 读取 `~/.deco/config.json`
 - [ ] `cmd_save_ai_config(provider, api_key, model, base_url)` — 写入配置
 - [ ] `cmd_test_ai_vision(provider, api_key, model, base_url)` — 用内置测试图片调用 Vision API，返回描述
 
-**配置存储格式 (~/.refboard/config.json):**
+**配置存储格式 (~/.deco/config.json):**
 ```json
 {
   "ai": {
@@ -214,7 +214,7 @@
 
 - [ ] 点击 Settings 打开 AI Vision 配置面板
 - [ ] 选择 Provider 自动填充默认 Base URL 和推荐 Model
-- [ ] Save 成功保存配置到 ~/.refboard/config.json
+- [ ] Save 成功保存配置到 ~/.deco/config.json
 - [ ] Test 能正确调用 Vision API 并显示测试结果（成功/失败）
 - [ ] 配置保存后，分析图片功能使用新配置
 
@@ -485,7 +485,7 @@ POST /api/cluster
 **期望布局：**
 ```
 ┌──────────────────────────────────────────────────────┐
-│ [🏠] [≡]  │               RefBoard                   │
+│ [🏠] [≡]  │               Deco                   │
 │ Home  Toggle                                         │
 └──────────────────────────────────────────────────────┘
 ```
@@ -521,9 +521,9 @@ POST /api/cluster
 **架构：**
 ```
 HTTP API (api.rs)  ──→  共用 Rust 业务函数  ←──  CLI (cli.rs)
-  POST /api/import        import_images()           refboard import
-  POST /api/delete        delete_item()             refboard delete
-  GET  /api/list          list_items()              refboard list
+  POST /api/import        import_images()           deco import
+  POST /api/delete        delete_item()             deco delete
+  GET  /api/list          list_items()              deco list
   ...                     ...                       ...
 ```
 
@@ -531,19 +531,19 @@ HTTP API (api.rs)  ──→  共用 Rust 业务函数  ←──  CLI (cli.rs)
 
 | HTTP API | CLI 命令 | 共用函数 | 状态 |
 |----------|----------|----------|------|
-| `POST /api/import` | `refboard import <path>` | `import_images()` | ⬜ |
-| `POST /api/delete` | `refboard delete <id>` | `delete_item()` | ⬜ |
-| `GET /api/list` | `refboard list` | `list_items()` | ⬜ |
-| `GET /api/item/:id` | `refboard info <id>` | `get_item()` | ⬜ |
-| `POST /api/move` | `refboard move <id> <x> <y>` | `move_item()` | ⬜ |
-| `POST /api/update` | `refboard update <id> --tag ...` | `update_item()` | ⬜ |
-| `POST /api/analyze` | `refboard analyze <id>` | `analyze_image()` | ⬜ |
-| `GET /api/search` | `refboard search <query>` | `search_fts()` | ⬜ |
-| `POST /api/similar` | `refboard similar <id>` | `find_similar()` | ⬜ |
-| `POST /api/search-semantic` | `refboard semantic <query>` | `search_semantic()` | ⬜ |
-| `POST /api/embed` | `refboard embed <id>` | `generate_embedding()` | ⬜ |
-| `POST /api/cluster` | `refboard cluster [--n 5]` | `cluster_items()` | ⬜ |
-| `GET /api/status` | `refboard status` | `get_project_status()` | ⬜ |
+| `POST /api/import` | `deco import <path>` | `import_images()` | ⬜ |
+| `POST /api/delete` | `deco delete <id>` | `delete_item()` | ⬜ |
+| `GET /api/list` | `deco list` | `list_items()` | ⬜ |
+| `GET /api/item/:id` | `deco info <id>` | `get_item()` | ⬜ |
+| `POST /api/move` | `deco move <id> <x> <y>` | `move_item()` | ⬜ |
+| `POST /api/update` | `deco update <id> --tag ...` | `update_item()` | ⬜ |
+| `POST /api/analyze` | `deco analyze <id>` | `analyze_image()` | ⬜ |
+| `GET /api/search` | `deco search <query>` | `search_fts()` | ⬜ |
+| `POST /api/similar` | `deco similar <id>` | `find_similar()` | ⬜ |
+| `POST /api/search-semantic` | `deco semantic <query>` | `search_semantic()` | ⬜ |
+| `POST /api/embed` | `deco embed <id>` | `generate_embedding()` | ⬜ |
+| `POST /api/cluster` | `deco cluster [--n 5]` | `cluster_items()` | ⬜ |
+| `GET /api/status` | `deco status` | `get_project_status()` | ⬜ |
 
 **开发规则：**
 1. 新增 HTTP 端点时，必须同步添加 CLI 命令
@@ -562,7 +562,7 @@ HTTP API (api.rs)  ──→  共用 Rust 业务函数  ←──  CLI (cli.rs)
 
 ## v1 CLI 状态 (待删除)
 
-v1 CLI (`bin/refboard.js`) 功能完整，进入维护模式。
+v1 CLI (`bin/deco.js`) 功能完整，进入维护模式。
 
 | 状态 | 功能 |
 |------|------|

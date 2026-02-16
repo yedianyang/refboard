@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Keyboard Shortcuts, Context Menu, Undo/Redo, Card Operations
+// Deco 2.0 — Keyboard Shortcuts, Context Menu, Undo/Redo, Card Operations
 
 import { Graphics } from 'pixi.js';
 import { state, THEME, SHAPE_STROKE_WIDTH, ANNOTATION_TOOLS, MAX_UNDO } from './state.js';
@@ -131,7 +131,7 @@ export function setupKeyboard() {
 
     if (e.key === 'e' && meta && e.shiftKey) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('refboard:export-png'));
+      window.dispatchEvent(new CustomEvent('deco:export-png'));
       return;
     }
 
@@ -573,13 +573,13 @@ export function handleContextAction(action) {
     case 'distribute-h': distributeSelected('h'); break;
     case 'distribute-v': distributeSelected('v'); break;
     case 'export-png':
-      window.dispatchEvent(new CustomEvent('refboard:export-png'));
+      window.dispatchEvent(new CustomEvent('deco:export-png'));
       break;
     case 'analyze':
     case 'analyze-batch':
     case 'find-similar':
     case 'find-online':
-      window.dispatchEvent(new CustomEvent('refboard:context-action', { detail: { action, cards: Array.from(state.selection) } }));
+      window.dispatchEvent(new CustomEvent('deco:context-action', { detail: { action, cards: Array.from(state.selection) } }));
       break;
   }
 }

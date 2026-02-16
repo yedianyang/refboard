@@ -1,10 +1,10 @@
-# OpenClaw Integration with RefBoard
+# OpenClaw Integration with Deco
 
-This guide explains how OpenClaw and other external tools can send images to RefBoard projects via the HTTP API.
+This guide explains how OpenClaw and other external tools can send images to Deco projects via the HTTP API.
 
 ## Overview
 
-RefBoard runs a local HTTP API server that allows external applications to import images directly into specific project boards. This enables seamless workflows where you can discover reference images in OpenClaw and send them to any RefBoard project without manual file management.
+Deco runs a local HTTP API server that allows external applications to import images directly into specific project boards. This enables seamless workflows where you can discover reference images in OpenClaw and send them to any Deco project without manual file management.
 
 The API is accessible at `http://127.0.0.1:7890` by default and only accepts connections from localhost for security.
 
@@ -12,7 +12,7 @@ The API is accessible at `http://127.0.0.1:7890` by default and only accepts con
 
 ### GET /api/status
 
-Check if the RefBoard API server is running.
+Check if the Deco API server is running.
 
 **Request:**
 ```bash
@@ -30,7 +30,7 @@ curl http://127.0.0.1:7890/api/status
 
 ### POST /api/import
 
-Import an image into a RefBoard project board.
+Import an image into a Deco project board.
 
 **Request Format:**
 
@@ -51,7 +51,7 @@ Multipart form data with the following fields:
 {
   "id": "sunset.jpg",
   "filename": "sunset.jpg",
-  "path": "/Users/you/RefBoard/art-deco/images/sunset.jpg",
+  "path": "/Users/you/Deco/art-deco/images/sunset.jpg",
   "position": {"x": 100, "y": 200},
   "analysis": null
 }
@@ -59,7 +59,7 @@ Multipart form data with the following fields:
 
 ### DELETE /api/delete
 
-Delete an image from a RefBoard project board.
+Delete an image from a Deco project board.
 
 **Request Format:**
 
@@ -93,7 +93,7 @@ JSON body with the following fields:
 ```bash
 curl -X DELETE http://localhost:7890/api/delete \
   -H "Content-Type: application/json" \
-  -d '{"projectPath": "/Users/you/Documents/RefBoard/art-deco", "filename": "image.jpg"}'
+  -d '{"projectPath": "/Users/you/Documents/Deco/art-deco", "filename": "image.jpg"}'
 ```
 
 **Frontend Events:**
@@ -168,31 +168,31 @@ Emits `api:item-updated` event to frontend.
 
 ## Targeting Different Project Boards
 
-Each RefBoard project is a directory on disk containing an `images/` subdirectory and a `.refboard/` metadata folder.
+Each Deco project is a directory on disk containing an `images/` subdirectory and a `.deco/` metadata folder.
 
 ### Project Directory Structure
 
 ```
-~/Documents/RefBoard/
+~/Documents/Deco/
 ├── art-deco/
 │   ├── images/              # Images stored here
-│   └── .refboard/
+│   └── .deco/
 │       ├── search.db        # FTS5 index + metadata
 │       └── board.json       # Canvas state
 ├── cyberpunk/
 │   ├── images/
-│   └── .refboard/
+│   └── .deco/
 └── minimalism/
     ├── images/
-    └── .refboard/
+    └── .deco/
 ```
 
 ### How to Send Images to a Specific Board
 
 To import an image into a particular project, set the `project_path` field to that project's directory path. For example:
 
-- To import to the `art-deco` project: `project_path=/Users/you/Documents/RefBoard/art-deco`
-- To import to the `cyberpunk` project: `project_path=/Users/you/Documents/RefBoard/cyberpunk`
+- To import to the `art-deco` project: `project_path=/Users/you/Documents/Deco/art-deco`
+- To import to the `cyberpunk` project: `project_path=/Users/you/Documents/Deco/cyberpunk`
 
 The image will be saved to `{project_path}/images/` and automatically added to that project's canvas.
 
@@ -204,7 +204,7 @@ Import a local image file to the art-deco project:
 
 ```bash
 curl -X POST http://127.0.0.1:7890/api/import \
-  -F "project_path=/Users/you/Documents/RefBoard/art-deco" \
+  -F "project_path=/Users/you/Documents/Deco/art-deco" \
   -F "file=@/path/to/image.jpg"
 ```
 
@@ -214,7 +214,7 @@ Download an image from a URL and add it to the cyberpunk project:
 
 ```bash
 curl -X POST http://127.0.0.1:7890/api/import \
-  -F "project_path=/Users/you/Documents/RefBoard/cyberpunk" \
+  -F "project_path=/Users/you/Documents/Deco/cyberpunk" \
   -F "url=https://example.com/reference/building.jpg"
 ```
 
@@ -224,7 +224,7 @@ Add an image to a particular location on the canvas:
 
 ```bash
 curl -X POST http://127.0.0.1:7890/api/import \
-  -F "project_path=/Users/you/Documents/RefBoard/art-deco" \
+  -F "project_path=/Users/you/Documents/Deco/art-deco" \
   -F "file=@image.jpg" \
   -F 'position={"x": 500, "y": 300}'
 ```
@@ -235,7 +235,7 @@ Upload an image and automatically trigger AI vision analysis to generate tags an
 
 ```bash
 curl -X POST http://127.0.0.1:7890/api/import \
-  -F "project_path=/Users/you/Documents/RefBoard/art-deco" \
+  -F "project_path=/Users/you/Documents/Deco/art-deco" \
   -F "file=@image.jpg" \
   -F "analyze=true"
 ```
@@ -246,7 +246,7 @@ Download from URL, place at coordinates, and analyze:
 
 ```bash
 curl -X POST http://127.0.0.1:7890/api/import \
-  -F "project_path=/Users/you/Documents/RefBoard/art-deco" \
+  -F "project_path=/Users/you/Documents/Deco/art-deco" \
   -F "url=https://example.com/ref.png" \
   -F 'position={"x": 200, "y": 150}' \
   -F "analyze=true"
@@ -256,7 +256,7 @@ curl -X POST http://127.0.0.1:7890/api/import \
 
 ### API Port
 
-By default, the API runs on port `7890`. To use a different port, edit `~/.refboard/config.json`:
+By default, the API runs on port `7890`. To use a different port, edit `~/.deco/config.json`:
 
 ```json
 {
@@ -266,7 +266,7 @@ By default, the API runs on port `7890`. To use a different port, edit `~/.refbo
 }
 ```
 
-After changing the port, restart RefBoard for the change to take effect.
+After changing the port, restart Deco for the change to take effect.
 
 ### Security
 
@@ -277,23 +277,23 @@ The HTTP API only binds to `127.0.0.1` (localhost) and does not accept remote co
 
 ## OpenClaw Workflow
 
-Here's a typical workflow for using RefBoard with OpenClaw:
+Here's a typical workflow for using Deco with OpenClaw:
 
 1. **Browse and Discover**: Open OpenClaw and browse for reference images from various sources (web, design libraries, etc.)
 
-2. **Select Target Board**: When you find a reference image you want to save, choose which RefBoard project it belongs to from a dropdown or button menu
+2. **Select Target Board**: When you find a reference image you want to save, choose which Deco project it belongs to from a dropdown or button menu
 
-3. **Send to RefBoard**: OpenClaw calls the `/api/import` endpoint with:
+3. **Send to Deco**: OpenClaw calls the `/api/import` endpoint with:
    - `project_path` set to the chosen project directory
    - `url` or `file` with the image source
    - Optionally `analyze=true` to auto-tag the image
 
-4. **View in RefBoard**: The image appears on the canvas in real-time:
+4. **View in Deco**: The image appears on the canvas in real-time:
    - If you specified `position`, it's placed at those coordinates
-   - If `analyze=true`, RefBoard's AI generates tags, color palette, and style classification
+   - If `analyze=true`, Deco's AI generates tags, color palette, and style classification
    - The image is indexed in the FTS5 search database
 
-5. **Organize**: Use RefBoard's tools to:
+5. **Organize**: Use Deco's tools to:
    - Group related images
    - Filter by AI-generated tags
    - Search across all imported images
@@ -305,8 +305,8 @@ Here's a typical workflow for using RefBoard with OpenClaw:
 
 If you're building a tool like OpenClaw that needs to let users select projects, you can:
 
-1. Read the `~/.refboard/recent.json` file to list recently opened projects
-2. Let users browse `~/Documents/RefBoard/` (common default location)
+1. Read the `~/.deco/recent.json` file to list recently opened projects
+2. Let users browse `~/Documents/Deco/` (common default location)
 3. Allow manual path entry with validation via `GET /api/status`
 
 ### Error Handling
@@ -329,7 +329,7 @@ Error responses include a JSON body with details:
 
 ### Large File Handling
 
-The HTTP server can handle large images (tested up to several hundred MB), but RefBoard's UI may perform better with images under 10 MB per image. For batch imports of many large files, consider:
+The HTTP server can handle large images (tested up to several hundred MB), but Deco's UI may perform better with images under 10 MB per image. For batch imports of many large files, consider:
 
 1. Compressing images before uploading
 2. Importing sequentially rather than in parallel
@@ -341,7 +341,7 @@ When `analyze=true`, the AI analysis runs asynchronously. The import response re
 
 If you need to wait for analysis results, you can:
 1. Poll the project's search database via the SQLite file
-2. Connect to RefBoard's Tauri event stream (if building a native app)
+2. Connect to Deco's Tauri event stream (if building a native app)
 3. Check the board state JSON after a brief delay
 
 ## Supported Image Formats
@@ -370,9 +370,9 @@ For file uploads, the format is determined from:
 ## Troubleshooting
 
 **"Cannot connect to http://127.0.0.1:7890"**
-- RefBoard is not running. Start the desktop app first.
+- Deco is not running. Start the desktop app first.
 - Check if the port is in use: `lsof -i :7890`
-- Verify the port setting in `~/.refboard/config.json`
+- Verify the port setting in `~/.deco/config.json`
 
 **"Missing required field: project_path"**
 - Ensure the `project_path` field is included in the multipart request
@@ -380,7 +380,7 @@ For file uploads, the format is determined from:
 
 **"Import failed: No such file or directory"**
 - The `project_path` does not exist
-- The project directory must have been created in RefBoard at least once
+- The project directory must have been created in Deco at least once
 - Check that the path is correct and you have read/write permissions
 
 **"Download failed: HTTP 404"**
@@ -389,8 +389,8 @@ For file uploads, the format is determined from:
 
 **AI analysis not triggered**
 - Verify `analyze=true` was included in the request
-- Check that an AI provider is configured in RefBoard Settings
-- Review the RefBoard logs for API errors
+- Check that an AI provider is configured in Deco Settings
+- Review the Deco logs for API errors
 
 ## API Rate Limits
 
@@ -402,6 +402,6 @@ The HTTP API does not implement rate limiting, but it's designed for integration
 
 ## See Also
 
-- [RefBoard User Guide](../docs/user-guide.md)
-- [RefBoard API Reference](../docs/api.md)
-- [RefBoard Configuration](../README.md#configuration)
+- [Deco User Guide](../docs/user-guide.md)
+- [Deco API Reference](../docs/api.md)
+- [Deco Configuration](../README.md#configuration)

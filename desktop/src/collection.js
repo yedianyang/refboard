@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Web Collection
+// Deco 2.0 — Web Collection
 // Web search, image download, and "Find More Like" functionality
 // Wired to Rust backend via Tauri IPC: cmd_web_search, cmd_find_more_like,
 // cmd_download_web_image, cmd_get_web_config, cmd_set_web_config

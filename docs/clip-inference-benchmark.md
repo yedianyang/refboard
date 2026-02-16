@@ -1,4 +1,4 @@
-# CLIP Inference Options for RefBoard 2.0 (Apple Silicon)
+# CLIP Inference Options for Deco 2.0 (Apple Silicon)
 
 > Research date: 2026-02-14
 > Decision: **`ort` + `fastembed-rs`** (ONNX Runtime native Rust with CoreML execution provider)
@@ -7,7 +7,7 @@
 
 ## Context
 
-RefBoard 2.0 needs CLIP (Contrastive Language-Image Pre-training) to compute image embeddings for visual similarity search. The app is a Tauri 2.0 macOS desktop app targeting Apple Silicon. Zero-dependency distribution matters (open-source project).
+Deco 2.0 needs CLIP (Contrastive Language-Image Pre-training) to compute image embeddings for visual similarity search. The app is a Tauri 2.0 macOS desktop app targeting Apple Silicon. Zero-dependency distribution matters (open-source project).
 
 ---
 
@@ -119,7 +119,7 @@ Native Swift CoreML would give the best possible performance, but Tauri 2 [only 
 
 ## Decision
 
-**`ort` + `fastembed-rs`** selected for RefBoard 2.0 because:
+**`ort` + `fastembed-rs`** selected for Deco 2.0 because:
 
 1. **Best performance ceiling** — CoreML dispatches to Apple Neural Engine, the fastest inference path on Apple Silicon
 2. **Minimal integration effort** — `fastembed-rs` provides turnkey CLIP in ~10 lines of Rust with automatic model downloading

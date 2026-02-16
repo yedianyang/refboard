@@ -82,7 +82,7 @@ tools:
 ```javascript
 const item = await invoke('cmd_import_image', {
   path: '/tmp/photo.jpg',
-  project_path: '~/Documents/RefBoard/MyProject',
+  project_path: '~/Documents/Deco/MyProject',
   analyze: true
 });
 ```
@@ -100,7 +100,7 @@ const item = await invoke('cmd_import_image', {
 ```markdown
 ## Canvas Navigation
 
-RefBoard uses an infinite canvas. Navigate using:
+Deco uses an infinite canvas. Navigate using:
 
 | Action | Input |
 |--------|-------|

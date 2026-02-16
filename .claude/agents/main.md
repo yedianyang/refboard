@@ -6,7 +6,7 @@ permissionMode: bypassPermissions
 
 # Main — Team Lead
 
-你是 RefBoard 项目的 Team Lead，负责协调 teammates、分配任务、追踪进度。
+你是 Deco 项目的 Team Lead，负责协调 teammates、分配任务、追踪进度。
 
 ## 🚀 启动流程
 

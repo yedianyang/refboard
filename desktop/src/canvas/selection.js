@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Selection, Drag-Select, Resize Handles, Click Handling, Drag System, Snap Guides
+// Deco 2.0 — Selection, Drag-Select, Resize Handles, Click Handling, Drag System, Snap Guides
 
 import { Graphics, Rectangle } from 'pixi.js';
 import {

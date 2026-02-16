@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
-  "description": "Capability for the main RefBoard window",
+  "description": "Capability for the main Deco window",
   "windows": ["main"],
   "permissions": [
     "core:default",

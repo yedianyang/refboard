@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to RefBoard will be documented in this file.
+All notable changes to Deco will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -10,7 +10,7 @@ Bug fixes and performance improvements for the Home page and CLIP model loading.
 
 ### Fixed
 
-- **Create Project flow** -- Fixed command name mismatch (`cmd_create_project` → `create_project`) and missing `path` parameter. New projects now correctly create directory structure at `~/Documents/RefBoard/<name>/`
+- **Create Project flow** -- Fixed command name mismatch (`cmd_create_project` → `create_project`) and missing `path` parameter. New projects now correctly create directory structure at `~/Documents/Deco/<name>/`
 - **Empty project handling** -- `loadProject()` now returns `{ loaded: 0, total: 0 }` instead of `undefined` for empty projects, preventing the UI from getting stuck on "Scanning images..."
 - **Empty project UX** -- Shows helpful message "Empty project — drag images here or use Find Online (Cmd+Shift+F)" instead of hanging
 
@@ -28,12 +28,12 @@ Bug fixes and performance improvements for the Home page and CLIP model loading.
 
 ## [2.0.0-beta.0] - 2026-02-14
 
-RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and PixiJS 8.
+Deco 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and PixiJS 8.
 
 ### M5: Polish & Ship
 
 #### Added
-- **Auto-save** -- board state (card positions, groups, viewport) saved to `.refboard/board.json` every 30 seconds when changes are detected
+- **Auto-save** -- board state (card positions, groups, viewport) saved to `.deco/board.json` every 30 seconds when changes are detected
 - **Board state restore** -- reopening a project restores exact card positions, sizes, groups, and viewport
 - **Manual save** with `Cmd+S` keyboard shortcut
 - **Metadata export** -- Export button exports all image metadata with AI analysis data to a JSON file
@@ -80,7 +80,7 @@ RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and 
 - **Find Similar** action on any card -- embedding-based cosine similarity with tag-based Jaccard fallback
 - **Search results panel** with ranked thumbnails, click-to-navigate on canvas
 - **Canvas filtering** -- non-matching cards dim to 15% opacity when a search or tag filter is active
-- Per-project SQLite database at `{project}/.refboard/search.db`
+- Per-project SQLite database at `{project}/.deco/search.db`
 - Rust module `search.rs` with 6 Tauri commands and 6 unit tests
 - Frontend `search.js` module: debounced search bar (`Cmd+F`), tag sidebar toggle
 
@@ -113,15 +113,15 @@ RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and 
 ## [1.1.0] - 2026-02-14
 
 ### Added
-- **`refboard serve [--port]`** -- local dev server with SSE livereload, dynamic board rendering, and image proxy
+- **`deco serve [--port]`** -- local dev server with SSE livereload, dynamic board rendering, and image proxy
 - **AI Provider abstraction layer** (`lib/ai-provider.js`) with multi-provider support
-- **`refboard analyze <image>`** -- AI-powered image analysis (description + tags)
-- **`refboard auto-tag --all`** -- batch auto-tagging via AI
-- **`refboard search --similar <image>`** -- similar image search using embeddings
-- **`refboard ask "..."`** -- ask questions about your board using AI
-- **`refboard config`** -- manage AI provider and project configuration
-- **`refboard agent`** -- external agent interface for programmatic board operations
-- **`refboard save-positions`** -- persist card positions from canvas to metadata
+- **`deco analyze <image>`** -- AI-powered image analysis (description + tags)
+- **`deco auto-tag --all`** -- batch auto-tagging via AI
+- **`deco search --similar <image>`** -- similar image search using embeddings
+- **`deco ask "..."`** -- ask questions about your board using AI
+- **`deco config`** -- manage AI provider and project configuration
+- **`deco agent`** -- external agent interface for programmatic board operations
+- **`deco save-positions`** -- persist card positions from canvas to metadata
 
 ### Fixed
 - `build --json` output no longer includes log messages
@@ -133,10 +133,10 @@ RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and 
 ## [1.0.0] - 2026-02-13
 
 ### Added
-- **Dashboard / Home page** -- project browser with `refboard home` command
-- Scans directories for RefBoard projects
-- Recent projects tracking (`~/.refboard/recent.json`)
-- **`refboard status`** -- show project summary (item count, tags, last build)
+- **Dashboard / Home page** -- project browser with `deco home` command
+- Scans directories for Deco projects
+- Recent projects tracking (`~/.deco/recent.json`)
+- **`deco status`** -- show project summary (item count, tags, last build)
 - **`--json` flag** -- machine-readable JSON output for `build`, `list`, `status`, `meta`
 - **`--quiet` / `-q` flag** -- suppress decorative output for scripting
 - **`index.js` public API** -- library exports for programmatic use
@@ -160,7 +160,7 @@ RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and 
 ## [0.1.0] - 2026-02-12
 
 ### Added
-- Project structure -- `refboard init`, `add`, `build` commands
+- Project structure -- `deco init`, `add`, `build` commands
 - Image detection -- PNG, JPEG, GIF, WebP, BMP, SVG support
 - Base64 embedding -- `--embed` flag for self-contained HTML
 - Auto-layout -- grid-based card arrangement
@@ -169,4 +169,4 @@ RefBoard 2.0 Desktop App -- a native macOS application built with Tauri 2.0 and 
 ## [0.0.1] - 2026-02-12
 
 ### Added
-- Initial commit -- RefBoard visual reference board generator
+- Initial commit -- Deco visual reference board generator

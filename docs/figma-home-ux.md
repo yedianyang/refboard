@@ -1,6 +1,6 @@
 # Figma Homepage / File Browser UX Research
 
-> For RefBoard desktop app home page design reference
+> For Deco desktop app home page design reference
 > 2026-02-14
 
 ---
@@ -235,7 +235,7 @@ Design: center-aligned, 16px heading, 13px body, primary action button.
 
 ---
 
-## 9. Recommendations for RefBoard
+## 9. Recommendations for Deco
 
 ### Adopt from Figma
 
@@ -287,9 +287,9 @@ Design: center-aligned, 16px heading, 13px body, primary action button.
 
 ---
 
-## Comparison: Figma vs RefBoard
+## Comparison: Figma vs Deco
 
-| Feature | Figma | RefBoard |
+| Feature | Figma | Deco |
 |---------|-------|----------|
 | Hierarchy | Teams > Projects > Files | Recents > All Projects (flat) |
 | Card size | 240x180 thumbnail | 220x140 thumbnail |

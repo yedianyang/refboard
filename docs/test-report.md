@@ -1,4 +1,4 @@
-# RefBoard CLI Test Report (Round 4 - Comprehensive)
+# Deco CLI Test Report (Round 4 - Comprehensive)
 
 > Tester: Automated (Claude Code) | Date: 2026-02-14
 > Node: v22.22.0 | Platform: darwin (macOS Darwin 25.1.0)
@@ -43,27 +43,27 @@
 
 ### ISSUE-003: Empty project build crash (MEDIUM)
 
-**File:** `bin/refboard.js:197` → `lib/generator.js:223`
+**File:** `bin/deco.js:197` → `lib/generator.js:223`
 
 **Description:** Building a project with `metadata.json` but no actual image files throws an unhandled error with full Node.js stack trace.
 
 **Reproduction:**
 ```bash
 mkdir -p /tmp/empty-proj/images
-echo '{"name":"empty","title":"Empty","output":"board.html"}' > /tmp/empty-proj/refboard.json
+echo '{"name":"empty","title":"Empty","output":"board.html"}' > /tmp/empty-proj/deco.json
 echo '{"board":{"title":"Empty"},"items":[]}' > /tmp/empty-proj/metadata.json
-cd /tmp/empty-proj && refboard build
+cd /tmp/empty-proj && deco build
 ```
 
 **Actual output:**
 ```
-RefBoard build
+Deco build
   Project: empty
-file:///Users/metro/Projects/refboard/lib/generator.js:223
+file:///Users/metro/Projects/deco/lib/generator.js:223
     throw new Error('No images found in input directory');
           ^
 Error: No images found in input directory
-    at renderBoard (file:///Users/metro/Projects/refboard/lib/generator.js:223:11)
+    at renderBoard (file:///Users/metro/Projects/deco/lib/generator.js:223:11)
     ...
 ```
 
@@ -90,7 +90,7 @@ try {
 ```bash
 # Set a title containing a script tag
 echo '{"board":{"title":"Test"},"items":[{"file":"img.jpg","title":"</script><script>alert(1)</script>","tags":[]}]}' > metadata.json
-refboard build
+deco build
 # In the generated HTML, the </script> in the JSON terminates the script block
 ```
 
@@ -115,7 +115,7 @@ const itemsDataJson = JSON.stringify(items).replace(/<\//g, '<\\/');
 | # | Test | Status | Details |
 |---|------|--------|---------|
 | T01 | `help` | PASS | Shows all 19 commands, options, examples, project structure |
-| T02 | `init test-project` | PASS | Creates refboard.json, metadata.json, images/; title auto-generated |
+| T02 | `init test-project` | PASS | Creates deco.json, metadata.json, images/; title auto-generated |
 | T03 | `init` on existing project | PASS | "Project already exists" + exit 1 |
 | T04 | `add <img> --title --artist --tags` | PASS | Copies file, adds metadata entry with all fields |
 | T05 | `add` (no args) | PASS | Shows usage + exit 1 |
@@ -143,7 +143,7 @@ const itemsDataJson = JSON.stringify(items).replace(/<\//g, '<\\/');
 | T27 | `status` | PASS | Name, title, items, path, last build, tag distribution |
 | T28 | `status --json` | PASS | Structured JSON with all fields |
 | T29 | `status` from subdirectory | PASS | Finds parent project via `findProject()` |
-| T30 | `config` (show all) | PASS | Outputs full refboard.json |
+| T30 | `config` (show all) | PASS | Outputs full deco.json |
 | T31 | `config name` | PASS | Outputs `"art-deco-power"` |
 | T32 | `config ai.provider openai` | PASS | Sets nested key, creates intermediate objects |
 
@@ -177,7 +177,7 @@ const itemsDataJson = JSON.stringify(items).replace(/<\//g, '<\\/');
 | T51 | `save-positions` (empty {}) | PASS | No crash, clean success |
 | T52 | Legacy mode `-i <dir> -o <file>` | PASS | Generates board from non-project directory |
 | T53 | Unknown command | PASS | "Unknown command" + help + exit 1 |
-| T54 | Non-project directory | PASS | "Not in a RefBoard project" + exit 1 |
+| T54 | Non-project directory | PASS | "Not in a Deco project" + exit 1 |
 
 ---
 
@@ -190,7 +190,7 @@ const itemsDataJson = JSON.stringify(items).replace(/<\//g, '<\\/');
 | Base64 embedding | PASS | 6 `data:image` URLs in embedded build |
 | XSS escaping in card HTML | PASS | `<script>` → `&lt;script&gt;` in card content |
 | XSS in ITEMS_DATA JSON | **FAIL** | `</script>` in JSON breaks script block (ISSUE-004) |
-| Home URL | PASS | `file://~/.refboard/home.html` embedded |
+| Home URL | PASS | `file://~/.deco/home.html` embedded |
 | Board ID | PASS | MD5 hash generated from title |
 
 ---
@@ -228,8 +228,8 @@ The `positionalArgs()` function correctly skips option values (e.g., `--provider
 
 **Example:**
 ```bash
-refboard search --json "bronze"    # FAILS: --json eats "bronze"
-refboard search "bronze" --json    # WORKS: --json has no next arg
+deco search --json "bronze"    # FAILS: --json eats "bronze"
+deco search "bronze" --json    # WORKS: --json has no next arg
 ```
 
 **Affected commands:** Any using `positionalArgs()` with boolean flags: `search`, `ask`.

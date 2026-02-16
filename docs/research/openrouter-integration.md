@@ -1,4 +1,4 @@
-# OpenRouter Integration Research — RefBoard
+# OpenRouter Integration Research — Deco
 
 > Date: 2026-02-15
 > Researcher: Metro
@@ -7,7 +7,7 @@
 
 ## 1. Summary
 
-**OpenRouter** 是一个 AI 模型聚合 API 服务，提供统一的 OpenAI 兼容接口访问 300+ 模型。对于 RefBoard，这意味着**只需实现一个 adapter，即可访问所有主流 Vision 模型**。
+**OpenRouter** 是一个 AI 模型聚合 API 服务，提供统一的 OpenAI 兼容接口访问 300+ 模型。对于 Deco，这意味着**只需实现一个 adapter，即可访问所有主流 Vision 模型**。
 
 ---
 
@@ -96,7 +96,7 @@ export OPENROUTER_API_KEY="sk-or-..."
 
 ### 优点 ✅
 - **一个 adapter 搞定所有模型** — 极大简化代码
-- **OpenAI 格式** — RefBoard 已有 OpenAI adapter，改几行即可
+- **OpenAI 格式** — Deco 已有 OpenAI adapter，改几行即可
 - **灵活切换** — 用户可自由选择模型
 - **价格透明** — 和直连价格相同，无加价
 - **Fallback** — 自动故障转移
@@ -108,7 +108,7 @@ export OPENROUTER_API_KEY="sk-or-..."
 
 ---
 
-## 8. RefBoard 集成建议
+## 8. Deco 集成建议
 
 ### 方案 A：新增 OpenRouter Adapter（推荐）
 
@@ -136,7 +136,7 @@ class OpenRouterProvider extends OpenAIProvider {
 ### 方案 B：作为 OpenAI Adapter 的选项
 
 ```json
-// refboard.json
+// deco.json
 {
   "ai": {
     "provider": "openai",
@@ -187,7 +187,7 @@ class OpenRouterProvider extends OpenAIProvider {
 
 ## 10. 结论
 
-**OpenRouter 是 RefBoard 的理想选择：**
+**OpenRouter 是 Deco 的理想选择：**
 
 1. ✅ 无需为每个 provider 写 adapter
 2. ✅ 用户可自由选择 300+ 模型

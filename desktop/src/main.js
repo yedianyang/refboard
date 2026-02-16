@@ -1,4 +1,4 @@
-// RefBoard 2.0 — Main entry point
+// Deco 2.0 — Main entry point
 // Initializes the PixiJS canvas, AI panels, search, and wires up the UI shell
 
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -55,9 +55,9 @@ async function main() {
   /** Get compression settings from localStorage. */
   function getCompressionSettings() {
     return {
-      enabled: localStorage.getItem('refboard-compress') !== 'off',
-      quality: parseFloat(localStorage.getItem('refboard-compress-quality') || '0.82'),
-      maxDimension: parseInt(localStorage.getItem('refboard-compress-maxdim') || '2048', 10),
+      enabled: localStorage.getItem('deco-compress') !== 'off',
+      quality: parseFloat(localStorage.getItem('deco-compress-quality') || '0.82'),
+      maxDimension: parseInt(localStorage.getItem('deco-compress-maxdim') || '2048', 10),
     };
   }
 
@@ -383,7 +383,7 @@ async function main() {
   const appSidebar = document.getElementById('app-sidebar');
   if (sidebarToggleBtn && appSidebar) {
     // Restore sidebar state from localStorage
-    const sidebarHidden = localStorage.getItem('refboard-sidebar-hidden') === 'true';
+    const sidebarHidden = localStorage.getItem('deco-sidebar-hidden') === 'true';
     if (sidebarHidden) {
       appSidebar.classList.add('collapsed');
     } else {
@@ -392,7 +392,7 @@ async function main() {
     sidebarToggleBtn.addEventListener('click', () => {
       const isCollapsed = appSidebar.classList.toggle('collapsed');
       sidebarToggleBtn.classList.toggle('active', !isCollapsed);
-      localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
+      localStorage.setItem('deco-sidebar-hidden', isCollapsed);
     });
   }
 
@@ -439,7 +439,7 @@ async function main() {
       if (sidebar) {
         const isCollapsed = sidebar.classList.toggle('collapsed');
         if (toggleBtn) toggleBtn.classList.toggle('active', !isCollapsed);
-        localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
+        localStorage.setItem('deco-sidebar-hidden', isCollapsed);
       }
       return;
     }
@@ -516,7 +516,7 @@ async function main() {
   });
 
   // Canvas context menu actions (dispatched from canvas.js)
-  window.addEventListener('refboard:context-action', (e) => {
+  window.addEventListener('deco:context-action', (e) => {
     const { action, cards } = e.detail;
     if (action === 'analyze-batch') {
       const imageCards = cards.filter(c => !c.isText && !c.isShape);
@@ -536,7 +536,7 @@ async function main() {
   });
 
   // Export canvas as PNG (Cmd+Shift+E or context menu)
-  window.addEventListener('refboard:export-png', async () => {
+  window.addEventListener('deco:export-png', async () => {
     const statusText = document.getElementById('status-text');
     try {
       if (statusText) statusText.textContent = 'Exporting...';
@@ -548,7 +548,7 @@ async function main() {
       const { save } = await import('@tauri-apps/plugin-dialog');
       const defaultName = currentProjectPath
         ? currentProjectPath.split('/').pop() + '-board.png'
-        : 'refboard-export.png';
+        : 'deco-export.png';
       const filePath = await save({
         title: 'Export Board as PNG',
         defaultPath: defaultName,
@@ -705,13 +705,13 @@ async function initHomeScreen(homeScreen, loading) {
       projectsFolder = appConfig.projectsFolder || null;
     } catch {}
 
-    // If no folder configured, use ~/Documents/RefBoard as default
+    // If no folder configured, use ~/Documents/Deco as default
     if (!projectsFolder) {
       try {
         const { documentDir } = await import('@tauri-apps/api/path');
         const docs = await documentDir();
         const sep = docs.endsWith('/') ? '' : '/';
-        projectsFolder = `${docs}${sep}RefBoard`;
+        projectsFolder = `${docs}${sep}Deco`;
       } catch {}
     }
 
@@ -963,7 +963,7 @@ async function initHomeScreen(homeScreen, loading) {
         newNameInput.value = '';
         newNameInput.focus();
       }
-      if (newPreview) newPreview.textContent = '~/Documents/RefBoard/';
+      if (newPreview) newPreview.textContent = '~/Documents/Deco/';
     });
 
     // Update path preview as user types
@@ -971,8 +971,8 @@ async function initHomeScreen(homeScreen, loading) {
       newNameInput.addEventListener('input', () => {
         const name = newNameInput.value.trim() || '';
         newPreview.textContent = name
-          ? `~/Documents/RefBoard/${name}/`
-          : '~/Documents/RefBoard/';
+          ? `~/Documents/Deco/${name}/`
+          : '~/Documents/Deco/';
       });
     }
 
@@ -1009,7 +1009,7 @@ async function initHomeScreen(homeScreen, loading) {
             throw new Error('Cannot determine Documents directory');
           }
           const sep = base.endsWith('/') ? '' : '/';
-          const path = `${base}${sep}RefBoard/${name}`;
+          const path = `${base}${sep}Deco/${name}`;
           const result = await invoke('create_project', { name, path });
           openProject(result.path, loading);
         } catch (err) {

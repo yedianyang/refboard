@@ -1,6 +1,6 @@
 # PixiJS 8 + Tauri 2.0 Integration Guide
 
-A practical, code-heavy reference for building RefBoard 2.0's infinite canvas. Covers PixiJS 8 API, Tauri integration, pan/zoom/drag interactions, and performance patterns for 500+ image boards.
+A practical, code-heavy reference for building Deco 2.0's infinite canvas. Covers PixiJS 8 API, Tauri integration, pan/zoom/drag interactions, and performance patterns for 500+ image boards.
 
 ---
 
@@ -119,7 +119,7 @@ card.addChild(sprite);
 ```javascript
 import { Sprite, Assets, Texture } from 'pixi.js';
 
-// Pattern 1: Load + create (most common for RefBoard)
+// Pattern 1: Load + create (most common for Deco)
 const texture = await Assets.load(imageUrl);
 const sprite = new Sprite(texture);
 
@@ -567,7 +567,7 @@ window.addEventListener('resize', () => {
 
 ### Approach B: Custom Pan/Zoom (Full Control)
 
-For RefBoard, a custom implementation gives better control over interaction modes (select vs. pan) and integration with the card drag system.
+For Deco, a custom implementation gives better control over interaction modes (select vs. pan) and integration with the card drag system.
 
 ```javascript
 import { Container } from 'pixi.js';
@@ -1553,7 +1553,7 @@ main().catch(console.error);
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RefBoard</title>
+  <title>Deco</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; }

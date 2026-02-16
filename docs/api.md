@@ -1,6 +1,6 @@
-# RefBoard 2.0 API Reference
+# Deco 2.0 API Reference
 
-This document covers the Rust backend IPC commands and Tauri events used by the RefBoard 2.0 desktop app.
+This document covers the Rust backend IPC commands and Tauri events used by the Deco 2.0 desktop app.
 
 All commands are invoked from the frontend via `invoke()` from `@tauri-apps/api/core`.
 
@@ -92,7 +92,7 @@ Create a new project with directory structure.
 const info = await invoke('create_project', { name: 'My Project', path: '/path/to/new' });
 ```
 
-Creates: `images/`, `thumbnails/`, `refboard.json`, `metadata.json`, `board.json`. Adds to recent projects list.
+Creates: `images/`, `thumbnails/`, `deco.json`, `metadata.json`, `board.json`. Adds to recent projects list.
 
 **Parameters:**
 
@@ -107,7 +107,7 @@ Creates: `images/`, `thumbnails/`, `refboard.json`, `metadata.json`, `board.json
 
 ### `list_projects`
 
-List recent projects from `~/.refboard/recent.json`.
+List recent projects from `~/.deco/recent.json`.
 
 ```js
 const projects = await invoke('list_projects');
@@ -162,7 +162,7 @@ const config = await invoke('get_ai_config');
 
 **Returns:** `AiProviderConfig`
 
-Reads from `~/.refboard/config.json`.
+Reads from `~/.deco/config.json`.
 
 ---
 
@@ -207,7 +207,7 @@ const available = await invoke('check_ollama');
 
 Source: `desktop/src-tauri/src/search.rs`
 
-Per-project SQLite database stored at `{project}/.refboard/search.db`.
+Per-project SQLite database stored at `{project}/.deco/search.db`.
 
 ### `cmd_index_project`
 
@@ -475,7 +475,7 @@ Source: `desktop/src-tauri/src/lib.rs`
 
 ### `save_board_state`
 
-Save board state (card positions, groups, viewport) to `.refboard/board.json`.
+Save board state (card positions, groups, viewport) to `.deco/board.json`.
 
 ```js
 await invoke('save_board_state', {
@@ -506,7 +506,7 @@ await invoke('save_board_state', {
 
 ### `load_board_state`
 
-Load saved board state from `.refboard/board.json`.
+Load saved board state from `.deco/board.json`.
 
 ```js
 const state = await invoke('load_board_state', { projectPath: '/path/to/project' });

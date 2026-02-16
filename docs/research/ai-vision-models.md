@@ -1,7 +1,7 @@
 # AI Vision Models 调研报告
 
 > 更新日期: 2026-02-16
-> 调研目的: 为 RefBoard AI Vision 功能选型，对比各 Provider 的图片分析能力、价格、API 兼容性
+> 调研目的: 为 Deco AI Vision 功能选型，对比各 Provider 的图片分析能力、价格、API 兼容性
 
 ## 模型对比表
 
@@ -43,7 +43,7 @@
   - Low detail: 固定 85 tokens（512x512 缩略图）
   - High detail: 按 32x32 patch 计算，1024x1024 约 765 tokens
 - **限制:** 付费即可用，无免费额度；rate limit 按 tier 递增
-- **RefBoard 现状:** **已实现** (`AiProviderKind::Openai`)
+- **Deco 现状:** **已实现** (`AiProviderKind::Openai`)
 
 **定价详情 (USD/1M tokens):**
 
@@ -53,7 +53,7 @@
 | gpt-4o-mini | $0.15 | $0.60 | 128K |
 | gpt-4-turbo | $10.00 | $30.00 | 128K (legacy) |
 
-**推荐模型:** `gpt-4o-mini` — 性价比最高，质量足够 RefBoard 打标签用途。
+**推荐模型:** `gpt-4o-mini` — 性价比最高，质量足够 Deco 打标签用途。
 
 ---
 
@@ -65,7 +65,7 @@
 - **请求格式:** `messages[].content[]` 数组，包含 `{type: "image", source: {type: "base64", ...}}` 和 `{type: "text"}`
 - **图片 Token 计算:** `tokens = (width * height) / 750`，1024x1024 约 1400 tokens
 - **限制:** 最多 100 张图/请求（API），20 张/请求（claude.ai）
-- **RefBoard 现状:** **已实现** (`AiProviderKind::Anthropic`)
+- **Deco 现状:** **已实现** (`AiProviderKind::Anthropic`)
 
 **定价详情 (USD/1M tokens):**
 
@@ -88,7 +88,7 @@
 - **图片传输:** base64 data URI + URL
 - **图片 Token 计算:** 每张图约 258 tokens（标准尺寸）
 - **限制:** inline 数据限制 20MB/请求；免费额度极其慷慨
-- **RefBoard 集成:** 可复用 OpenAI provider，仅改 `baseUrl` + `apiKey`
+- **Deco 集成:** 可复用 OpenAI provider，仅改 `baseUrl` + `apiKey`
 
 **定价详情 (USD/1M tokens):**
 
@@ -111,7 +111,7 @@
 - **图片传输:** base64 data URI + URL
 - **中文能力:** 原生中文模型，中文输出最自然
 - **限制:** 需充值激活（最低 $1）；图片需 URL 或 base64
-- **RefBoard 集成:** 可复用 OpenAI provider，改 `baseUrl`
+- **Deco 集成:** 可复用 OpenAI provider，改 `baseUrl`
 
 **定价详情 (USD/1M tokens):**
 
@@ -134,7 +134,7 @@
 - **图片传输:** base64 data URI + URL
 - **中文能力:** 原生中文模型，中文理解顶尖
 - **限制:** 国际版 1M 免费 tokens（90 天内）；国内版价格更低 70-85%
-- **RefBoard 集成:** 可复用 OpenAI provider，改 `baseUrl`
+- **Deco 集成:** 可复用 OpenAI provider，改 `baseUrl`
 
 **定价详情 — 国际版 (USD/1M tokens):**
 
@@ -158,7 +158,7 @@
 - **图片传输:** base64 data URI
 - **视觉支持:** DeepSeek V3 支持视觉输入（2026 年更新）；Janus Pro 7B 开源但需自部署
 - **限制:** 官方 API 视觉支持有限；Janus Pro 主要通过 DeepInfra 等第三方托管
-- **RefBoard 集成:** 可复用 OpenAI provider，但视觉支持需验证
+- **Deco 集成:** 可复用 OpenAI provider，但视觉支持需验证
 
 **定价详情 (USD/1M tokens):**
 
@@ -180,7 +180,7 @@
 - **图片传输:** base64 data URI
 - **特色:** 200+ 开源模型聚合平台，支持 Llama Vision、Qwen-VL 等
 - **免费额度:** Llama 3.2 11B Vision 免费版可用
-- **RefBoard 集成:** 可复用 OpenAI provider，改 `baseUrl`
+- **Deco 集成:** 可复用 OpenAI provider，改 `baseUrl`
 
 **定价详情 (USD/1M tokens):**
 
@@ -202,7 +202,7 @@
 - **特色:** 极速推理（LPU 加速），延迟极低
 - **限制:** 单请求最多 5 张图；base64 最大 4MB；图片最大 33MP
 - **免费额度:** 有免费 tier（低速率限制）
-- **RefBoard 集成:** 可复用 OpenAI provider，改 `baseUrl`
+- **Deco 集成:** 可复用 OpenAI provider，改 `baseUrl`
 
 **定价详情 (USD/1M tokens):**
 
@@ -221,10 +221,10 @@
 - **认证:** `Authorization: Bearer sk-or-xxx`
 - **Base URL:** `https://openrouter.ai/api/v1`
 - **特色:** 一个 API Key 访问所有模型；透传原价不加价；自动路由和 fallback
-- **RefBoard 集成:** 可复用 OpenAI provider，改 `baseUrl`。**最灵活的集成方式。**
-- **RefBoard 已有测试:** `ai.rs` 中有单元测试验证 OpenRouter endpoint 配置
+- **Deco 集成:** 可复用 OpenAI provider，改 `baseUrl`。**最灵活的集成方式。**
+- **Deco 已有测试:** `ai.rs` 中有单元测试验证 OpenRouter endpoint 配置
 
-**使用方式:** 用户在 RefBoard 选择 `openai` provider，填入 OpenRouter 的 API key 和 base URL，即可使用任何模型。例如：
+**使用方式:** 用户在 Deco 选择 `openai` provider，填入 OpenRouter 的 API key 和 base URL，即可使用任何模型。例如：
 ```json
 {
   "provider": "openai",
@@ -244,7 +244,7 @@
 - **图片传输:** 纯 base64（不带 data: 前缀，不带 MIME type）
 - **可用模型:** llava, bakllava, moondream, llava-phi3, llava-llama3 等
 - **限制:** 需用户自行安装 Ollama + 下载模型；GPU 加速需 Metal (macOS)
-- **RefBoard 现状:** **已实现** (`AiProviderKind::Ollama`)
+- **Deco 现状:** **已实现** (`AiProviderKind::Ollama`)
 
 **模型对比:**
 
@@ -264,7 +264,7 @@
 ### 性价比最高: Google Gemini 2.0 Flash
 
 - **$0.18/千张**，且有 **1000 次/天免费额度**
-- OpenAI 兼容，RefBoard 零代码改动
+- OpenAI 兼容，Deco 零代码改动
 - 配置: `provider=openai`, `endpoint=https://generativelanguage.googleapis.com/v1beta/openai/`, `model=gemini-2.0-flash`
 
 ### 中文最好: Qwen VL Plus / Kimi K2.5
@@ -276,13 +276,13 @@
 ### 本地/免费首选: Ollama + LLaVA
 
 - 完全本地运行，零成本，无隐私顾虑
-- 已在 RefBoard 中实现
+- 已在 Deco 中实现
 - 缺点: 需要 GPU，速度慢，中文能力弱
 
-### RefBoard 默认推荐: GPT-4o-mini
+### Deco 默认推荐: GPT-4o-mini
 
 - **$0.27/千张**，质量-价格平衡最好
-- 已在 RefBoard 中实现，开箱即用
+- 已在 Deco 中实现，开箱即用
 - 中英文都不错，JSON 输出稳定
 - 用户群体最大，文档最多
 
@@ -292,7 +292,7 @@
 
 ### 可直接复用 OpenAI Provider (仅改 baseUrl)
 
-以下 provider 都使用 OpenAI 兼容 API，RefBoard 现有的 `OpenAIProvider` 代码无需修改，用户只需在设置中填写不同的 endpoint 和 API key：
+以下 provider 都使用 OpenAI 兼容 API，Deco 现有的 `OpenAIProvider` 代码无需修改，用户只需在设置中填写不同的 endpoint 和 API key：
 
 | Provider | Base URL | 备注 |
 |----------|----------|------|
@@ -318,7 +318,7 @@
 3. **连接测试按钮:** 已实现 (`cmd_test_ai_vision`)，保持现状即可
 4. **模型建议:** 根据选择的 provider 显示推荐模型列表
 
-### 推荐优先级 (RefBoard 默认)
+### 推荐优先级 (Deco 默认)
 
 1. **Ollama** — 检测到本地 Ollama 时自动推荐（免费、隐私）
 2. **GPT-4o-mini** — 已有 OpenAI key 的用户默认选择

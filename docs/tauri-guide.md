@@ -1020,15 +1020,15 @@ cargo create-tauri-app
 ```
 
 The wizard prompts:
-1. **Project name** -- e.g., `refboard-desktop`
-2. **Identifier** -- e.g., `com.refboard.app`
+1. **Project name** -- e.g., `deco-desktop`
+2. **Identifier** -- e.g., `com.deco.app`
 3. **Frontend language** -- TypeScript / JavaScript
 4. **Package manager** -- npm / pnpm / yarn / bun
 5. **UI template** -- Vanilla, React, Vue, Svelte, Solid, etc.
 6. **UI flavor** -- TypeScript or JavaScript
 
 ```bash
-cd refboard-desktop
+cd deco-desktop
 npm install
 ```
 

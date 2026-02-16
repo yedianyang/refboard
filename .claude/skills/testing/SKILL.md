@@ -1,4 +1,4 @@
-# Testing Skill — RefBoard
+# Testing Skill — Deco
 
 ## 测试环境配置
 
