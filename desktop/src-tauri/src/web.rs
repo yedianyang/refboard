@@ -408,6 +408,7 @@ pub async fn cmd_web_search(
     let config = load_web_config();
     let api_key = config
         .brave_api_key
+        .or_else(|| crate::keyring::get_secret(crate::keyring::BRAVE_API_KEY))
         .or_else(|| std::env::var("BRAVE_API_KEY").ok())
         .ok_or("No Brave Search API key configured. Set it in settings or BRAVE_API_KEY env var.")?;
 
@@ -443,6 +444,7 @@ pub async fn cmd_find_more_like(
     let config = load_web_config();
     let api_key = config
         .brave_api_key
+        .or_else(|| crate::keyring::get_secret(crate::keyring::BRAVE_API_KEY))
         .or_else(|| std::env::var("BRAVE_API_KEY").ok())
         .ok_or("No Brave Search API key. Set it in Settings > Web Collection.")?;
 
@@ -538,15 +540,38 @@ pub async fn cmd_download_web_image(
 }
 
 /// Get web collection configuration.
+/// Brave API key is hydrated from Keychain.
 #[tauri::command]
 pub fn cmd_get_web_config() -> Result<WebCollectionConfig, String> {
-    Ok(load_web_config())
+    let mut config = load_web_config();
+
+    if config.brave_api_key.is_none() {
+        config.brave_api_key = crate::keyring::get_secret(crate::keyring::BRAVE_API_KEY);
+    }
+    if config.brave_api_key.is_none() {
+        config.brave_api_key = std::env::var("BRAVE_API_KEY").ok();
+    }
+
+    Ok(config)
 }
 
 /// Save web collection configuration.
+/// Brave API key is stored in macOS Keychain, not in config.json.
 #[tauri::command]
 pub fn cmd_set_web_config(config: WebCollectionConfig) -> Result<(), String> {
-    save_web_config(&config)
+    // Store Brave key in Keychain
+    if let Some(ref key) = config.brave_api_key {
+        if !key.is_empty() {
+            crate::keyring::set_secret(crate::keyring::BRAVE_API_KEY, key)?;
+        }
+    } else {
+        let _ = crate::keyring::delete_secret(crate::keyring::BRAVE_API_KEY);
+    }
+
+    // Save config without the key
+    let mut sanitized = config;
+    sanitized.brave_api_key = None;
+    save_web_config(&sanitized)
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ mod ai;
 mod api;
 pub mod cli;
 mod embed;
+mod keyring;
 pub mod log;
 pub mod ops;
 mod search;
@@ -529,6 +530,9 @@ fn export_metadata(project_path: String, output_path: String) -> Result<usize, S
 pub fn run() {
     // Initialize the unified storage backend
     let store: storage::Storage = std::sync::Arc::new(storage::LocalStorage::new());
+
+    // Migrate plaintext API keys to Keychain (idempotent, runs once)
+    keyring::migrate_plaintext_keys();
 
     // Set custom models folder if configured
     let startup_storage = store.clone();

@@ -619,6 +619,7 @@ fn create_provider(
             let key = config
                 .api_key
                 .clone()
+                .or_else(|| crate::keyring::get_secret(crate::keyring::AI_API_KEY))
                 .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
                 .ok_or("No Anthropic API key configured. Set it in settings or ANTHROPIC_API_KEY env var.")?;
             Ok(Box::new(AnthropicProvider::new(
@@ -632,6 +633,7 @@ fn create_provider(
             let key = config
                 .api_key
                 .clone()
+                .or_else(|| crate::keyring::get_secret(crate::keyring::AI_API_KEY))
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
                 .ok_or("No OpenAI API key configured. Set it in settings or OPENAI_API_KEY env var.")?;
             Ok(Box::new(OpenAIProvider::new(
@@ -872,15 +874,43 @@ pub async fn cmd_analyze_batch(
 /// Get the current AI provider configuration.
 #[tauri::command]
 pub fn get_ai_config() -> Result<AiProviderConfig, String> {
-    let config = load_app_config();
-    Ok(config.ai.unwrap_or_default())
+    let mut config = load_app_config().ai.unwrap_or_default();
+
+    // Hydrate api_key: Keychain → env var → None
+    if config.api_key.is_none() {
+        config.api_key = crate::keyring::get_secret(crate::keyring::AI_API_KEY);
+    }
+    if config.api_key.is_none() {
+        let env_var = match config.provider {
+            AiProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+            AiProviderKind::Openai => "OPENAI_API_KEY",
+            AiProviderKind::Ollama => return Ok(config),
+        };
+        config.api_key = std::env::var(env_var).ok();
+    }
+
+    Ok(config)
 }
 
 /// Save AI provider configuration.
+/// API key is stored in macOS Keychain, not in config.json.
 #[tauri::command]
 pub fn set_ai_config(config: AiProviderConfig) -> Result<(), String> {
+    // Store API key in Keychain (if provided)
+    if let Some(ref key) = config.api_key {
+        if !key.is_empty() {
+            crate::keyring::set_secret(crate::keyring::AI_API_KEY, key)?;
+        }
+    } else {
+        let _ = crate::keyring::delete_secret(crate::keyring::AI_API_KEY);
+    }
+
+    // Save config WITHOUT api_key to JSON
+    let mut sanitized = config;
+    sanitized.api_key = None;
+
     let mut app_config = load_app_config();
-    app_config.ai = Some(config);
+    app_config.ai = Some(sanitized);
     save_app_config(&app_config)
 }
 
@@ -920,6 +950,7 @@ pub async fn cmd_test_ai_vision(
             let key = provider_config
                 .api_key
                 .clone()
+                .or_else(|| crate::keyring::get_secret(crate::keyring::AI_API_KEY))
                 .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
                 .ok_or("No API key configured")?;
             let model = provider_config
@@ -972,6 +1003,7 @@ pub async fn cmd_test_ai_vision(
             let key = provider_config
                 .api_key
                 .clone()
+                .or_else(|| crate::keyring::get_secret(crate::keyring::AI_API_KEY))
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
                 .ok_or("No API key configured")?;
             let model = provider_config
@@ -1155,6 +1187,7 @@ pub async fn cmd_generate_image(
     let api_key = ai_config
         .api_key
         .clone()
+        .or_else(|| crate::keyring::get_secret(crate::keyring::AI_API_KEY))
         .or_else(|| std::env::var("OPENAI_API_KEY").ok())
         .ok_or("No API key configured for image generation. Configure it in Settings > AI.")?;
 
