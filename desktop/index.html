@@ -349,13 +349,17 @@
       border: none;
       border-radius: 4px;
       background: transparent;
-      color: #333;
+      color: var(--text-secondary);
       font-size: 11px;
       cursor: pointer;
       white-space: nowrap;
       width: 100%;
     }
     .ftb-stroke-opt:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+    [data-theme="light"] .ftb-stroke-opt:hover {
       background: rgba(0, 0, 0, 0.06);
     }
     .ftb-stroke-opt.active {
@@ -364,7 +368,7 @@
     }
     .ftb-stroke-line {
       width: 28px;
-      background: #333;
+      background: var(--text-secondary);
       border-radius: 1px;
       flex-shrink: 0;
     }
@@ -397,7 +401,7 @@
       bottom: calc(100% + 6px);
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(40, 40, 40, 0.88);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--border);
@@ -405,12 +409,13 @@
       padding: 4px;
       gap: 2px;
       align-items: center;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       white-space: nowrap;
     }
     .ftb-submenu.open { display: flex; }
     [data-theme="light"] .ftb-submenu {
       background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     }
 
     /* Color Palette removed — now in floating toolbar */

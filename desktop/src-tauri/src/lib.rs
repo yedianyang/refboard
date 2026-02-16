@@ -148,13 +148,16 @@ pub fn import_image_bytes(
 }
 
 /// Tauri command wrapper for import_image_bytes.
+/// After saving the file, auto-indexes in FTS5 and queues CLIP embedding.
 #[tauri::command]
-fn import_clipboard_image(
+async fn import_clipboard_image(
     data: Vec<u8>,
     extension: String,
     project_path: String,
 ) -> Result<ImageInfo, String> {
-    import_image_bytes(data, extension, project_path)
+    let info = import_image_bytes(data, extension, project_path.clone())?;
+    spawn_auto_index(project_path, vec![info.clone()]);
+    Ok(info)
 }
 
 /// Delete an image and all associated data (thumbnail, search metadata, embeddings).
@@ -293,6 +296,44 @@ async fn set_app_config(
 }
 
 // ---------------------------------------------------------------------------
+// Auto-Index + Embed
+// ---------------------------------------------------------------------------
+
+/// Spawn background FTS5 indexing + CLIP embedding for newly imported images.
+/// Fire-and-forget: failures are logged but never block the import response.
+fn spawn_auto_index(project_path: String, images: Vec<ImageInfo>) {
+    tokio::task::spawn_blocking(move || {
+        for img in &images {
+            crate::log::log("IMPORT", &format!("Auto-indexing: {}", img.name));
+        }
+
+        // 1. FTS5 index (fast, synchronous)
+        match search::index_project_images(&project_path, &images) {
+            Ok(n) if n > 0 => {
+                crate::log::log("IMPORT", &format!("Indexed {n} new images in search DB"));
+            }
+            Ok(_) => {}
+            Err(e) => {
+                crate::log::log("IMPORT", &format!("Auto-index failed: {e}"));
+                return;
+            }
+        }
+
+        // 2. CLIP embedding (slow, best-effort — skipped if model not loaded)
+        let paths: Vec<String> = images.iter().map(|i| i.path.clone()).collect();
+        match embed::embed_and_store(&project_path, &paths) {
+            Ok(n) if n > 0 => {
+                crate::log::log("IMPORT", &format!("Auto-embedded {n} images via CLIP"));
+            }
+            Ok(_) => {}
+            Err(e) => {
+                crate::log::log("IMPORT", &format!("Auto-embed skipped (model not ready?): {e}"));
+            }
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -356,51 +397,63 @@ async fn load_board_state(
 }
 
 /// Import image files into a project's images/ directory.
+/// After copying, auto-indexes in FTS5 and queues CLIP embedding in background.
 #[tauri::command]
-fn import_images(paths: Vec<String>, project_path: String) -> Result<Vec<ImageInfo>, String> {
-    let images_dir = Path::new(&project_path).join("images");
-    fs::create_dir_all(&images_dir)
-        .map_err(|e| format!("Cannot create images dir: {}", e))?;
+async fn import_images(paths: Vec<String>, project_path: String) -> Result<Vec<ImageInfo>, String> {
+    let proj = project_path.clone();
+    let imported = tokio::task::spawn_blocking(move || {
+        let images_dir = Path::new(&proj).join("images");
+        fs::create_dir_all(&images_dir)
+            .map_err(|e| format!("Cannot create images dir: {}", e))?;
 
-    let mut imported = Vec::new();
+        let mut imported = Vec::new();
 
-    for src_path_str in &paths {
-        let src = Path::new(src_path_str);
-        if !src.is_file() {
-            continue;
+        for src_path_str in &paths {
+            let src = Path::new(src_path_str);
+            if !src.is_file() {
+                continue;
+            }
+
+            // Validate extension
+            let ext = match src.extension() {
+                Some(e) => e.to_string_lossy().to_lowercase(),
+                None => continue,
+            };
+            if !IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+                continue;
+            }
+
+            // Determine destination filename, adding counter suffix if needed
+            let stem = src
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| "image".to_string());
+
+            let mut dest = images_dir.join(format!("{}.{}", stem, ext));
+            let mut counter = 2u32;
+            while dest.exists() {
+                dest = images_dir.join(format!("{}-{}.{}", stem, counter, ext));
+                counter += 1;
+            }
+
+            fs::copy(src, &dest).map_err(|e| format!("Cannot copy {}: {}", src_path_str, e))?;
+
+            let metadata = fs::metadata(&dest).map_err(|e| e.to_string())?;
+            imported.push(ImageInfo {
+                name: dest.file_name().unwrap().to_string_lossy().to_string(),
+                path: dest.to_string_lossy().to_string(),
+                size_bytes: metadata.len(),
+                extension: ext,
+            });
         }
 
-        // Validate extension
-        let ext = match src.extension() {
-            Some(e) => e.to_string_lossy().to_lowercase(),
-            None => continue,
-        };
-        if !IMAGE_EXTENSIONS.contains(&ext.as_str()) {
-            continue;
-        }
+        Ok::<Vec<ImageInfo>, String>(imported)
+    })
+    .await
+    .map_err(|e| format!("Task join: {e}"))??;
 
-        // Determine destination filename, adding counter suffix if needed
-        let stem = src
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "image".to_string());
-
-        let mut dest = images_dir.join(format!("{}.{}", stem, ext));
-        let mut counter = 2u32;
-        while dest.exists() {
-            dest = images_dir.join(format!("{}-{}.{}", stem, counter, ext));
-            counter += 1;
-        }
-
-        fs::copy(src, &dest).map_err(|e| format!("Cannot copy {}: {}", src_path_str, e))?;
-
-        let metadata = fs::metadata(&dest).map_err(|e| e.to_string())?;
-        imported.push(ImageInfo {
-            name: dest.file_name().unwrap().to_string_lossy().to_string(),
-            path: dest.to_string_lossy().to_string(),
-            size_bytes: metadata.len(),
-            extension: ext,
-        });
+    if !imported.is_empty() {
+        spawn_auto_index(project_path, imported.clone());
     }
 
     Ok(imported)

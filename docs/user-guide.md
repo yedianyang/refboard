@@ -105,7 +105,7 @@ Drag image files from Finder directly onto the canvas. A drop overlay appears wh
 - Copied to the project's `images/` directory
 - Compressed if above 200KB (configurable via Settings)
 - Placed at the drop position on the canvas
-- Embedded with CLIP for similarity search
+- Indexed in the search database (FTS5) and embedded with CLIP for similarity search
 
 ### Paste from Clipboard
 
@@ -174,6 +174,20 @@ Press **M** to toggle the minimap in the bottom-right corner. The minimap shows 
 - **Click and drag** a card to reposition it.
 - If multiple cards are selected, dragging any selected card moves them all together.
 
+### Floating Toolbar
+
+When you select one or more objects, a floating toolbar appears above the selection. The toolbar is **context-aware** -- it shows different tools depending on the type of object selected:
+
+| Selection Type | Available Tools |
+|----------------|-----------------|
+| Image(s) | Analyze with AI, Find Similar, Delete, Z-order |
+| Shape(s) | Fill toggle, Stroke color, Stroke width, Line style (solid/dashed), Delete |
+| Text | Font size, Bold, Italic, Color, Delete |
+| Line(s) | Stroke color, Stroke width, Line style, Delete |
+| Mixed selection | Common tools only (Delete, Z-order) |
+
+The toolbar follows the selection as you move objects and repositions automatically to stay visible.
+
 ### Delete
 
 - Press **Delete** or **Backspace** to remove selected cards from the canvas.
@@ -240,9 +254,13 @@ Deco can analyze images using AI vision models to generate:
 
 1. Click the **Settings** button (gear icon) in the toolbar.
 2. Choose a provider:
-   - **Claude (Anthropic)** -- cloud, default model `claude-sonnet-4-5-20250929`, requires `ANTHROPIC_API_KEY`
-   - **GPT-4o (OpenAI)** -- cloud, default model `gpt-4o`, requires `OPENAI_API_KEY`
+   - **Claude (Anthropic)** -- cloud, default model `claude-sonnet-4-5-20250929`, requires API key
+   - **GPT-4o (OpenAI)** -- cloud, default model `gpt-4o`, requires API key
    - **Ollama (Local)** -- runs locally, default model `llava`, requires [Ollama](https://ollama.com/) running at `localhost:11434`
+   - **OpenRouter** -- cloud, default model `google/gemini-2.0-flash`, requires API key
+   - **Qwen (DashScope)** -- cloud, default model `qwen-vl-max`, requires API key
+   - **Together AI** -- cloud, default model `meta-llama/Llama-Vision-Free`, requires API key
+   - **Groq** -- cloud, default model `llava-v1.5-7b-4096-preview`, requires API key
 3. Enter your API key (for cloud providers) or verify the Ollama endpoint.
 4. Optionally select a different model.
 5. Click **Save**.
@@ -372,9 +390,9 @@ Open Settings via the gear icon in the toolbar. Settings are organized in two se
 
 | Field | Description |
 |-------|-------------|
-| Provider | Anthropic (Claude), OpenAI (GPT-4o), or Ollama (local) |
+| Provider | Anthropic, OpenAI, Ollama, OpenRouter, Qwen, Together AI, or Groq |
 | API Key | Your provider API key (not needed for Ollama) |
-| Endpoint | Custom endpoint URL (Ollama only, default: localhost:11434) |
+| Endpoint | Custom endpoint URL (auto-filled per provider, editable) |
 | Model | The specific model to use for analysis |
 | Test Connection | Verify the provider is reachable |
 

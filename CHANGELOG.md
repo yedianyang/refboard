@@ -4,6 +4,29 @@ All notable changes to Deco will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0-beta.2] - 2026-02-16
+
+Context-aware floating toolbar, modular frontend, new CLI commands, and expanded AI Vision providers.
+
+### Added
+
+- **Context-aware floating toolbar** -- toolbar buttons change based on selected object type (image, shape, text, line), showing only relevant tools for each
+- **CLI commands** -- `deco projects`, `deco move`, `deco update` with `--json` support for scripting
+- **AI Vision providers** -- added Qwen (DashScope), Together AI, Groq, and OpenRouter as new provider options in Settings
+- **Auto-indexing on import** -- imported images are automatically indexed in FTS5 and embedded with CLIP in the background
+
+### Fixed
+
+- **BUG-006: finishRename double-call** -- added guard to prevent `finishRename` from being invoked twice on blur+Enter
+- **Dark mode toolbar submenu** -- fixed background color of floating toolbar submenus in dark mode
+
+### Changed
+
+- **main.js modularization** -- split monolithic main.js (1574 lines) into 6 focused modules: `home.js` (545), `shortcuts.js` (398), `floating-toolbar.js` (378), `compress.js` (112), `generate-ui.js` (88), `shortcuts.js` (104)
+- **ops.rs shared logic** -- extracted `cosine_sim` and `greedy_cluster` into `ops.rs` module, shared between `search.rs` and `api.rs`
+
+---
+
 ## [2.0.0-beta.1] - 2026-02-15
 
 Bug fixes and performance improvements for the Home page and CLIP model loading.
