@@ -66,8 +66,9 @@
 | ⬜ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互（@Docs 调研） |
 | ✅ | **CLIP API 扩展** | /api/embed, /api/embed-batch, /api/similar, /api/search-semantic, /api/cluster |
 | 🔄 | **AI Vision 模型扩展** | 调研更多支持图片分析的模型，加入 Settings 页面 (@Researcher) |
-| ⬜ | **canvas.js 模块化拆分** | 纯重构：拆成 canvas/index.js, renderer.js, cards.js, groups.js, selection.js, shortcuts.js, toolbar.js（每文件 300-500 行）|
+| ✅ | **canvas.js 模块化拆分** | 纯重构：拆成 8 模块 canvas/{state,index,renderer,cards,groups,selection,shortcuts,toolbar}.js (91f5dce) |
 | ⬜ | **浮动工具栏上下文感知** | 不同类型对象（图片/框/文字/线条）显示不同工具选项（等拆分完后讨论设计）|
+| ⬜ | **HTTP API ↔ CLI 功能同步** | 所有 HTTP API 端点必须有对应 CLI 命令，共用同一层 Rust 业务函数（详见下方专节）|
 
 ### P1 短期
 
@@ -510,6 +511,52 @@ POST /api/cluster
 |------|------|
 | @Designer | 按钮样式 + 动画 |
 | @Template | 切换逻辑 + localStorage 持久化 |
+
+---
+
+### HTTP API ↔ CLI 功能同步
+
+**目标：** HTTP API 和 CLI 保持 1:1 功能对等，共用同一层 Rust 业务函数
+
+**架构：**
+```
+HTTP API (api.rs)  ──→  共用 Rust 业务函数  ←──  CLI (cli.rs)
+  POST /api/import        import_images()           refboard import
+  POST /api/delete        delete_item()             refboard delete
+  GET  /api/list          list_items()              refboard list
+  ...                     ...                       ...
+```
+
+**功能对照表：**
+
+| HTTP API | CLI 命令 | 共用函数 | 状态 |
+|----------|----------|----------|------|
+| `POST /api/import` | `refboard import <path>` | `import_images()` | ⬜ |
+| `POST /api/delete` | `refboard delete <id>` | `delete_item()` | ⬜ |
+| `GET /api/list` | `refboard list` | `list_items()` | ⬜ |
+| `GET /api/item/:id` | `refboard info <id>` | `get_item()` | ⬜ |
+| `POST /api/move` | `refboard move <id> <x> <y>` | `move_item()` | ⬜ |
+| `POST /api/update` | `refboard update <id> --tag ...` | `update_item()` | ⬜ |
+| `POST /api/analyze` | `refboard analyze <id>` | `analyze_image()` | ⬜ |
+| `GET /api/search` | `refboard search <query>` | `search_fts()` | ⬜ |
+| `POST /api/similar` | `refboard similar <id>` | `find_similar()` | ⬜ |
+| `POST /api/search-semantic` | `refboard semantic <query>` | `search_semantic()` | ⬜ |
+| `POST /api/embed` | `refboard embed <id>` | `generate_embedding()` | ⬜ |
+| `POST /api/cluster` | `refboard cluster [--n 5]` | `cluster_items()` | ⬜ |
+| `GET /api/status` | `refboard status` | `get_project_status()` | ⬜ |
+
+**开发规则：**
+1. 新增 HTTP 端点时，必须同步添加 CLI 命令
+2. 新增 CLI 命令时，必须同步添加 HTTP 端点
+3. 业务逻辑只写在共用函数层，HTTP 和 CLI 只做参数解析 + 输出格式化
+4. CLI 输出支持 `--json` 格式（与 HTTP 响应结构一致）
+5. PR 检查清单包含「API/CLI 是否同步」
+
+**分工：**
+| 角色 | 任务 |
+|------|------|
+| @Generator | 抽取共用业务函数 + CLI 入口 (cli.rs) + HTTP 入口 (api.rs) |
+| @Docs | API 参考文档保持同步 |
 
 ---
 

@@ -1684,11 +1684,62 @@ Jingxi 验收清单:
 
 | 优先级 | 任务 | 说明 |
 |--------|------|------|
-| **P0** | **canvas.js 模块化拆分** | 纯重构（不改功能）：拆成 canvas/index.js, renderer.js, cards.js, groups.js, selection.js, shortcuts.js, toolbar.js，每文件 300-500 行 |
-| **P0** | **浮动工具栏上下文感知** | 不同对象类型显示不同工具（等拆分完后与 Jingxi 讨论设计） |
+| ✅ | **canvas.js 模块化拆分** | 已完成 (`91f5dce`, `f04bf39`) — 8 个模块文件 |
+| **P0** | **HTTP API ↔ CLI 功能同步** | 新增 v2 CLI，与 HTTP API 保持 1:1 功能对等（见下方详细规范） |
+| **P0** | **浮动工具栏上下文感知** | 不同对象类型显示不同工具（等与 Jingxi 讨论设计） |
 | P0 | OpenClaw 深度集成方案 | @Docs 调研 |
 | P0 | AI Vision 模型扩展 | Settings UI 更新 |
 | P1 | 导入后自动 index + embed | 所有导入路径一条龙 |
 | P1 | 截图/GIF | README 演示素材 |
 | P2 | DMG 打包修复 | 签名/公证 |
+
+---
+
+### HTTP API ↔ CLI 功能同步规范
+
+**核心原则：HTTP API 有的功能，CLI 必须也有。**
+
+RefBoard 提供两个外部接口，功能必须 1:1 对等：
+- **HTTP API** (`localhost:7890`) — 给 GUI、浏览器扩展、第三方 app 用
+- **CLI** (`refboard` 命令) — 给 LLM agent (OpenClaw)、脚本自动化、CI 用
+
+#### 功能对照表
+
+| 功能 | HTTP API | CLI | 状态 |
+|------|----------|-----|------|
+| 导入图片 | `POST /api/import` | `refboard import <path>` | ⬜ CLI 待建 |
+| 删除图片 | `POST /api/delete` | `refboard delete <id>` | ⬜ CLI 待建 |
+| 列出图片 | `GET /api/items` | `refboard list` | ⬜ CLI 待建 |
+| 图片详情 | `GET /api/item/:id` | `refboard info <id>` | ⬜ CLI 待建 |
+| 移动图片 | `POST /api/move` | `refboard move <id> --x 100 --y 200` | ⬜ CLI 待建 |
+| 更新元数据 | `PATCH /api/item/:id` | `refboard update <id> --tags "a,b"` | ⬜ CLI 待建 |
+| AI 分析 | `POST /api/analyze` | `refboard analyze <id> [--all]` | ⬜ CLI 待建 |
+| 搜索 | `GET /api/search` | `refboard search <query>` | ⬜ CLI 待建 |
+| CLIP 相似搜索 | `POST /api/similar` | `refboard similar <id> [--top 5]` | ⬜ CLI 待建 |
+| 语义搜索 | `POST /api/search-semantic` | `refboard search --semantic <query>` | ⬜ CLI 待建 |
+| CLIP 嵌入 | `POST /api/embed` | `refboard embed <id>` | ⬜ CLI 待建 |
+| 聚类 | `POST /api/cluster` | `refboard cluster [--k 5]` | ⬜ CLI 待建 |
+| 项目状态 | `GET /api/status` | `refboard status` | ⬜ CLI 待建 |
+
+#### 架构原则
+
+```
+HTTP API ──→ 共享 Rust 函数 ←── CLI
+   │                              │
+   └── api.rs (HTTP handler)      └── cli.rs (CLI handler)
+              ↓                              ↓
+         同一套 search.rs / ai.rs / lib.rs 业务逻辑
+```
+
+- HTTP API 和 CLI 调用**同一套 Rust 业务函数**，只是入口不同
+- 新增功能时：Generator 实现核心函数 → 同时暴露 HTTP 端点 + CLI 命令
+- CLI 输出默认人类可读，加 `--json` 输出 JSON（方便 LLM 解析）
+
+#### 开发规则
+
+1. **新增 HTTP API 端点时，必须同时添加对应 CLI 命令**
+2. **新增 CLI 命令时，必须同时添加对应 HTTP API 端点**
+3. **两者的参数和响应格式保持一致**
+4. **CLI 支持 `--json` flag 输出结构化数据**
+5. **分工**：@Generator 负责核心函数 + HTTP + CLI
 
