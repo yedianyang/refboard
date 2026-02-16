@@ -1,5 +1,6 @@
 mod ai;
 mod api;
+pub mod cli;
 mod embed;
 pub mod log;
 mod search;

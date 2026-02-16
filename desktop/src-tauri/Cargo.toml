@@ -22,11 +22,16 @@ base64 = "0.22"
 async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 axum = { version = "0.8", features = ["multipart"] }
-tokio = { version = "1", features = ["net"] }
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros"] }
+clap = { version = "4", features = ["derive"] }
 rusqlite = { version = "0.32", features = ["bundled", "vtab"] }
 urlencoding = "2"
 fastembed = "4"
 chrono = "0.4"
+
+[[bin]]
+name = "deco"
+path = "src/bin/deco.rs"
 
 [dev-dependencies]
 tempfile = "3"
