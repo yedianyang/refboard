@@ -13,6 +13,9 @@ export function initFloatingToolbar() {
   let positionRAF = null;
   const TOOLBAR_GAP = 10; // Gap between toolbar and selection top edge
 
+  // Hide all context buttons initially (no selection yet)
+  toolbar.querySelectorAll('[data-context]').forEach(el => { el.style.display = 'none'; });
+
   // --- Show / Hide ---
 
   function showToolbar() {
@@ -83,9 +86,9 @@ export function initFloatingToolbar() {
     const count = sel.size;
 
     if (count > 0 && count !== lastSelectionSize) {
+      updateAnnotationControls(); // Set context visibility before showing
       showToolbar();
       updateLockButtonState();
-      updateAnnotationControls();
     } else if (count === 0 && lastSelectionSize > 0) {
       hideToolbar();
       closePanel();

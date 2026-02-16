@@ -63,12 +63,13 @@
 | ✅ | **图形框缩放优化** | Frame resize: mask clipping，图像保持原始大小，只改变可见区域 |
 | ✅ | **选中弹出工具栏** | 浮动工具栏 (Lock/Align/Copy/Delete/More) + 对齐子菜单 + Lucide Icons |
 | ✅ | **顶部导航栏重构** | Home 按钮左上角 + Sidebar toggle (Cmd+\\) + 折叠动画 + localStorage |
-| ⬜ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互（@Docs 调研） |
+| ✅ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互 → `docs/openclaw-deep-integration.md` |
 | ✅ | **CLIP API 扩展** | /api/embed, /api/embed-batch, /api/similar, /api/search-semantic, /api/cluster |
-| 🔄 | **AI Vision 模型扩展** | 调研更多支持图片分析的模型，加入 Settings 页面 (@Researcher) |
+| ✅ | **AI Vision 模型扩展** | 新增 Qwen/Together AI/Groq 三个 Provider 预设 (panels.js) |
 | ✅ | **canvas.js 模块化拆分** | 纯重构：拆成 8 模块 canvas/{state,index,renderer,cards,groups,selection,shortcuts,toolbar}.js (91f5dce) |
-| ⬜ | **浮动工具栏上下文感知** | 不同类型对象（图片/框/文字/线条）显示不同工具选项（等拆分完后讨论设计）|
-| ⬜ | **HTTP API ↔ CLI 功能同步** | 所有 HTTP API 端点必须有对应 CLI 命令，共用同一层 Rust 业务函数（详见下方专节）|
+| ✅ | **浮动工具栏上下文感知** | data-context 属性系统 + 图片/文字/形状/线条各显不同工具 (b415878) |
+| ✅ | **HTTP API ↔ CLI 功能同步** | ops.rs 共享业务函数 + 3 个新 CLI 命令 (projects/move/update) (b415878) |
+| ✅ | **main.js 模块化拆分** | 1574→545 行，拆出 home.js/floating-toolbar.js/shortcuts.js/compress.js/generate-ui.js (9ef3725) |
 
 ### P1 短期
 
@@ -80,7 +81,7 @@
 | ✅ | HTTP API 完整套件 | `/api/import` + `/api/delete` + `/api/move` + `/api/item` |
 | ✅ | 统一项目存储 | StorageProvider trait + 默认项目文件夹 + auto-scan |
 | ✅ | **AI Vision 配置面板** | Settings > AI Vision，7 Provider 预设 + 真实连接测试 + Save/Load |
-| 🔄 | **导入后自动 index + embed** | 所有导入路径后端一条龙完成 SQLite indexing + CLIP embedding |
+| ✅ | **导入后自动 index + embed** | spawn_auto_index: 导入后异步 FTS5 索引 + CLIP embedding (9ef3725) |
 | ✅ | **图标矢量化** | 所有 close/remove 按钮 + download 按钮替换为 Lucide Icons SVG |
 | ⬜ | 截图/GIF | README 视觉演示素材 |
 | ❌ | ~~npm 发布准备~~ | v1 CLI 已删除，不再需要 |
@@ -102,6 +103,7 @@
 | ✅ BUG-006 | Group 行为修复：选中整组、拖拽整组、边框跟随、双击进入编辑 |
 | ✅ BUG-007 | Cmd+G 快捷键冲突：Group=Cmd+G, Generate=Cmd+Shift+G, Ungroup=Cmd+Shift+U |
 | ✅ BUG-008 | 选中 Shape/Text 时不弹出右侧详情面板 |
+| ✅ BUG-009 | finishRename 双重调用：blur + Enter/Escape 同时触发，加 renameFinished 守卫 (b415878) |
 
 ---
 

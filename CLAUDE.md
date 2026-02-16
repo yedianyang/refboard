@@ -382,15 +382,10 @@ console.log(result.field1, result.field2);
 
 ## 当前开发重点 (2026-02)
 
-### P0 进行中
-- [ ] canvas.js 模块化拆分（7 个模块文件）
-- [ ] 浮动工具栏上下文感知（不同对象类型显示不同工具）
-- [ ] HTTP API `/api/import`、`/api/delete`、`/api/move`、`/api/update`
-
 ### P1 待开始
-- [ ] 统一项目存储位置
+- [ ] CLI 命令补全（还有 10 个命令待实现）
+- [ ] 截图/GIF（README 演示素材）
 - [ ] DMG 打包签名
-- [ ] npm 发布 v1 CLI
 
 ### 已完成
 - [x] 创建项目流程修复
@@ -406,3 +401,10 @@ console.log(result.field1, result.field2);
 - [x] Frame 缩放裁剪（PixiJS mask）
 - [x] 图标矢量化（emoji → Lucide SVG）
 - [x] Group 行为修复（选中/拖拽/边框跟随）
+- [x] 浮动工具栏上下文感知（data-context 属性系统）
+- [x] HTTP API ↔ CLI 同步（ops.rs + 3 个 CLI 命令）
+- [x] OpenClaw 深度集成方案（调研文档）
+- [x] AI Vision 模型扩展（+3 Providers）
+- [x] main.js 模块化拆分（5 个独立模块）
+- [x] 导入后自动 index + embed（spawn_auto_index）
+- [x] BUG-009 finishRename 防重入

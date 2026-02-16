@@ -164,6 +164,15 @@ docs: update HTTP API reference
    - 文档问题 → @Docs
 3. **修复后** → Tester 验证 → 关闭 bug
 
+## ⚠️ 文档规则（强制）
+
+**每一次 bug 修复或开发任务完成后，Team Lead 必须通知 @Docs 更新文档。**
+
+- 新功能 → Docs 写使用说明 + API 文档（如有）
+- Bug 修复 → Docs 更新相关文档（如行为变更）
+- 重构 → Docs 更新架构说明
+- **不写文档 = 任务未完成**
+
 ---
 
 ## 团队消息
@@ -1762,4 +1771,86 @@ This is the root cause of the "ka yi xia" (brief lag) reported during rename.
 **Fix:** Combine into a single `update_path_in_recent_file()` that does one read-modify-write.
 
 Full analysis in `docs/test-report.md` Round 6.
+
+---
+
+[02-16 15:00] @TeamLead: 📋 **Sprint D 总结 (2026-02-16)**
+
+commits: `b415878`, `9ef3725`, `fed345c`
+
+### Sprint D — 全部 P0 清零
+
+**Commit `b415878` — 浮动工具栏 + CLI 同步 + Bug 修复**
+
+1. **浮动工具栏上下文感知** (Template)
+   - `data-context` 属性系统：`image|shape|text|line|all`
+   - `getSelectionType(cards)` 返回选中类型
+   - `updateToolbarContext(selType)` 显示/隐藏匹配按钮
+   - 新增按钮：Analyze (image)、Font Size/Bold/Italic (text)
+   - `toggleTextBold()` / `toggleTextItalic()` + bold/italic 序列化到 board.json
+
+2. **HTTP API ↔ CLI 功能同步** (Generator)
+   - 新增 `ops.rs` (483 行) — 共享业务函数：cosine_sim, greedy_cluster, move_board_item, update_item_metadata, list_all_projects
+   - `api.rs` 重构使用 `ops::greedy_cluster()`
+   - `cli.rs` 新增 3 个命令：`projects`、`move`、`update` (含 8 个单元测试)
+
+3. **AI Vision 模型扩展** (Designer)
+   - `panels.js` 新增 3 个 Provider 预设：Qwen (dashscope)、Together AI、Groq
+
+4. **BUG-009 修复** (Template)
+   - `finishRename` 加 `renameFinished` 守卫变量，防止 blur + Enter 双重调用
+
+5. **OpenClaw 深度集成方案** (Docs)
+   - 输出 `docs/openclaw-deep-integration.md`
+   - 盘点 11 个 HTTP 端点 + 16 个 Tauri 命令未暴露
+   - 8 个 curl 使用场景 + 3 阶段实现路线图
+
+**Commit `9ef3725` — main.js 模块化 + 自动索引**
+
+6. **main.js 模块化拆分** (Template)
+   - 1574 行 → 545 行核心 + 5 个独立模块
+   - `home.js` (398 行) — Home Screen
+   - `floating-toolbar.js` (378 行) — 浮动工具栏
+   - `shortcuts.js` (112 行) — 键盘快捷键
+   - `compress.js` (88 行) — 图片压缩
+   - `generate-ui.js` (104 行) — AI 生成占位符
+   - 依赖注入模式避免循环导入
+
+7. **导入后自动 index + embed** (Generator)
+   - `spawn_auto_index()` fire-and-forget 异步任务
+   - `import_images` / `import_clipboard_image` 改为 async
+   - 导入后自动 FTS5 索引 + CLIP embedding
+
+8. **UI 深色模式修复** (Designer)
+   - 修复 5 处硬编码浅色值（submenu 背景、描边选项颜色、阴影等）
+
+9. **测试** (Tester)
+   - 15/15 Sprint 检查通过 + 81 Rust 单元测试通过
+
+10. **文档** (Docs)
+    - CHANGELOG v2.0.0-beta.2 更新
+    - docs/user-guide.md 工具栏/Provider/自动索引章节更新
+
+**Commit `fed345c` — 清理 dead code**
+
+11. 移除 `UpdateItemRequest.artist` 未使用字段 (api.rs)
+
+### P0 完成状态
+
+| 任务 | 状态 |
+|------|------|
+| 浮动工具栏上下文感知 | ✅ Done |
+| HTTP API ↔ CLI 功能同步 | ✅ Done (3/13 命令) |
+| OpenClaw 深度集成方案 | ✅ Done (调研文档) |
+| AI Vision 模型扩展 | ✅ Done (+3 providers) |
+| main.js 模块化拆分 | ✅ Done (5 模块) |
+| 导入后自动 index + embed | ✅ Done |
+
+### 剩余工作
+
+| 优先级 | 任务 | 说明 |
+|--------|------|------|
+| P1 | CLI 命令补全 | 还有 10 个 CLI 命令待实现 (import/delete/list/info/analyze/search/similar/semantic/embed/cluster) |
+| P1 | 截图/GIF | README 演示素材 |
+| P2 | DMG 打包修复 | 签名/公证 |
 
