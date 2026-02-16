@@ -91,19 +91,23 @@ function redo() {
 function applyAction(action, isUndo) {
   switch (action.type) {
     case 'move': {
+      const affectedGroups = new Set();
       for (const entry of action.entries) {
         const pos = isUndo ? entry.from : entry.to;
         entry.card.container.x = pos.x;
         entry.card.container.y = pos.y;
         entry.card.data.x = pos.x;
         entry.card.data.y = pos.y;
+        if (entry.card.group) affectedGroups.add(entry.card.group);
       }
+      for (const group of affectedGroups) updateGroupBounds(group);
       break;
     }
     case 'resize': {
       const { card } = action;
       const dims = isUndo ? action.from : action.to;
       resizeCardTo(card, dims.width, dims.height);
+      if (card.group) updateGroupBounds(card.group);
       break;
     }
     case 'delete': {
@@ -376,7 +380,7 @@ function setupKeyboard() {
 
     // Edit — Grouping
     if (e.key === 'g' && meta && !e.shiftKey) { groupSelected(); e.preventDefault(); return; }
-    if (e.key === 'g' && meta && e.shiftKey) { ungroupSelected(); e.preventDefault(); return; }
+    if (e.key === 'u' && meta && e.shiftKey) { ungroupSelected(); e.preventDefault(); return; }
 
     // Edit — Lock/Unlock
     if (e.key === 'l' && meta && !e.shiftKey) { toggleLockSelected(); e.preventDefault(); return; }
@@ -402,19 +406,29 @@ function setupKeyboard() {
       const step = e.shiftKey ? 10 : 1;
       const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
       const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+      const nudgedGroups = new Set();
       for (const card of selection) {
         if (card.locked) continue;
         card.container.x += dx;
         card.container.y += dy;
         card.data.x = card.container.x;
         card.data.y = card.container.y;
+        if (card.group) nudgedGroups.add(card.group);
       }
+      for (const group of nudgedGroups) updateGroupBounds(group);
       markDirty();
       return;
     }
 
-    // Escape = deselect
-    if (e.key === 'Escape') { clearSelection(); return; }
+    // Escape = exit group edit mode or deselect
+    if (e.key === 'Escape') {
+      if (editingGroup) {
+        exitGroupEditMode();
+      } else {
+        clearSelection();
+      }
+      return;
+    }
   });
 
   window.addEventListener('keyup', (e) => {
@@ -602,6 +616,8 @@ function setupGlobalDrag() {
         }
         const snaps = applySnapToCard(dragState.card, dragState._snapTargets);
         drawGuides(snaps.hSnap, snaps.vSnap);
+        // Update group border if card is in a group (edit mode single-card drag)
+        if (dragState.card.group) updateGroupBounds(dragState.card.group);
         break;
       }
       case 'multicard': {
@@ -615,6 +631,12 @@ function setupGlobalDrag() {
           card.container.y += dy;
         }
         dragState.lastWorld = wp;
+        // Update group borders for any groups involved in the drag
+        const dragGroups = new Set();
+        for (const card of dragState.cards) {
+          if (card.group) dragGroups.add(card.group);
+        }
+        for (const group of dragGroups) updateGroupBounds(group);
         break;
       }
       case 'selectRect': {
@@ -626,6 +648,7 @@ function setupGlobalDrag() {
         dragState.moved = true;
         const wp = screenToWorld(e.global.x, e.global.y);
         handleResize(dragState, wp);
+        if (dragState.card.group) updateGroupBounds(dragState.card.group);
         break;
       }
       case 'drawShape': {
@@ -699,6 +722,7 @@ function setupGlobalDrag() {
     }
 
     if (!shiftKey) {
+      editingGroup = null; // Exit group edit mode on empty canvas click
       clearSelection();
     }
   });
@@ -725,6 +749,8 @@ function finishDrag(e) {
         });
         card.data.x = card.container.x;
         card.data.y = card.container.y;
+        // Update group bounds if card belongs to a group
+        if (card.group) updateGroupBounds(card.group);
         markDirty();
       }
       hideResizeHandles();
@@ -739,10 +765,14 @@ function finishDrag(e) {
           to: { x: card.container.x, y: card.container.y },
         }));
         pushUndo({ type: 'move', entries });
+        // Update group bounds for all groups involved
+        const movedGroups = new Set();
         for (const card of dragState.cards) {
           card.data.x = card.container.x;
           card.data.y = card.container.y;
+          if (card.group) movedGroups.add(card.group);
         }
+        for (const group of movedGroups) updateGroupBounds(group);
         markDirty();
       }
       break;
@@ -764,6 +794,7 @@ function finishDrag(e) {
           from: dragState.startDims,
           to: { width: dragState.card.cardWidth, height: dragState.card.cardHeight },
         });
+        if (dragState.card.group) updateGroupBounds(dragState.card.group);
         markDirty();
       }
       break;
@@ -801,6 +832,64 @@ let lastClickTime = 0;
 
 function handleCardClick(card, e) {
   const shiftKey = e?.data?.originalEvent?.shiftKey || e?.nativeEvent?.shiftKey;
+
+  // Double-click detection
+  const now = Date.now();
+  const isDoubleClick = lastClickCard === card && now - lastClickTime < 400;
+
+  if (isDoubleClick) {
+    lastClickCard = null;
+    lastClickTime = 0;
+
+    // Double-click on grouped card: enter group edit mode (select individual card)
+    if (card.group && editingGroup !== card.group) {
+      enterGroupEditMode(card.group);
+      clearSelection();
+      setCardSelected(card, true);
+      hideResizeHandles();
+      if (selection.size === 1) showResizeHandles(card);
+      if (onCardSelectCallback) onCardSelectCallback(card);
+      return;
+    }
+
+    // Double-click text card: edit
+    if (card.isText) {
+      startTextEdit(card);
+      return;
+    }
+    // Double-click image card: lightbox
+    if (!card.isShape) {
+      openLightbox(card);
+      return;
+    }
+    return;
+  }
+
+  lastClickCard = card;
+  lastClickTime = now;
+
+  // If card is in a group and we are NOT in edit mode for that group,
+  // select the entire group (Figma behavior)
+  if (card.group && editingGroup !== card.group) {
+    if (shiftKey) {
+      // Shift+click: toggle entire group in/out of selection
+      const allInSel = [...card.group.cards].every(c => selection.has(c));
+      if (allInSel) {
+        for (const c of card.group.cards) setCardSelected(c, false);
+      } else {
+        for (const c of card.group.cards) setCardSelected(c, true);
+      }
+    } else {
+      selectGroup(card.group);
+    }
+    hideResizeHandles();
+    if (onCardSelectCallback && selection.size === 1) {
+      onCardSelectCallback(Array.from(selection)[0]);
+    }
+    return;
+  }
+
+  // Normal (non-grouped or editing-group) click behavior
   if (shiftKey) {
     if (selection.has(card)) {
       setCardSelected(card, false);
@@ -815,21 +904,6 @@ function handleCardClick(card, e) {
   if (selection.size === 1) showResizeHandles(card);
   if (onCardSelectCallback && selection.size === 1) {
     onCardSelectCallback(card);
-  }
-
-  // Double-click detection
-  const now = Date.now();
-  if (lastClickCard === card && now - lastClickTime < 400) {
-    if (card.isText) {
-      startTextEdit(card);
-    } else if (!card.isShape) {
-      openLightbox(card);
-    }
-    lastClickCard = null;
-    lastClickTime = 0;
-  } else {
-    lastClickCard = card;
-    lastClickTime = now;
   }
 }
 
@@ -1098,6 +1172,63 @@ function setCardSelected(card, selected) {
 /** Get current selection. */
 export function getSelection() { return selection; }
 
+/**
+ * Handle pointerdown on a card with group-aware logic.
+ * If the card is in a group and we're not editing that group, select all group cards
+ * and start a multicard drag so the whole group moves together.
+ */
+function startCardDrag(card, e) {
+  if (spaceDown || currentTool === 'hand') return;
+  const wp = screenToWorld(e.global.x, e.global.y);
+
+  // If card is in a group and we are NOT in edit mode for that group,
+  // ensure all group cards are selected and drag them all
+  if (card.group && editingGroup !== card.group) {
+    // Auto-select all group cards if not already selected
+    if (!selection.has(card) || ![...card.group.cards].every(c => selection.has(c))) {
+      clearSelection();
+      for (const c of card.group.cards) {
+        setCardSelected(c, true);
+      }
+    }
+    const startPositions = new Map();
+    for (const c of selection) {
+      startPositions.set(c, { x: c.container.x, y: c.container.y });
+    }
+    dragState = {
+      type: 'multicard',
+      cards: Array.from(selection),
+      startPositions,
+      lastWorld: wp,
+      moved: false,
+    };
+    return;
+  }
+
+  // Normal drag logic (ungrouped or editing within group)
+  if (selection.has(card) && selection.size > 1) {
+    const startPositions = new Map();
+    for (const c of selection) {
+      startPositions.set(c, { x: c.container.x, y: c.container.y });
+    }
+    dragState = {
+      type: 'multicard',
+      cards: Array.from(selection),
+      startPositions,
+      lastWorld: wp,
+      moved: false,
+    };
+  } else {
+    dragState = {
+      type: 'card',
+      card,
+      offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
+      startPos: { x: card.container.x, y: card.container.y },
+      moved: false,
+    };
+  }
+}
+
 // ============================================================
 // Text Annotations
 // ============================================================
@@ -1170,29 +1301,7 @@ function createTextCard(content, x, y, opts = {}) {
 
   // Drag events (same as image cards)
   card.container.on('pointerdown', (e) => {
-    if (spaceDown || currentTool === 'hand') return;
-    const wp = screenToWorld(e.global.x, e.global.y);
-    if (selection.has(card) && selection.size > 1) {
-      const startPositions = new Map();
-      for (const c of selection) {
-        startPositions.set(c, { x: c.container.x, y: c.container.y });
-      }
-      dragState = {
-        type: 'multicard',
-        cards: Array.from(selection),
-        startPositions,
-        lastWorld: wp,
-        moved: false,
-      };
-    } else {
-      dragState = {
-        type: 'card',
-        card,
-        offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
-        startPos: { x: card.container.x, y: card.container.y },
-        moved: false,
-      };
-    }
+    startCardDrag(card, e);
   });
 
   world.addChild(card.container);
@@ -1355,29 +1464,7 @@ function createShapeCard(shapeType, x, y, opts = {}) {
 
   // Drag events
   card.container.on('pointerdown', (e) => {
-    if (spaceDown || currentTool === 'hand') return;
-    const wp = screenToWorld(e.global.x, e.global.y);
-    if (selection.has(card) && selection.size > 1) {
-      const startPositions = new Map();
-      for (const c of selection) {
-        startPositions.set(c, { x: c.container.x, y: c.container.y });
-      }
-      dragState = {
-        type: 'multicard',
-        cards: Array.from(selection),
-        startPositions,
-        lastWorld: wp,
-        moved: false,
-      };
-    } else {
-      dragState = {
-        type: 'card',
-        card,
-        offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
-        startPos: { x: card.container.x, y: card.container.y },
-        moved: false,
-      };
-    }
+    startCardDrag(card, e);
   });
 
   world.addChild(card.container);
@@ -1469,31 +1556,7 @@ function createPlaceholderCard(imageInfo, x, y) {
   });
 
   card.container.on('pointerdown', (e) => {
-    if (spaceDown || currentTool === 'hand') return;
-
-    const wp = screenToWorld(e.global.x, e.global.y);
-
-    if (selection.has(card) && selection.size > 1) {
-      const startPositions = new Map();
-      for (const c of selection) {
-        startPositions.set(c, { x: c.container.x, y: c.container.y });
-      }
-      dragState = {
-        type: 'multicard',
-        cards: Array.from(selection),
-        startPositions,
-        lastWorld: wp,
-        moved: false,
-      };
-    } else {
-      dragState = {
-        type: 'card',
-        card,
-        offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
-        startPos: { x: card.container.x, y: card.container.y },
-        moved: false,
-      };
-    }
+    startCardDrag(card, e);
 
     const parent = card.container.parent;
     parent.removeChild(card.container);
@@ -1764,6 +1827,9 @@ function alignSelected(direction) {
     card.data.x = card.container.x;
     card.data.y = card.container.y;
   }
+  const alignGroups = new Set();
+  for (const card of cards) { if (card.group) alignGroups.add(card.group); }
+  for (const group of alignGroups) updateGroupBounds(group);
   markDirty();
 }
 
@@ -1790,6 +1856,9 @@ function distributeSelected(axis) {
       card.data.y = card.container.y;
     });
   }
+  const distGroups = new Set();
+  for (const card of cards) { if (card.group) distGroups.add(card.group); }
+  for (const group of distGroups) updateGroupBounds(group);
   markDirty();
 }
 
@@ -1797,26 +1866,68 @@ function distributeSelected(axis) {
 // Groups
 // ============================================================
 
+let editingGroup = null; // When set, clicks select individual cards within this group
+
+/**
+ * Recalculate and redraw a group's border/label to match its member cards' positions.
+ */
+function updateGroupBounds(group) {
+  if (!group || group.cards.size === 0) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const card of group.cards) {
+    minX = Math.min(minX, card.container.x);
+    minY = Math.min(minY, card.container.y);
+    maxX = Math.max(maxX, card.container.x + card.cardWidth);
+    maxY = Math.max(maxY, card.container.y + card.cardHeight);
+  }
+  const pad = 16;
+  group.container.position.set(0, 0);
+  group.border.clear()
+    .roundRect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2, 12)
+    .fill({ color: THEME.groupBg, alpha: 0.04 })
+    .stroke({ color: THEME.groupBorder, width: 1.5, alpha: 0.3 });
+  if (group.label) {
+    group.label.position.set(minX - pad + 8, minY - pad - 18);
+  }
+}
+
+/**
+ * Select all cards in a group (Figma-like: click grouped card = select whole group).
+ */
+function selectGroup(group) {
+  clearSelection();
+  for (const card of group.cards) {
+    setCardSelected(card, true);
+  }
+}
+
+/**
+ * Enter group edit mode: allow selecting individual cards within the group.
+ */
+function enterGroupEditMode(group) {
+  editingGroup = group;
+}
+
+/**
+ * Exit group edit mode and re-select the entire group.
+ */
+function exitGroupEditMode() {
+  if (!editingGroup) return;
+  const group = editingGroup;
+  editingGroup = null;
+  selectGroup(group);
+}
+
 function groupSelected() {
   if (selection.size < 2) return;
   const cards = new Set(selection);
-  const bounds = getCardsBounds(Array.from(cards));
-  const pad = 16;
 
   // Group visual container (rendered behind cards)
   const groupContainer = new Container();
   groupContainer.zIndex = -1;
 
-  // Group border
-  const border = new Graphics()
-    .roundRect(
-      bounds.minX - pad, bounds.minY - pad,
-      bounds.maxX - bounds.minX + pad * 2,
-      bounds.maxY - bounds.minY + pad * 2,
-      12
-    )
-    .fill({ color: THEME.groupBg, alpha: 0.06 })
-    .stroke({ color: THEME.groupBorder, width: 1.5, alpha: 0.4 });
+  // Group border (will be drawn by updateGroupBounds)
+  const border = new Graphics();
 
   // Group label
   const label = new Text({
@@ -1828,7 +1939,6 @@ function groupSelected() {
       fontWeight: '600',
     }),
   });
-  label.position.set(bounds.minX - pad + 8, bounds.minY - pad - 18);
 
   groupContainer.addChild(border, label);
   world.addChild(groupContainer);
@@ -1840,6 +1950,9 @@ function groupSelected() {
   for (const card of cards) {
     card.group = group;
   }
+
+  // Draw initial bounds
+  updateGroupBounds(group);
 }
 
 function ungroupSelected() {
@@ -1911,6 +2024,12 @@ export function tidyUp() {
   }
 
   pushUndo({ type: 'move', entries });
+  // Update group bounds for all groups whose cards were moved
+  const tidyGroups = new Set();
+  for (const card of cards) {
+    if (card.group) tidyGroups.add(card.group);
+  }
+  for (const group of tidyGroups) updateGroupBounds(group);
   requestCull();
   requestMinimapRedraw();
   markDirty();
@@ -2256,6 +2375,11 @@ function showCanvasContextMenu(clientX, clientY) {
     if (sel.length >= 2) {
       items.push({ divider: true });
       items.push({ icon: icon('group', 14), label: 'Group', shortcut: '\u2318G', action: 'group' });
+    }
+    // Show Ungroup if any selected card is in a group
+    const anyGrouped = sel.some(c => c.group);
+    if (anyGrouped) {
+      items.push({ icon: icon('ungroup', 14), label: 'Ungroup', shortcut: '\u2318\u21E7U', action: 'ungroup' });
     }
     const anyLocked = sel.some(c => c.locked);
     items.push({ icon: icon(anyLocked ? 'unlock' : 'lock', 14), label: anyLocked ? 'Unlock' : 'Lock', shortcut: '\u2318L', action: 'toggle-lock' });

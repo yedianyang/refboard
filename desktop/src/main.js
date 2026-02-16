@@ -340,8 +340,11 @@ async function main() {
   });
 
   // Card selection -> open metadata panel + auto-embed if needed
+  // Only show details for image cards (skip shapes, text, groups)
   onCardSelect((card) => {
-    showMetadata(card);
+    if (!card.isShape && !card.isText) {
+      showMetadata(card);
+    }
 
     // Auto-embed if not yet embedded
     if (currentProjectPath && card?.data?.path) {
@@ -475,8 +478,8 @@ async function main() {
       return;
     }
 
-    // Cmd+G: Open Generate Image dialog
-    if (meta && !e.shiftKey && (e.key === 'g' || e.key === 'G')) {
+    // Cmd+Shift+G: Open Generate Image dialog
+    if (meta && e.shiftKey && (e.key === 'g' || e.key === 'G')) {
       e.preventDefault();
       const sel = getSelection();
       const imageCards = Array.from(sel).filter(c => !c.isText && !c.isShape);

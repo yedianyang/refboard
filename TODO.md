@@ -96,6 +96,9 @@
 | Bug | 说明 |
 |------|------|
 | ~~BUG-005~~ | ~~v1 CLI 已删除~~ |
+| ✅ BUG-006 | Group 行为修复：选中整组、拖拽整组、边框跟随、双击进入编辑 |
+| ✅ BUG-007 | Cmd+G 快捷键冲突：Group=Cmd+G, Generate=Cmd+Shift+G, Ungroup=Cmd+Shift+U |
+| ✅ BUG-008 | 选中 Shape/Text 时不弹出右侧详情面板 |
 
 ---
 
