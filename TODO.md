@@ -83,9 +83,9 @@
 | ✅ | **AI Vision 配置面板** | Settings > AI Vision，7 Provider 预设 + 真实连接测试 + Save/Load |
 | ✅ | **导入后自动 index + embed** | spawn_auto_index: 导入后异步 FTS5 索引 + CLIP embedding (9ef3725) |
 | ✅ | **图标矢量化** | 所有 close/remove 按钮 + download 按钮替换为 Lucide Icons SVG |
-| ⬜ | **Settings AI 配置面板重构** | 参考 llm-settings.png，左侧 Provider 列表 + 右侧表单 (API Key/Model/Base URL/Temperature/Max Tokens) |
-| ⬜ | **Cmd+F 画布搜索栏** | macOS 风格底部 Find Bar，客户端过滤图片 (dac99e9) |
-| ⬜ | **Auto-tag on import** | 导入图片时自动队列 AI 分析打标签 |
+| ✅ | **Settings AI 配置面板重构** | 左侧 Provider 列表 + 右侧表单 + Temperature/Max Tokens (e32e2f7) |
+| ✅ | **Cmd+F 画布搜索栏** | macOS 风格底部 Find Bar，客户端过滤图片 (dac99e9) |
+| ✅ | **Auto-tag on import** | Settings 开关 + 导入/粘贴自动触发 AI 批量分析 (bf8c443) |
 | ⬜ | **Smart clusters UI** | 基于 CLIP embedding 自动聚类分组，前端 UI |
 | ⬜ | **Color palette search** | 自动提取主色板 + 按颜色搜索画布图片 |
 | ⬜ | **Text-to-image search** | 用自然语言描述搜索 canvas 图片 (语义搜索 UI) |
