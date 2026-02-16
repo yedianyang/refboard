@@ -72,8 +72,6 @@ struct UpdateItemRequest {
     moods: Option<Vec<String>>,
     #[serde(default)]
     era: Option<String>,
-    #[serde(default)]
-    artist: Option<String>,
 }
 
 #[derive(Serialize)]
