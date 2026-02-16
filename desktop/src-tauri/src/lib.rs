@@ -202,6 +202,16 @@ async fn scan_projects_folder(
     storage.scan_projects_folder(&folder).await
 }
 
+/// Open a file or folder in macOS Finder.
+#[tauri::command]
+fn show_in_finder(path: String) -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg(&path)
+        .spawn()
+        .map_err(|e| format!("Cannot open Finder: {e}"))?;
+    Ok(())
+}
+
 /// Rename a project: update metadata.json, deco.json, and recent.json entry.
 #[tauri::command]
 async fn rename_project(
@@ -456,6 +466,7 @@ pub fn run() {
             create_project,
             list_projects,
             scan_projects_folder,
+            show_in_finder,
             rename_project,
             remove_from_recent,
             get_app_config,

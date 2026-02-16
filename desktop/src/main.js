@@ -868,21 +868,22 @@ async function initHomeScreen(homeScreen, loading) {
     const action = e.target.closest('.ctx-item')?.dataset.action;
     if (!action || !ctxTargetCard) return;
     e.stopPropagation();
-    const path = ctxTargetCard.dataset.path;
+    // Save references before hideContextMenu() nulls ctxTargetCard
+    const targetCard = ctxTargetCard;
+    const path = targetCard.dataset.path;
     hideContextMenu();
 
     if (action === 'open') {
       openProject(path, loading);
     } else if (action === 'finder') {
       try {
-        const { open: shellOpen } = await import('@tauri-apps/plugin-shell');
-        await shellOpen(path);
+        await invoke('show_in_finder', { path });
       } catch (err) {
         setStatus(`Could not open Finder: ${err}`);
       }
     } else if (action === 'rename') {
       // Inline rename: replace name element with input
-      const nameEl = ctxTargetCard.querySelector('.home-project-name');
+      const nameEl = targetCard.querySelector('.home-project-name');
       if (!nameEl) return;
       const oldName = nameEl.textContent;
       const input = document.createElement('input');
@@ -901,9 +902,8 @@ async function initHomeScreen(homeScreen, loading) {
         if (newName !== oldName) {
           try {
             await invoke('rename_project', { projectPath: path, newName });
-          } catch {
-            // Backend command may not exist yet — just update UI
-            span.textContent = newName;
+          } catch (err) {
+            console.error('[Rename] Failed:', err);
           }
         }
       };
@@ -913,14 +913,14 @@ async function initHomeScreen(homeScreen, loading) {
         if (ev.key === 'Escape') { input.value = oldName; input.blur(); }
       });
     } else if (action === 'delete') {
-      const name = ctxTargetCard.querySelector('.home-project-name')?.textContent || 'this project';
+      const name = targetCard.querySelector('.home-project-name')?.textContent || 'this project';
       if (confirm(`Remove "${name}" from recent projects?`)) {
         try {
           await invoke('remove_from_recent', { projectPath: path });
-        } catch {
-          // Backend command may not exist yet
+        } catch (err) {
+          console.error('[Delete] Failed:', err);
         }
-        ctxTargetCard.remove();
+        targetCard.remove();
         // Show empty state if no cards left
         if (gridEl.querySelectorAll('.home-project-card').length === 0) {
           gridEl.innerHTML = `
