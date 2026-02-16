@@ -596,10 +596,9 @@ impl StorageProvider for LocalStorage {
                 fs::rename(old_dir, &new_dir)
                     .map_err(|e| format!("Cannot rename folder: {e}"))?;
 
-                // Update recent.json with the new path
+                // Update recent.json with the new path (single read-modify-write)
                 let new_path_str = new_dir.to_string_lossy().to_string();
-                remove_from_recent_file(&recent_path, &project_path)?;
-                add_to_recent_file(&recent_path, &new_name, &new_path_str)?;
+                update_recent_file_entry(&recent_path, &project_path, &new_name, &new_path_str)?;
             } else {
                 // Name didn't change path, just update recent.json name
                 rename_in_recent_file(&recent_path, &project_path, &new_name)?;
@@ -752,6 +751,50 @@ fn remove_from_recent_file(recent_path: &Path, project_path: &str) -> Result<(),
         serde_json::from_str(&contents).unwrap_or_default();
 
     entries.retain(|e| e.path != project_path);
+
+    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
+    fs::write(recent_path, json).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Update a project entry in recent.json: change both name and path in a single read-modify-write.
+fn update_recent_file_entry(
+    recent_path: &Path,
+    old_path: &str,
+    new_name: &str,
+    new_path: &str,
+) -> Result<(), String> {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct RecentEntry {
+        name: String,
+        path: String,
+    }
+
+    let mut entries: Vec<RecentEntry> = if recent_path.exists() {
+        let contents = fs::read_to_string(recent_path).map_err(|e| e.to_string())?;
+        serde_json::from_str(&contents).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    // Find and update existing entry, or prepend new one
+    let mut found = false;
+    for entry in &mut entries {
+        if entry.path == old_path {
+            entry.name = new_name.to_string();
+            entry.path = new_path.to_string();
+            found = true;
+            break;
+        }
+    }
+    if !found {
+        entries.insert(0, RecentEntry {
+            name: new_name.to_string(),
+            path: new_path.to_string(),
+        });
+        entries.truncate(20);
+    }
 
     let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
     fs::write(recent_path, json).map_err(|e| e.to_string())?;
