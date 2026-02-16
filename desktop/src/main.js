@@ -1251,6 +1251,7 @@ function initFloatingToolbar() {
       updateAnnotationControls();
     } else if (count === 0 && lastSelectionSize > 0) {
       hideToolbar();
+      closePanel();
     } else if (count > 0) {
       requestPositionUpdate();
       // Lightweight check: only update annotation controls if selection composition changed
