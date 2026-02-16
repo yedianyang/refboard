@@ -437,9 +437,154 @@ export async function findSimilar(card) {
 }
 
 // ============================================================
+// Smart Clusters
+// ============================================================
+
+let clusterResults = null;
+
+/**
+ * Run CLIP-based clustering and highlight results on canvas.
+ * @param {number} threshold - Cosine similarity threshold (0.0-1.0)
+ */
+export async function clusterProject(threshold = 0.7) {
+  if (!currentProjectPath) return;
+
+  const statusEl = document.getElementById('status-text');
+  if (statusEl) statusEl.textContent = 'Clustering images...';
+
+  try {
+    clusterResults = await invoke('cmd_cluster_project', {
+      projectPath: currentProjectPath,
+      threshold,
+    });
+
+    if (clusterResults.clusters.length === 0) {
+      if (statusEl) statusEl.textContent = 'No clusters found. Try lowering the threshold or analyzing more images.';
+      return clusterResults;
+    }
+
+    // Show cluster results in results panel
+    renderClusterResults(clusterResults);
+    showResultsPanel(true);
+
+    if (statusEl) statusEl.textContent = `Found ${clusterResults.clusters.length} cluster${clusterResults.clusters.length !== 1 ? 's' : ''} (${clusterResults.ungrouped} ungrouped)`;
+    return clusterResults;
+  } catch (err) {
+    if (statusEl) statusEl.textContent = 'Clustering failed: ' + err;
+    console.warn('Clustering failed:', err);
+    return null;
+  }
+}
+
+function renderClusterResults(result) {
+  const container = document.getElementById('results-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const countEl = document.getElementById('results-count');
+  if (countEl) {
+    countEl.textContent = `${result.clusters.length} cluster${result.clusters.length !== 1 ? 's' : ''}, ${result.ungrouped} ungrouped`;
+  }
+
+  // Cluster color palette
+  const clusterColors = [
+    '#4a9eff', '#ff6b6b', '#51cf66', '#fcc419', '#cc5de8',
+    '#ff922b', '#20c997', '#f06595', '#845ef7', '#339af0',
+  ];
+
+  result.clusters.forEach((cluster, idx) => {
+    const section = document.createElement('div');
+    section.className = 'cluster-section';
+
+    const header = document.createElement('div');
+    header.className = 'cluster-header';
+    const dot = document.createElement('span');
+    dot.className = 'cluster-dot';
+    dot.style.background = clusterColors[idx % clusterColors.length];
+    const label = document.createElement('span');
+    label.textContent = `Cluster ${idx + 1} (${cluster.size} images)`;
+    header.appendChild(dot);
+    header.appendChild(label);
+
+    // Click header to highlight all images in this cluster
+    header.style.cursor = 'pointer';
+    header.addEventListener('click', () => {
+      if (onFilterCallback) {
+        onFilterCallback(cluster.images);
+      }
+    });
+
+    section.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'cluster-grid';
+    cluster.images.slice(0, 8).forEach((imgPath) => {
+      const thumb = document.createElement('img');
+      thumb.className = 'cluster-thumb';
+      thumb.src = convertFileSrc(imgPath);
+      thumb.loading = 'lazy';
+      thumb.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent('deco:scroll-to-card', { detail: { path: imgPath } })
+        );
+      });
+      grid.appendChild(thumb);
+    });
+    if (cluster.images.length > 8) {
+      const more = document.createElement('div');
+      more.className = 'cluster-more';
+      more.textContent = `+${cluster.images.length - 8} more`;
+      grid.appendChild(more);
+    }
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+}
+
+/** Clear cluster results. */
+export function clearClusters() {
+  clusterResults = null;
+}
+
+// ============================================================
+// Semantic Search (searches AI-generated descriptions, tags, mood, style)
+// ============================================================
+
+/**
+ * Search images using natural language query via FTS5 over AI metadata.
+ * This searches descriptions, tags, style, mood, era fields.
+ */
+export async function semanticSearch(query) {
+  if (!currentProjectPath || !query) return [];
+
+  try {
+    const results = await invoke('cmd_search_text', {
+      projectPath: currentProjectPath,
+      query,
+      limit: 50,
+    });
+
+    searchResults = results;
+    renderSearchResults(results);
+    showResultsPanel(true);
+
+    if (onFilterCallback && results.length > 0) {
+      onFilterCallback(results.map((r) => r.imagePath));
+    }
+
+    return results;
+  } catch (err) {
+    console.warn('Semantic search failed:', err);
+    return [];
+  }
+}
+
+// ============================================================
 // Public Getters
 // ============================================================
 
 export function getActiveFilters() { return activeTagFilters; }
 export function getAllTags() { return allTags; }
 export function getSearchResults() { return searchResults; }
+export function getClusterResults() { return clusterResults; }

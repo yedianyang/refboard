@@ -86,9 +86,9 @@
 | ✅ | **Settings AI 配置面板重构** | 左侧 Provider 列表 + 右侧表单 + Temperature/Max Tokens (e32e2f7) |
 | ✅ | **Cmd+F 画布搜索栏** | macOS 风格底部 Find Bar，客户端过滤图片 (dac99e9) |
 | ✅ | **Auto-tag on import** | Settings 开关 + 导入/粘贴自动触发 AI 批量分析 (bf8c443) |
-| ⬜ | **Smart clusters UI** | 基于 CLIP embedding 自动聚类分组，前端 UI |
+| ✅ | **Smart clusters UI** | Tag sidebar "Cluster" 按钮 + 结果面板 + 颜色标记 |
 | ⬜ | **Color palette search** | 自动提取主色板 + 按颜色搜索画布图片 |
-| ⬜ | **Text-to-image search** | 用自然语言描述搜索 canvas 图片 (语义搜索 UI) |
+| ✅ | **Text-to-image search** | Find Bar "AI" 模式切换 + FTS5 语义搜索 |
 | ⬜ | 截图/GIF | README 视觉演示素材 |
 | ❌ | ~~npm 发布准备~~ | v1 CLI 已删除，不再需要 |
 

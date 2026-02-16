@@ -1,7 +1,9 @@
 // Deco 2.0 — Find Bar (Cmd+F)
 // macOS-style bottom search bar for filtering canvas cards by name/description/tags
+// AI mode: backend FTS5 semantic search over AI-generated metadata
 
 import { getAllCards, applyFilter, scrollToCard } from './canvas/index.js';
+import { semanticSearch } from './search.js';
 
 // ============================================================
 // State
@@ -10,8 +12,11 @@ import { getAllCards, applyFilter, scrollToCard } from './canvas/index.js';
 let findBarEl = null;
 let inputEl = null;
 let countEl = null;
+let aiBtn = null;
 let matches = [];      // card.data.path[] of matched cards
 let currentIndex = -1; // index into matches for navigation
+let aiMode = false;    // AI search mode toggle
+let aiDebounce = null;
 
 // ============================================================
 // Init
@@ -21,11 +26,18 @@ export function initFindBar() {
   findBarEl = document.getElementById('find-bar');
   inputEl = document.getElementById('find-bar-input');
   countEl = document.getElementById('find-bar-count');
+  aiBtn = document.getElementById('find-bar-ai');
 
   if (!inputEl) return;
 
   inputEl.addEventListener('input', () => {
-    runFilter(inputEl.value.trim());
+    const query = inputEl.value.trim();
+    if (aiMode) {
+      clearTimeout(aiDebounce);
+      aiDebounce = setTimeout(() => runAiSearch(query), 350);
+    } else {
+      runFilter(query);
+    }
   });
 
   inputEl.addEventListener('keydown', (e) => {
@@ -35,13 +47,35 @@ export function initFindBar() {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (e.shiftKey) {
+      if (aiMode) {
+        // In AI mode, Enter triggers immediate search
+        clearTimeout(aiDebounce);
+        runAiSearch(inputEl.value.trim());
+      } else if (e.shiftKey) {
         navigateMatch(-1);
       } else {
         navigateMatch(1);
       }
     }
   });
+
+  // AI mode toggle
+  if (aiBtn) {
+    aiBtn.addEventListener('click', () => {
+      aiMode = !aiMode;
+      aiBtn.classList.toggle('active', aiMode);
+      inputEl.placeholder = aiMode ? 'Search by description, tags, mood...' : 'Find on board...';
+      // Re-run with current query in new mode
+      const query = inputEl.value.trim();
+      if (query) {
+        if (aiMode) {
+          runAiSearch(query);
+        } else {
+          runFilter(query);
+        }
+      }
+    });
+  }
 
   // Close button
   const closeBtn = document.getElementById('find-bar-close');
@@ -73,6 +107,7 @@ export function closeFindBar() {
   inputEl.value = '';
   matches = [];
   currentIndex = -1;
+  clearTimeout(aiDebounce);
   updateCount();
   applyFilter(null); // clear filter
   inputEl.blur();
@@ -144,5 +179,29 @@ function updateCount() {
   } else {
     countEl.textContent = '';
     countEl.classList.remove('no-results');
+  }
+}
+
+// ============================================================
+// AI Search (backend FTS5 over AI-generated metadata)
+// ============================================================
+
+async function runAiSearch(query) {
+  if (!query) {
+    matches = [];
+    currentIndex = -1;
+    updateCount();
+    applyFilter(null);
+    return;
+  }
+
+  const results = await semanticSearch(query);
+  matches = results.map((r) => r.imagePath);
+  currentIndex = matches.length > 0 ? 0 : -1;
+  updateCount();
+  applyFilter(matches.length > 0 ? matches : []);
+
+  if (matches.length > 0) {
+    scrollToCard(matches[0]);
   }
 }

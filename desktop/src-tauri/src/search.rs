@@ -737,6 +737,23 @@ pub async fn cmd_update_search_metadata(
     storage.upsert_image_metadata(&project_path, &metadata).await
 }
 
+/// Cluster project images by CLIP embedding similarity.
+#[tauri::command]
+pub async fn cmd_cluster_project(
+    project_path: String,
+    threshold: Option<f64>,
+) -> Result<crate::ops::ClusterResult, String> {
+    let threshold = threshold.unwrap_or(0.7);
+    let embeddings = get_all_embeddings(&project_path)?;
+    if embeddings.is_empty() {
+        return Err("No embeddings found. Analyze images first to generate CLIP embeddings.".to_string());
+    }
+    crate::log::log("SEARCH", &format!("Clustering {} images with threshold {}", embeddings.len(), threshold));
+    let result = crate::ops::greedy_cluster(&embeddings, threshold);
+    crate::log::log("SEARCH", &format!("Found {} clusters, {} ungrouped", result.clusters.len(), result.ungrouped));
+    Ok(result)
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

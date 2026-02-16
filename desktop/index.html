@@ -101,6 +101,10 @@
       <div id="tag-sidebar">
         <div class="tag-sidebar-header">
           <h3>Tags</h3>
+          <button id="cluster-btn" class="tag-action-btn" title="Auto-cluster by visual similarity">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="19" r="2"/><path d="M12 9V5"/><path d="m14.5 13.5 3 3"/><path d="m6.5 6.5 3 3"/><path d="m9.5 13.5-3 3"/><path d="m17.5 6.5-3 3"/></svg>
+            Cluster
+          </button>
         </div>
         <div id="tag-list"></div>
       </div>
@@ -303,6 +307,7 @@
             <svg class="find-bar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input type="text" id="find-bar-input" placeholder="Find on board..." spellcheck="false" />
             <span id="find-bar-count"></span>
+            <button id="find-bar-ai" class="find-bar-btn find-bar-ai-btn" title="AI Search: search by description, tags, mood, style">AI</button>
             <div class="find-bar-nav">
               <button id="find-bar-prev" class="find-bar-btn" title="Previous (Shift+Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
               <button id="find-bar-next" class="find-bar-btn" title="Next (Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
