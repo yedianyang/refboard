@@ -578,41 +578,69 @@
             </div>
           </div>
           <!-- AI Provider panel -->
-          <div class="settings-panel" id="settings-panel-ai" style="display: none;">
-            <div class="settings-group">
-              <label class="settings-label">Provider</label>
-              <select id="settings-provider" class="settings-select">
-                <option value="openai">OpenAI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="anthropic">Claude (Anthropic)</option>
-                <option value="ollama">Ollama (Local)</option>
-                <option value="google">Google AI</option>
-                <option value="moonshot">Moonshot</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="qwen">Qwen</option>
-                <option value="together">Together AI</option>
-                <option value="groq">Groq</option>
-                <option value="minimax">MiniMax</option>
-              </select>
+          <div class="settings-panel settings-panel-ai-layout" id="settings-panel-ai" style="display: none;">
+            <div class="ai-provider-list" id="ai-provider-list">
+              <button class="ai-provider-item active" data-provider="openai"><span class="ai-provider-icon">O</span>OpenAI</button>
+              <button class="ai-provider-item" data-provider="anthropic"><span class="ai-provider-icon">A</span>Claude</button>
+              <button class="ai-provider-item" data-provider="ollama"><span class="ai-provider-icon">L</span>Ollama</button>
+              <button class="ai-provider-item" data-provider="deepseek"><span class="ai-provider-icon">D</span>DeepSeek</button>
+              <button class="ai-provider-item" data-provider="groq"><span class="ai-provider-icon">G</span>Groq</button>
+              <button class="ai-provider-item" data-provider="openrouter"><span class="ai-provider-icon">R</span>OpenRouter</button>
+              <button class="ai-provider-item" data-provider="together"><span class="ai-provider-icon">T</span>Together AI</button>
+              <button class="ai-provider-item" data-provider="google"><span class="ai-provider-icon">G</span>Google AI</button>
+              <button class="ai-provider-item" data-provider="moonshot"><span class="ai-provider-icon">M</span>Moonshot</button>
+              <button class="ai-provider-item" data-provider="qwen"><span class="ai-provider-icon">Q</span>Qwen</button>
+              <button class="ai-provider-item" data-provider="minimax"><span class="ai-provider-icon">X</span>MiniMax</button>
             </div>
-            <div class="settings-group" id="settings-api-key-group">
-              <label class="settings-label">API Key</label>
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <input id="settings-api-key" type="password" class="settings-input" placeholder="sk-..." autocomplete="off" style="flex: 1;" />
-                <button id="settings-key-toggle" class="btn-icon" title="Show/hide key" style="flex: none; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-secondary);">
-                  <svg id="settings-key-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
+            <div class="ai-provider-form">
+              <div class="ai-provider-header">
+                <span class="ai-provider-header-icon" id="ai-form-icon">O</span>
+                <div>
+                  <div class="ai-provider-header-name" id="ai-form-name">OpenAI</div>
+                  <div class="ai-provider-header-desc" id="ai-form-desc">GPT models for image analysis</div>
+                </div>
               </div>
+              <div class="settings-group" id="settings-api-key-group">
+                <label class="settings-label">API Key <span style="color: var(--destructive);">*</span></label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input id="settings-api-key" type="password" class="settings-input" placeholder="sk-..." autocomplete="off" style="flex: 1;" />
+                  <button id="settings-key-toggle" class="btn-icon" title="Show/hide key" style="flex: none; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-secondary);">
+                    <svg id="settings-key-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="settings-group">
+                <label class="settings-label">Model <span style="color: var(--destructive);">*</span></label>
+                <input id="settings-model" type="text" class="settings-input" placeholder="gpt-4o-mini" autocomplete="off" />
+              </div>
+              <div class="settings-group" id="settings-endpoint-group">
+                <label class="settings-label">Base URL</label>
+                <input id="settings-endpoint" type="text" class="settings-input" placeholder="https://api.openai.com/v1" />
+              </div>
+              <div class="settings-group">
+                <label class="settings-label">Temperature</label>
+                <input id="settings-temperature" type="number" class="settings-input" placeholder="0.7" min="0" max="2" step="0.1" value="0.7" />
+              </div>
+              <div class="settings-group">
+                <label class="settings-label">Max Tokens</label>
+                <input id="settings-max-tokens" type="number" class="settings-input" placeholder="4096" min="256" max="128000" step="256" value="4096" />
+              </div>
+              <button id="settings-test-btn" class="btn-secondary" style="align-self: flex-start;">Test Connection</button>
             </div>
-            <div class="settings-group" id="settings-endpoint-group">
-              <label class="settings-label">Base URL</label>
-              <input id="settings-endpoint" type="text" class="settings-input" placeholder="https://api.openai.com/v1" />
-            </div>
-            <div class="settings-group">
-              <label class="settings-label">Model</label>
-              <input id="settings-model" type="text" class="settings-input" placeholder="gpt-4o-mini" autocomplete="off" />
-            </div>
-            <button id="settings-test-btn" class="btn-secondary" style="align-self: flex-start;">Test Connection</button>
+            <!-- Hidden select for backward compat with JS -->
+            <select id="settings-provider" style="display:none;">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Claude</option>
+              <option value="ollama">Ollama</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="groq">Groq</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="together">Together AI</option>
+              <option value="google">Google AI</option>
+              <option value="moonshot">Moonshot</option>
+              <option value="qwen">Qwen</option>
+              <option value="minimax">MiniMax</option>
+            </select>
           </div>
           <!-- Web Collection panel -->
           <div class="settings-panel" id="settings-panel-web" style="display: none;">

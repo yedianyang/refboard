@@ -83,6 +83,12 @@
 | ✅ | **AI Vision 配置面板** | Settings > AI Vision，7 Provider 预设 + 真实连接测试 + Save/Load |
 | ✅ | **导入后自动 index + embed** | spawn_auto_index: 导入后异步 FTS5 索引 + CLIP embedding (9ef3725) |
 | ✅ | **图标矢量化** | 所有 close/remove 按钮 + download 按钮替换为 Lucide Icons SVG |
+| ⬜ | **Settings AI 配置面板重构** | 参考 llm-settings.png，左侧 Provider 列表 + 右侧表单 (API Key/Model/Base URL/Temperature/Max Tokens) |
+| ⬜ | **Cmd+F 画布搜索栏** | macOS 风格底部 Find Bar，客户端过滤图片 (dac99e9) |
+| ⬜ | **Auto-tag on import** | 导入图片时自动队列 AI 分析打标签 |
+| ⬜ | **Smart clusters UI** | 基于 CLIP embedding 自动聚类分组，前端 UI |
+| ⬜ | **Color palette search** | 自动提取主色板 + 按颜色搜索画布图片 |
+| ⬜ | **Text-to-image search** | 用自然语言描述搜索 canvas 图片 (语义搜索 UI) |
 | ⬜ | 截图/GIF | README 视觉演示素材 |
 | ❌ | ~~npm 发布准备~~ | v1 CLI 已删除，不再需要 |
 
@@ -91,9 +97,13 @@
 | 状态 | 任务 | 说明 |
 |------|------|------|
 | ✅ | 深色/浅色主题切换 | D 键切换，localStorage 持久化 |
-| ⬜ | 批量布局命令 | `deco layout --grid/--cluster` (v1 CLI) |
-| ✅ | 图片导入压缩 | 导入时自动压缩，保留透明图层 (alpha channel) |
+| ✅ | macOS Keychain 存储 | API key 安全存储，自动迁移明文 key (dd527e5) |
+| ✅ | CSS 模块化 | 10 个文件解耦，Vite 打包 (39b4e64) |
+| ✅ | Cmd+F Find Bar | macOS 风格底部搜索栏 (dac99e9) |
+| ✅ | 右键菜单 disabled 修复 | Paste 按钮 disabled 状态渲染 (dac99e9) |
 | ⬜ | DMG 打包修复 | `bundle_dmg.sh` 签名/打包流程 |
+| ⬜ | AI layout suggestions | 自动排版建议（按主题/颜色分区） |
+| ⬜ | Mood board templates | AI 推荐 moodboard 模板布局 |
 
 ### Bug
 

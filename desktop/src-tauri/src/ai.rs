@@ -43,6 +43,10 @@ pub struct AiProviderConfig {
     pub endpoint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -71,6 +75,8 @@ impl Default for AiProviderConfig {
             api_key: None,
             endpoint: None,
             model: None,
+            temperature: None,
+            max_tokens: None,
         }
     }
 }
@@ -225,15 +231,19 @@ pub struct AnthropicProvider {
     api_key: String,
     model: String,
     endpoint: String,
+    temperature: f32,
+    max_tokens: u32,
 }
 
 impl AnthropicProvider {
-    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String) -> Self {
+    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String, temperature: f32, max_tokens: u32) -> Self {
         Self {
             client,
             api_key,
             model: model.unwrap_or_else(|| "claude-sonnet-4-5-20250929".to_string()),
             endpoint,
+            temperature,
+            max_tokens,
         }
     }
 }
@@ -243,6 +253,8 @@ impl AnthropicProvider {
 struct AnthropicRequest {
     model: String,
     max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
     messages: Vec<AnthropicMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     system: Option<String>,
@@ -295,7 +307,8 @@ impl AiVisionProvider for AnthropicProvider {
 
         let body = AnthropicRequest {
             model: self.model.clone(),
-            max_tokens: 1024,
+            max_tokens: self.max_tokens,
+            temperature: Some(self.temperature),
             system: None,
             messages: vec![AnthropicMessage {
                 role: "user".to_string(),
@@ -365,15 +378,19 @@ pub struct OpenAIProvider {
     api_key: String,
     model: String,
     endpoint: String,
+    temperature: f32,
+    max_tokens: u32,
 }
 
 impl OpenAIProvider {
-    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String) -> Self {
+    pub fn new(client: reqwest::Client, api_key: String, model: Option<String>, endpoint: String, temperature: f32, max_tokens: u32) -> Self {
         Self {
             client,
             api_key,
             model: model.unwrap_or_else(|| "gpt-4o".to_string()),
             endpoint,
+            temperature,
+            max_tokens,
         }
     }
 }
@@ -384,6 +401,8 @@ struct OpenAIRequest {
     model: String,
     messages: Vec<OpenAIMessage>,
     max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     response_format: Option<OpenAIResponseFormat>,
 }
@@ -442,7 +461,8 @@ impl AiVisionProvider for OpenAIProvider {
 
         let body = OpenAIRequest {
             model: self.model.clone(),
-            max_tokens: 1024,
+            max_tokens: self.max_tokens,
+            temperature: Some(self.temperature),
             response_format: Some(OpenAIResponseFormat {
                 format_type: "json_object".to_string(),
             }),
@@ -506,14 +526,16 @@ pub struct OllamaProvider {
     client: reqwest::Client,
     endpoint: String,
     model: String,
+    temperature: f32,
 }
 
 impl OllamaProvider {
-    pub fn new(client: reqwest::Client, endpoint: Option<String>, model: Option<String>) -> Self {
+    pub fn new(client: reqwest::Client, endpoint: Option<String>, model: Option<String>, temperature: f32) -> Self {
         Self {
             client,
             endpoint: endpoint.unwrap_or_else(|| "http://localhost:11434".to_string()),
             model: model.unwrap_or_else(|| "llava".to_string()),
+            temperature,
         }
     }
 }
@@ -524,6 +546,8 @@ struct OllamaChatRequest {
     model: String,
     messages: Vec<OllamaMessage>,
     stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     format: Option<String>,
 }
@@ -560,6 +584,7 @@ impl AiVisionProvider for OllamaProvider {
         let body = OllamaChatRequest {
             model: self.model.clone(),
             stream: false,
+            temperature: Some(self.temperature),
             format: Some("json".to_string()),
             messages: vec![OllamaMessage {
                 role: "user".to_string(),
@@ -614,6 +639,9 @@ fn create_provider(
         .filter(|e| !e.is_empty())
         .unwrap_or_else(|| config.provider.default_endpoint().to_string());
 
+    let temperature = config.temperature.unwrap_or(0.7);
+    let max_tokens = config.max_tokens.unwrap_or(4096);
+
     match config.provider {
         AiProviderKind::Anthropic => {
             let key = config
@@ -627,6 +655,8 @@ fn create_provider(
                 key,
                 config.model.clone(),
                 endpoint,
+                temperature,
+                max_tokens,
             )))
         }
         AiProviderKind::Openai => {
@@ -641,12 +671,15 @@ fn create_provider(
                 key,
                 config.model.clone(),
                 endpoint,
+                temperature,
+                max_tokens,
             )))
         }
         AiProviderKind::Ollama => Ok(Box::new(OllamaProvider::new(
             client.clone(),
             Some(endpoint),
             config.model.clone(),
+            temperature,
         ))),
     }
 }
@@ -960,6 +993,7 @@ pub async fn cmd_test_ai_vision(
             let body = AnthropicRequest {
                 model,
                 max_tokens: 20,
+                temperature: None,
                 system: None,
                 messages: vec![AnthropicMessage {
                     role: "user".to_string(),

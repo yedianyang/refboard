@@ -23,17 +23,17 @@ let batchCancelled = false; // Batch analysis cancel flag
 
 // Provider presets — frontend dropdown value → backend provider + defaults
 const PROVIDER_PRESETS = {
-  openai:     { backend: 'openai',    baseUrl: 'https://api.openai.com/v1',                          model: 'gpt-4o-mini',                    label: 'OpenAI',            needsKey: true  },
-  openrouter: { backend: 'openai',    baseUrl: 'https://openrouter.ai/api/v1',                       model: 'google/gemini-2.0-flash',         label: 'OpenRouter',        needsKey: true  },
-  anthropic:  { backend: 'anthropic', baseUrl: 'https://api.anthropic.com',                          model: 'claude-3-5-haiku-latest',         label: 'Claude (Anthropic)', needsKey: true  },
-  ollama:     { backend: 'ollama',    baseUrl: 'http://localhost:11434/v1',                           model: 'llava:13b',                       label: 'Ollama (Local)',    needsKey: false },
-  google:     { backend: 'openai',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',   model: 'gemini-2.0-flash',                label: 'Google AI',         needsKey: true  },
-  moonshot:   { backend: 'openai',    baseUrl: 'https://api.moonshot.cn/v1',                         model: 'moonshot-v1-8k-vision-preview',   label: 'Moonshot',          needsKey: true  },
-  deepseek:   { backend: 'openai',    baseUrl: 'https://api.deepseek.com/v1',                        model: 'deepseek-chat',                   label: 'DeepSeek',          needsKey: true  },
-  qwen:       { backend: 'openai',    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-vl-max',                     label: 'Qwen',              needsKey: true  },
-  together:   { backend: 'openai',    baseUrl: 'https://api.together.xyz/v1',                      model: 'meta-llama/Llama-Vision-Free',    label: 'Together AI',       needsKey: true  },
-  groq:       { backend: 'openai',    baseUrl: 'https://api.groq.com/openai/v1',                   model: 'llava-v1.5-7b-4096-preview',      label: 'Groq',              needsKey: true  },
-  minimax:    { backend: 'openai',    baseUrl: 'https://api.minimax.chat/v1',                      model: 'MiniMax-VL-01',                   label: 'MiniMax',           needsKey: true  },
+  openai:     { backend: 'openai',    baseUrl: 'https://api.openai.com/v1',                          model: 'gpt-4o-mini',                    label: 'OpenAI',            desc: 'GPT models for image analysis',              needsKey: true  },
+  openrouter: { backend: 'openai',    baseUrl: 'https://openrouter.ai/api/v1',                       model: 'google/gemini-2.0-flash',         label: 'OpenRouter',        desc: 'Unified API for multiple providers',          needsKey: true  },
+  anthropic:  { backend: 'anthropic', baseUrl: 'https://api.anthropic.com',                          model: 'claude-3-5-haiku-latest',         label: 'Claude',            desc: 'Anthropic Claude vision models',              needsKey: true  },
+  ollama:     { backend: 'ollama',    baseUrl: 'http://localhost:11434/v1',                           model: 'llava:13b',                       label: 'Ollama',            desc: 'Run models locally on your machine',          needsKey: false },
+  google:     { backend: 'openai',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',   model: 'gemini-2.0-flash',                label: 'Google AI',         desc: 'Gemini models via Google AI Studio',          needsKey: true  },
+  moonshot:   { backend: 'openai',    baseUrl: 'https://api.moonshot.cn/v1',                         model: 'moonshot-v1-8k-vision-preview',   label: 'Moonshot',          desc: 'Moonshot AI vision models',                   needsKey: true  },
+  deepseek:   { backend: 'openai',    baseUrl: 'https://api.deepseek.com/v1',                        model: 'deepseek-chat',                   label: 'DeepSeek',          desc: 'DeepSeek vision and reasoning',               needsKey: true  },
+  qwen:       { backend: 'openai',    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-vl-max',                     label: 'Qwen',              desc: 'Alibaba Qwen vision-language models',         needsKey: true  },
+  together:   { backend: 'openai',    baseUrl: 'https://api.together.xyz/v1',                      model: 'meta-llama/Llama-Vision-Free',    label: 'Together AI',       desc: 'Open-source models via Together',             needsKey: true  },
+  groq:       { backend: 'openai',    baseUrl: 'https://api.groq.com/openai/v1',                   model: 'llava-v1.5-7b-4096-preview',      label: 'Groq',              desc: 'Fast inference with LPU hardware',            needsKey: true  },
+  minimax:    { backend: 'openai',    baseUrl: 'https://api.minimax.chat/v1',                      model: 'MiniMax-VL-01',                   label: 'MiniMax',           desc: 'MiniMax multimodal models',                   needsKey: true  },
 };
 
 // ============================================================
@@ -623,7 +623,33 @@ function populateSettings(config) {
   document.getElementById('settings-endpoint').value = config.endpoint || '';
   document.getElementById('settings-model').value = config.model || '';
 
+  // Populate temperature and max tokens (use saved values or defaults)
+  const tempInput = document.getElementById('settings-temperature');
+  const maxTokensInput = document.getElementById('settings-max-tokens');
+  if (tempInput) tempInput.value = config.temperature ?? 0.7;
+  if (maxTokensInput) maxTokensInput.value = config.maxTokens ?? 4096;
+
+  // Sync provider list UI
+  selectProviderListItem(frontendProvider);
   updateProviderFields(frontendProvider, /* preserveValues */ true);
+}
+
+/** Sync the left-side provider list active state + form header */
+function selectProviderListItem(providerKey) {
+  const list = document.getElementById('ai-provider-list');
+  if (!list) return;
+  list.querySelectorAll('.ai-provider-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.provider === providerKey);
+  });
+  // Update form header
+  const preset = PROVIDER_PRESETS[providerKey] || PROVIDER_PRESETS.openai;
+  const iconEl = document.getElementById('ai-form-icon');
+  const nameEl = document.getElementById('ai-form-name');
+  const descEl = document.getElementById('ai-form-desc');
+  const iconLetter = list.querySelector(`[data-provider="${providerKey}"] .ai-provider-icon`)?.textContent || providerKey[0].toUpperCase();
+  if (iconEl) iconEl.textContent = iconLetter;
+  if (nameEl) nameEl.textContent = preset.label;
+  if (descEl) descEl.textContent = preset.desc || '';
 }
 
 /** Update UI fields visibility and placeholders for the selected frontend provider.
@@ -658,8 +684,21 @@ const SETTINGS_CATEGORIES = {
 };
 
 function setupSettingsEvents() {
-  // Provider change — auto-fill defaults
+  // Provider list click — sync hidden select + update form
+  document.getElementById('ai-provider-list')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.ai-provider-item');
+    if (!btn) return;
+    const providerKey = btn.dataset.provider;
+    // Sync hidden <select>
+    const providerSelect = document.getElementById('settings-provider');
+    if (providerSelect) providerSelect.value = providerKey;
+    selectProviderListItem(providerKey);
+    updateProviderFields(providerKey, /* preserveValues */ false);
+  });
+
+  // Provider change (hidden select, backward compat) — auto-fill defaults
   document.getElementById('settings-provider')?.addEventListener('change', (e) => {
+    selectProviderListItem(e.target.value);
     updateProviderFields(e.target.value, /* preserveValues */ false);
   });
 
@@ -763,11 +802,16 @@ async function saveSettings() {
   const model = document.getElementById('settings-model').value.trim();
   const preset = PROVIDER_PRESETS[frontendProvider] || PROVIDER_PRESETS.openai;
 
+  const temperature = parseFloat(document.getElementById('settings-temperature')?.value);
+  const maxTokens = parseInt(document.getElementById('settings-max-tokens')?.value);
+
   const config = {
     provider: preset.backend,
     apiKey: apiKey || null,
     endpoint: endpoint || preset.baseUrl,
     model: model || preset.model,
+    temperature: isNaN(temperature) ? 0.7 : temperature,
+    maxTokens: isNaN(maxTokens) ? 4096 : maxTokens,
   };
 
   const statusEl = document.getElementById('settings-status');
