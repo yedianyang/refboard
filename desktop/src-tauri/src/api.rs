@@ -5,6 +5,11 @@
 //! ## Endpoints
 //!
 //! - `GET /api/status` - Health check and version info
+//! - `GET /api/projects` - List all known projects
+//! - `GET /api/list?project=PATH` - List images in a project
+//! - `GET /api/search?project=PATH&q=QUERY&limit=N` - Full-text search
+//! - `GET /api/info?project=PATH&filename=NAME` - Image metadata
+//! - `GET /api/tags?project=PATH` - All tags with counts
 //! - `POST /api/import` - Import image from file upload or URL
 //! - `DELETE /api/delete` - Delete an image from the project
 //! - `POST /api/move` - Move an item's position on the board
@@ -16,7 +21,7 @@
 //! - `POST /api/cluster` - Auto-cluster images by visual similarity
 
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, patch, post},
@@ -118,6 +123,38 @@ struct UpdateItemResponse {
     status: String,
     filename: String,
     metadata: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ListQuery {
+    project: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchQuery {
+    project: String,
+    q: String,
+    #[serde(default = "default_search_limit")]
+    limit: usize,
+}
+
+fn default_search_limit() -> usize {
+    20
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InfoQuery {
+    project: String,
+    filename: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TagsQuery {
+    project: String,
 }
 
 #[derive(Serialize)]
@@ -610,6 +647,76 @@ fn api_error(status: StatusCode, message: String) -> (StatusCode, Json<ErrorResp
 }
 
 // ---------------------------------------------------------------------------
+// List / Search / Info / Tags Endpoints
+// ---------------------------------------------------------------------------
+
+/// List all images in a project directory.
+async fn handle_list(
+    Query(params): Query<ListQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project = &params.project;
+    crate::log::log("API", &format!("GET /api/list → project: {project}"));
+
+    let images = crate::scan_images_in(project)
+        .map_err(|e| api_error(StatusCode::BAD_REQUEST, format!("Cannot list images: {e}")))?;
+
+    crate::log::log("API", &format!("List: {} images", images.len()));
+    Ok(Json(images))
+}
+
+/// Full-text search across image metadata.
+async fn handle_search(
+    Query(params): Query<SearchQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project = &params.project;
+    let query = &params.q;
+    let limit = params.limit;
+    crate::log::log("API", &format!("GET /api/search → project: {project}, q: {query}, limit: {limit}"));
+
+    let results = crate::search::search_text(project, query, limit)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Search failed: {e}")))?;
+
+    crate::log::log("API", &format!("Search: {} results", results.len()));
+    Ok(Json(results))
+}
+
+/// Get metadata for a single image.
+async fn handle_info(
+    Query(params): Query<InfoQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project = &params.project;
+    let filename = &params.filename;
+    crate::log::log("API", &format!("GET /api/info → project: {project}, filename: {filename}"));
+
+    // Resolve filename to full path
+    let image_path = std::path::Path::new(project)
+        .join("images")
+        .join(filename)
+        .to_string_lossy()
+        .to_string();
+
+    let meta = crate::search::get_image_metadata(project, &image_path)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot query metadata: {e}")))?
+        .ok_or_else(|| api_error(StatusCode::NOT_FOUND, format!("No metadata found for {filename}")))?;
+
+    Ok(Json(meta))
+}
+
+/// List all tags in a project with counts.
+async fn handle_tags(
+    Query(params): Query<TagsQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let project = &params.project;
+    crate::log::log("API", &format!("GET /api/tags → project: {project}"));
+
+    let tags = crate::search::get_all_tags(project)
+        .map_err(|e| api_error(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot get tags: {e}")))?;
+
+    crate::log::log("API", &format!("Tags: {} unique tags", tags.len()));
+    Ok(Json(tags))
+}
+
+// ---------------------------------------------------------------------------
 // CLIP API — Embedding & Similarity Endpoints
 // ---------------------------------------------------------------------------
 
@@ -919,6 +1026,10 @@ pub async fn start_server(app: AppHandle, storage: crate::storage::Storage) {
     let router = Router::new()
         .route("/api/status", get(handle_status))
         .route("/api/projects", get(handle_list_projects))
+        .route("/api/list", get(handle_list))
+        .route("/api/search", get(handle_search))
+        .route("/api/info", get(handle_info))
+        .route("/api/tags", get(handle_tags))
         .route("/api/import", post(handle_import))
         .route("/api/delete", delete(handle_delete))
         .route("/api/move", post(handle_move))

@@ -33,6 +33,7 @@ const PROVIDER_PRESETS = {
   qwen:       { backend: 'openai',    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-vl-max',                     label: 'Qwen',              needsKey: true  },
   together:   { backend: 'openai',    baseUrl: 'https://api.together.xyz/v1',                      model: 'meta-llama/Llama-Vision-Free',    label: 'Together AI',       needsKey: true  },
   groq:       { backend: 'openai',    baseUrl: 'https://api.groq.com/openai/v1',                   model: 'llava-v1.5-7b-4096-preview',      label: 'Groq',              needsKey: true  },
+  minimax:    { backend: 'openai',    baseUrl: 'https://api.minimax.chat/v1',                      model: 'MiniMax-VL-01',                   label: 'MiniMax',           needsKey: true  },
 };
 
 // ============================================================
@@ -609,6 +610,7 @@ function detectFrontendProvider(config) {
   if (ep.includes('dashscope.aliyuncs.com')) return 'qwen';
   if (ep.includes('together.xyz')) return 'together';
   if (ep.includes('groq.com')) return 'groq';
+  if (ep.includes('minimax.chat')) return 'minimax';
   return 'openai';
 }
 
