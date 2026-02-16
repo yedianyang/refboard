@@ -168,4 +168,17 @@ pub trait StorageProvider: Send + Sync {
         &self,
         folder: &str,
     ) -> Result<Vec<crate::ProjectInfo>, String>;
+
+    /// Rename a project: update metadata.json and the recent.json entry.
+    async fn rename_project(
+        &self,
+        project_path: &str,
+        new_name: &str,
+    ) -> Result<(), String>;
+
+    /// Remove a project from the recent projects list (does not delete files).
+    async fn remove_from_recent(
+        &self,
+        project_path: &str,
+    ) -> Result<(), String>;
 }

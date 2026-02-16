@@ -526,6 +526,86 @@ impl StorageProvider for LocalStorage {
         .unwrap_or(DEFAULT_API_PORT)
     }
 
+    async fn rename_project(
+        &self,
+        project_path: &str,
+        new_name: &str,
+    ) -> Result<(), String> {
+        let project_path = project_path.to_string();
+        let new_name = new_name.to_string();
+        let recent_path = self.recent_path();
+
+        tokio::task::spawn_blocking(move || {
+            let meta_path = Path::new(&project_path).join("metadata.json");
+
+            // Update metadata.json if it exists
+            if meta_path.exists() {
+                let contents = fs::read_to_string(&meta_path)
+                    .map_err(|e| format!("Cannot read metadata.json: {e}"))?;
+                let mut meta: serde_json::Value = serde_json::from_str(&contents)
+                    .map_err(|e| format!("Invalid metadata.json: {e}"))?;
+
+                if let Some(obj) = meta.as_object_mut() {
+                    obj.insert(
+                        "name".to_string(),
+                        serde_json::Value::String(new_name.clone()),
+                    );
+                    obj.insert(
+                        "updatedAt".to_string(),
+                        serde_json::Value::String(crate::chrono_now_iso()),
+                    );
+                }
+
+                let json = serde_json::to_string_pretty(&meta)
+                    .map_err(|e| format!("Cannot serialize metadata: {e}"))?;
+                fs::write(&meta_path, json)
+                    .map_err(|e| format!("Cannot write metadata.json: {e}"))?;
+            }
+
+            // Also update deco.json if it exists
+            let deco_path = Path::new(&project_path).join("deco.json");
+            if deco_path.exists() {
+                let contents = fs::read_to_string(&deco_path)
+                    .map_err(|e| format!("Cannot read deco.json: {e}"))?;
+                let mut deco: serde_json::Value = serde_json::from_str(&contents)
+                    .map_err(|e| format!("Invalid deco.json: {e}"))?;
+
+                if let Some(obj) = deco.as_object_mut() {
+                    obj.insert(
+                        "name".to_string(),
+                        serde_json::Value::String(new_name.clone()),
+                    );
+                }
+
+                let json = serde_json::to_string_pretty(&deco)
+                    .map_err(|e| format!("Cannot serialize deco.json: {e}"))?;
+                fs::write(&deco_path, json)
+                    .map_err(|e| format!("Cannot write deco.json: {e}"))?;
+            }
+
+            // Update the entry in recent.json
+            rename_in_recent_file(&recent_path, &project_path, &new_name)?;
+
+            Ok(())
+        })
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+    }
+
+    async fn remove_from_recent(
+        &self,
+        project_path: &str,
+    ) -> Result<(), String> {
+        let project_path = project_path.to_string();
+        let recent_path = self.recent_path();
+
+        tokio::task::spawn_blocking(move || {
+            remove_from_recent_file(&recent_path, &project_path)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+    }
+
     async fn scan_projects_folder(
         &self,
         folder: &str,
@@ -619,6 +699,62 @@ fn add_to_recent_file(
 
     // Keep max 20 recent projects
     entries.truncate(20);
+
+    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
+    fs::write(recent_path, json).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Remove a project from the recent.json file by its path.
+fn remove_from_recent_file(recent_path: &Path, project_path: &str) -> Result<(), String> {
+    if !recent_path.exists() {
+        return Ok(());
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct RecentEntry {
+        name: String,
+        path: String,
+    }
+
+    let contents = fs::read_to_string(recent_path).map_err(|e| e.to_string())?;
+    let mut entries: Vec<RecentEntry> =
+        serde_json::from_str(&contents).unwrap_or_default();
+
+    entries.retain(|e| e.path != project_path);
+
+    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
+    fs::write(recent_path, json).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Rename a project in the recent.json file (update the name for the matching path).
+fn rename_in_recent_file(
+    recent_path: &Path,
+    project_path: &str,
+    new_name: &str,
+) -> Result<(), String> {
+    if !recent_path.exists() {
+        return Ok(());
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct RecentEntry {
+        name: String,
+        path: String,
+    }
+
+    let contents = fs::read_to_string(recent_path).map_err(|e| e.to_string())?;
+    let mut entries: Vec<RecentEntry> =
+        serde_json::from_str(&contents).unwrap_or_default();
+
+    for entry in &mut entries {
+        if entry.path == project_path {
+            entry.name = new_name.to_string();
+        }
+    }
 
     let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
     fs::write(recent_path, json).map_err(|e| e.to_string())?;

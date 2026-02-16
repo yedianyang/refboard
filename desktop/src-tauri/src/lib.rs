@@ -202,6 +202,25 @@ async fn scan_projects_folder(
     storage.scan_projects_folder(&folder).await
 }
 
+/// Rename a project: update metadata.json, deco.json, and recent.json entry.
+#[tauri::command]
+async fn rename_project(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+    new_name: String,
+) -> Result<(), String> {
+    storage.rename_project(&project_path, &new_name).await
+}
+
+/// Remove a project from the recent projects list (does not delete project files).
+#[tauri::command]
+async fn remove_from_recent(
+    storage: tauri::State<'_, storage::Storage>,
+    project_path: String,
+) -> Result<(), String> {
+    storage.remove_from_recent(&project_path).await
+}
+
 /// Read the full app configuration.
 #[tauri::command]
 async fn get_app_config(
@@ -437,6 +456,8 @@ pub fn run() {
             create_project,
             list_projects,
             scan_projects_folder,
+            rename_project,
+            remove_from_recent,
             get_app_config,
             set_app_config,
             ai::analyze_image,
