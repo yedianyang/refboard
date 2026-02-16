@@ -25,6 +25,9 @@ export const state = {
   gridVisible: true,
   minimapVisible: false,
   activeAnnotationColor: parseInt(localStorage.getItem('deco-annotation-color') || '0x4a9eff', 16) || 0x4a9eff,
+  activeShapeFill: localStorage.getItem('deco-shape-fill') === 'true',
+  activeShapeLineStyle: localStorage.getItem('deco-shape-linestyle') || 'solid',
+  activeShapeStrokeWidth: parseFloat(localStorage.getItem('deco-shape-strokewidth') || '2') || 2,
 
   editingGroup: null,
   clipboard: [],

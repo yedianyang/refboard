@@ -395,7 +395,10 @@ export function setupGlobalDrag() {
           const sw = Math.abs(wp.x - state.dragState.start.x);
           const sh = Math.abs(wp.y - state.dragState.start.y);
           state.dragState.preview.clear();
-          drawShapeGraphics(state.dragState.preview, state.dragState.shapeType, sw, sh, state.activeAnnotationColor);
+          drawShapeGraphics(state.dragState.preview, state.dragState.shapeType, sw, sh, state.activeAnnotationColor, state.activeShapeStrokeWidth, {
+            hasFill: state.activeShapeFill,
+            lineStyle: state.activeShapeLineStyle,
+          });
           state.dragState.preview.position.set(sx, sy);
         }
         break;
@@ -537,6 +540,9 @@ export function finishDrag(e) {
           width: Math.max(sw, SHAPE_MIN_SIZE),
           height: Math.max(sh, SHAPE_MIN_SIZE),
           color: state.activeAnnotationColor,
+          strokeWidth: state.activeShapeStrokeWidth,
+          hasFill: state.activeShapeFill,
+          lineStyle: state.activeShapeLineStyle,
         });
         clearSelection();
         setCardSelected(shape, true);

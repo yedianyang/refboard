@@ -40,6 +40,8 @@ export function setAnnotationColor(colorHex) {
 }
 
 export function changeSelectionColor(colorHex) {
+  state.activeAnnotationColor = colorHex;
+  localStorage.setItem('deco-annotation-color', '0x' + colorHex.toString(16));
   for (const card of state.selection) {
     if (card.isShape) {
       card.data.color = colorHex;
@@ -57,6 +59,8 @@ export function changeSelectionColor(colorHex) {
 }
 
 export function changeShapeStrokeWidth(width) {
+  state.activeShapeStrokeWidth = width;
+  localStorage.setItem('deco-shape-strokewidth', String(width));
   for (const card of state.selection) {
     if (card.isShape) {
       card.data.strokeWidth = width;
@@ -70,27 +74,39 @@ export function changeShapeStrokeWidth(width) {
 }
 
 export function toggleSelectionFill() {
+  let newVal;
   for (const card of state.selection) {
     if (card.isShape) {
-      card.data.hasFill = !card.data.hasFill;
+      if (newVal === undefined) newVal = !card.data.hasFill;
+      card.data.hasFill = newVal;
       drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, card.data.strokeWidth, {
         hasFill: card.data.hasFill,
         lineStyle: card.data.lineStyle,
       });
     }
   }
+  if (newVal !== undefined) {
+    state.activeShapeFill = newVal;
+    localStorage.setItem('deco-shape-fill', String(newVal));
+  }
   markDirty();
 }
 
 export function toggleSelectionLineStyle() {
+  let newStyle;
   for (const card of state.selection) {
     if (card.isShape) {
-      card.data.lineStyle = card.data.lineStyle === 'dashed' ? 'solid' : 'dashed';
+      if (newStyle === undefined) newStyle = card.data.lineStyle === 'dashed' ? 'solid' : 'dashed';
+      card.data.lineStyle = newStyle;
       drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, card.data.strokeWidth, {
         hasFill: card.data.hasFill,
         lineStyle: card.data.lineStyle,
       });
     }
+  }
+  if (newStyle) {
+    state.activeShapeLineStyle = newStyle;
+    localStorage.setItem('deco-shape-linestyle', newStyle);
   }
   markDirty();
 }
