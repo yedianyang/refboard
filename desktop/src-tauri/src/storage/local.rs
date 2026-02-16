@@ -536,9 +536,10 @@ impl StorageProvider for LocalStorage {
         let recent_path = self.recent_path();
 
         tokio::task::spawn_blocking(move || {
-            let meta_path = Path::new(&project_path).join("metadata.json");
+            let old_dir = Path::new(&project_path);
 
             // Update metadata.json if it exists
+            let meta_path = old_dir.join("metadata.json");
             if meta_path.exists() {
                 let contents = fs::read_to_string(&meta_path)
                     .map_err(|e| format!("Cannot read metadata.json: {e}"))?;
@@ -563,7 +564,7 @@ impl StorageProvider for LocalStorage {
             }
 
             // Also update deco.json if it exists
-            let deco_path = Path::new(&project_path).join("deco.json");
+            let deco_path = old_dir.join("deco.json");
             if deco_path.exists() {
                 let contents = fs::read_to_string(&deco_path)
                     .map_err(|e| format!("Cannot read deco.json: {e}"))?;
@@ -583,8 +584,26 @@ impl StorageProvider for LocalStorage {
                     .map_err(|e| format!("Cannot write deco.json: {e}"))?;
             }
 
-            // Update the entry in recent.json
-            rename_in_recent_file(&recent_path, &project_path, &new_name)?;
+            // Rename the actual folder on disk
+            let new_dir = old_dir.parent()
+                .ok_or_else(|| "Cannot determine parent directory".to_string())?
+                .join(&new_name);
+
+            if new_dir != old_dir {
+                if new_dir.exists() {
+                    return Err(format!("Folder already exists: {}", new_dir.display()));
+                }
+                fs::rename(old_dir, &new_dir)
+                    .map_err(|e| format!("Cannot rename folder: {e}"))?;
+
+                // Update recent.json with the new path
+                let new_path_str = new_dir.to_string_lossy().to_string();
+                remove_from_recent_file(&recent_path, &project_path)?;
+                add_to_recent_file(&recent_path, &new_name, &new_path_str)?;
+            } else {
+                // Name didn't change path, just update recent.json name
+                rename_in_recent_file(&recent_path, &project_path, &new_name)?;
+            }
 
             Ok(())
         })
@@ -600,7 +619,17 @@ impl StorageProvider for LocalStorage {
         let recent_path = self.recent_path();
 
         tokio::task::spawn_blocking(move || {
-            remove_from_recent_file(&recent_path, &project_path)
+            // Remove from recent.json
+            remove_from_recent_file(&recent_path, &project_path)?;
+
+            // Delete the actual project folder from disk
+            let dir = Path::new(&project_path);
+            if dir.is_dir() {
+                fs::remove_dir_all(dir)
+                    .map_err(|e| format!("Cannot delete project folder: {e}"))?;
+            }
+
+            Ok(())
         })
         .await
         .map_err(|e| format!("Task join error: {e}"))?

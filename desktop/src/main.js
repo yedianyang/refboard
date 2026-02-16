@@ -902,8 +902,13 @@ async function initHomeScreen(homeScreen, loading) {
         if (newName !== oldName) {
           try {
             await invoke('rename_project', { projectPath: path, newName });
+            // Update card's data-path to reflect the renamed folder
+            const parentDir = path.substring(0, path.lastIndexOf('/'));
+            const newPath = parentDir + '/' + newName;
+            targetCard.dataset.path = newPath;
           } catch (err) {
             console.error('[Rename] Failed:', err);
+            span.textContent = oldName; // Revert display on failure
           }
         }
       };
@@ -914,7 +919,9 @@ async function initHomeScreen(homeScreen, loading) {
       });
     } else if (action === 'delete') {
       const name = targetCard.querySelector('.home-project-name')?.textContent || 'this project';
-      if (confirm(`Remove "${name}" from recent projects?`)) {
+      const { ask } = await import('@tauri-apps/plugin-dialog');
+      const confirmed = await ask(`Delete "${name}"?\nThis will permanently remove the project folder and all its files.`, { title: 'Delete Project', kind: 'warning' });
+      if (confirmed) {
         try {
           await invoke('remove_from_recent', { projectPath: path });
         } catch (err) {
