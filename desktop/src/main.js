@@ -386,11 +386,12 @@ async function main() {
     const sidebarHidden = localStorage.getItem('refboard-sidebar-hidden') === 'true';
     if (sidebarHidden) {
       appSidebar.classList.add('collapsed');
+    } else {
       sidebarToggleBtn.classList.add('active');
     }
     sidebarToggleBtn.addEventListener('click', () => {
       const isCollapsed = appSidebar.classList.toggle('collapsed');
-      sidebarToggleBtn.classList.toggle('active', isCollapsed);
+      sidebarToggleBtn.classList.toggle('active', !isCollapsed);
       localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
     });
   }
@@ -437,7 +438,7 @@ async function main() {
       const toggleBtn = document.getElementById('toolbar-sidebar-toggle');
       if (sidebar) {
         const isCollapsed = sidebar.classList.toggle('collapsed');
-        if (toggleBtn) toggleBtn.classList.toggle('active', isCollapsed);
+        if (toggleBtn) toggleBtn.classList.toggle('active', !isCollapsed);
         localStorage.setItem('refboard-sidebar-hidden', isCollapsed);
       }
       return;
