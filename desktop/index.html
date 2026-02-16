@@ -625,6 +625,13 @@
                 <label class="settings-label">Max Tokens</label>
                 <input id="settings-max-tokens" type="number" class="settings-input" placeholder="4096" min="256" max="128000" step="256" value="4096" />
               </div>
+              <div style="border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px;">
+                <div class="settings-group" style="flex-direction: row; align-items: center; gap: 10px;">
+                  <input type="checkbox" id="settings-auto-analyze" style="width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;" />
+                  <label for="settings-auto-analyze" style="color: var(--text); font-size: 13px; cursor: pointer;">Auto-analyze images on import</label>
+                </div>
+                <div class="settings-desc" style="margin-left: 26px;">Automatically run AI analysis when images are imported via drag-and-drop or paste.</div>
+              </div>
               <button id="settings-test-btn" class="btn-secondary" style="align-self: flex-start;">Test Connection</button>
             </div>
             <!-- Hidden select for backward compat with JS -->

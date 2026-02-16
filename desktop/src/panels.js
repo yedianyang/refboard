@@ -592,8 +592,9 @@ async function loadSettingsFromBackend() {
     if (braveKeyInput) braveKeyInput.value = webConfig.braveApiKey || '';
   } catch {}
 
-  // Load compression settings from localStorage
+  // Load compression settings + auto-analyze from localStorage
   loadCompressionSettings();
+  loadAutoAnalyzeSetting();
 }
 
 /** Detect the frontend provider key from a backend config (reverse-map by endpoint). */
@@ -837,8 +838,9 @@ async function saveSettings() {
     webConfig.braveApiKey = braveKey || null;
     await saveWebConfig(webConfig);
 
-    // Save compression settings
+    // Save compression settings + auto-analyze
     saveCompressionSettings();
+    saveAutoAnalyzeSetting();
 
     statusEl.textContent = 'Settings saved.';
     statusEl.className = 'settings-status success';
@@ -888,6 +890,25 @@ function saveCompressionSettings() {
   if (maxdim) {
     localStorage.setItem('deco-compress-maxdim', maxdim.value);
   }
+}
+
+function loadAutoAnalyzeSetting() {
+  const toggle = document.getElementById('settings-auto-analyze');
+  if (toggle) {
+    toggle.checked = localStorage.getItem('deco-auto-analyze') === 'on';
+  }
+}
+
+function saveAutoAnalyzeSetting() {
+  const toggle = document.getElementById('settings-auto-analyze');
+  if (toggle) {
+    localStorage.setItem('deco-auto-analyze', toggle.checked ? 'on' : 'off');
+  }
+}
+
+/** Check if auto-analyze on import is enabled. */
+export function isAutoAnalyzeEnabled() {
+  return localStorage.getItem('deco-auto-analyze') === 'on';
 }
 
 async function testConnection() {

@@ -7,7 +7,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
-import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
+import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog, isAutoAnalyzeEnabled } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -113,8 +113,10 @@ async function main() {
       }
 
       const stagger = 220;
+      const newCards = [];
       for (let i = 0; i < imported.length; i++) {
-        await addImageCard(imported[i], worldX + i * stagger, worldY);
+        const card = await addImageCard(imported[i], worldX + i * stagger, worldY);
+        newCards.push(card);
       }
       const msg = `Imported ${imported.length} image${imported.length !== 1 ? 's' : ''}`;
       setStatus(compressed > 0 ? `${msg} (${compressed} compressed)` : msg);
@@ -125,6 +127,17 @@ async function main() {
           else console.log('[CLIP] No new embeddings needed');
         })
         .catch(() => {});
+
+      // Auto-analyze imported images if enabled
+      if (isAutoAnalyzeEnabled() && newCards.length > 0) {
+        const imageCards = newCards.filter(c => !c.isText && !c.isShape);
+        if (imageCards.length > 0) {
+          const saveFn = () => {
+            invoke('save_board_state', { projectPath: currentProjectPath, state: getBoardState() }).catch(() => {});
+          };
+          analyzeBatch(imageCards, saveFn);
+        }
+      }
     } catch (err) {
       setStatus(`Import failed: ${err}`);
     }
@@ -182,9 +195,17 @@ async function main() {
           const rect = container.getBoundingClientRect();
           const centerX = (rect.width / 2 - vp.x) / vp.scale;
           const centerY = (rect.height / 2 - vp.y) / vp.scale;
-          await addImageCard(info, centerX, centerY);
+          const card = await addImageCard(info, centerX, centerY);
           const suffix = compressed ? ' (compressed)' : '';
           setStatus(`Pasted image: ${info.name}${suffix}`);
+
+          // Auto-analyze if enabled
+          if (isAutoAnalyzeEnabled() && card && !card.isText && !card.isShape) {
+            const saveFn = () => {
+              invoke('save_board_state', { projectPath: currentProjectPath, state: getBoardState() }).catch(() => {});
+            };
+            analyzeBatch([card], saveFn);
+          }
           // Generate embedding in background with dialog feedback
           console.log('[CLIP] Paste detected, requesting embedding for project');
           const dlg = document.getElementById('model-download-dialog');
@@ -412,7 +433,7 @@ async function main() {
     console.log(`[API] Image imported via HTTP: ${image.name}`);
     const x = position?.x ?? 0;
     const y = position?.y ?? 0;
-    await addImageCard(image, x, y);
+    const card = await addImageCard(image, x, y);
     setStatus(`Imported via API: ${image.name}`);
     // Trigger embedding in background
     if (currentProjectPath) {
@@ -421,6 +442,18 @@ async function main() {
           if (count > 0) console.log(`[CLIP] Embedded ${count} new images`);
         })
         .catch(() => {});
+    }
+  }).catch(() => {});
+
+  // Listen for analyze requests from HTTP API (analyze=true on import)
+  listen('api:analyze-request', async (event) => {
+    const imagePath = event.payload;
+    if (!imagePath) return;
+    // Find the card by path and trigger analysis
+    const allCards = getAllCards();
+    const card = allCards.find(c => c.data?.path === imagePath);
+    if (card) {
+      analyzeCard(card);
     }
   }).catch(() => {});
 
