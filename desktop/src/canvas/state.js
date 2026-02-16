@@ -129,6 +129,8 @@ export const TEXT_PADDING = 10;
 export const SHAPE_STROKE_WIDTH = 2;
 export const SHAPE_DEFAULT_COLOR = 0x4a9eff;
 export const SHAPE_MIN_SIZE = 10;
+export const SHAPE_DEFAULT_FILL = false;
+export const SHAPE_DEFAULT_LINE_STYLE = 'solid';
 
 // Resize constants
 export const HANDLE_SIZE = 8;

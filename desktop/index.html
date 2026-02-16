@@ -323,14 +323,81 @@
       flex-shrink: 0;
     }
 
-    /* Align submenu (shown when multi-selected) */
+    .ftb-btn.toggled {
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+
+    .ftb-color-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--text-secondary);
+      display: block;
+    }
+
+    .ftb-color-popup {
+      padding: 6px;
+      gap: 4px;
+    }
+
+    .ftb-stroke-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #333;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      width: 100%;
+    }
+    .ftb-stroke-opt:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .ftb-stroke-opt.active {
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+    .ftb-stroke-line {
+      width: 28px;
+      background: #333;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+    #ftb-stroke-popup {
+      flex-direction: column;
+      padding: 4px;
+      min-width: 90px;
+    }
+
+    .ftb-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+    .ftb-swatch:hover {
+      transform: scale(1.2);
+    }
+    .ftb-swatch.active {
+      box-shadow: 0 0 0 2px var(--text);
+    }
+
+    /* Submenus (shown above toolbar) */
     .ftb-submenu {
       display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      bottom: calc(100% + 6px);
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(40, 40, 40, 0.92);
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--border);
@@ -338,52 +405,15 @@
       padding: 4px;
       gap: 2px;
       align-items: center;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
       white-space: nowrap;
     }
     .ftb-submenu.open { display: flex; }
     [data-theme="light"] .ftb-submenu {
-      background: rgba(255, 255, 255, 0.92);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.95);
     }
 
-    /* ---- Color Palette Bar ---- */
-    #color-palette {
-      display: none;
-      position: absolute;
-      top: 6px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 15;
-      background: var(--surface);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 4px 6px;
-      gap: 4px;
-      align-items: center;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    }
-    #color-palette.visible { display: flex; }
-
-    .color-swatch {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: border-color 0.1s, transform 0.1s;
-      flex-shrink: 0;
-    }
-    .color-swatch:hover {
-      transform: scale(1.15);
-      border-color: var(--text-secondary);
-    }
-    .color-swatch.active {
-      border-color: var(--text);
-      box-shadow: 0 0 0 1px var(--bg);
-    }
+    /* Color Palette removed — now in floating toolbar */
 
     /* ---- Properties Bar ---- */
     #props-bar {
@@ -2509,12 +2539,45 @@
           <button class="ftb-btn" id="ftb-lock" title="Lock" data-action="lock">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </button>
+          <!-- Shape-only controls: Dash, Fill, Color swatches -->
+          <div class="ftb-separator ftb-annotation-only" style="display:none;"></div>
+          <button class="ftb-btn ftb-annotation-only" id="ftb-dash" title="Dash" data-action="toggle-dash" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h3"/><path d="M10.5 12h3"/><path d="M16 12h3"/></svg>
+          </button>
+          <button class="ftb-btn ftb-annotation-only" id="ftb-fill-toggle" title="Fill" data-action="toggle-fill" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          </button>
+          <button class="ftb-btn ftb-annotation-only" id="ftb-stroke-btn" title="Stroke" data-action="toggle-stroke" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 14h20" stroke-width="3"/><path d="M2 8h20" stroke-width="5"/></svg>
+          </button>
+          <!-- Stroke width popup -->
+          <div class="ftb-submenu ftb-color-popup" id="ftb-stroke-popup">
+            <button class="ftb-stroke-opt" data-sw="1"><span class="ftb-stroke-line" style="height:1px;"></span><span>1px</span></button>
+            <button class="ftb-stroke-opt" data-sw="2"><span class="ftb-stroke-line" style="height:2px;"></span><span>2px</span></button>
+            <button class="ftb-stroke-opt" data-sw="3"><span class="ftb-stroke-line" style="height:3px;"></span><span>3px</span></button>
+            <button class="ftb-stroke-opt" data-sw="4"><span class="ftb-stroke-line" style="height:4px;"></span><span>4px</span></button>
+            <button class="ftb-stroke-opt" data-sw="6"><span class="ftb-stroke-line" style="height:6px;"></span><span>6px</span></button>
+            <button class="ftb-stroke-opt" data-sw="8"><span class="ftb-stroke-line" style="height:8px;"></span><span>8px</span></button>
+          </div>
+          <button class="ftb-btn ftb-annotation-only" id="ftb-color-btn" title="Color" data-action="toggle-colors" style="display:none;">
+            <span class="ftb-color-indicator" id="ftb-color-indicator" style="background:#4a9eff;"></span>
+          </button>
+          <!-- Color swatch popup -->
+          <div class="ftb-submenu ftb-color-popup" id="ftb-color-popup">
+            <div class="ftb-swatch" data-color="0x4a9eff" style="background:#4a9eff;" title="Blue"></div>
+            <div class="ftb-swatch" data-color="0xe74c3c" style="background:#e74c3c;" title="Red"></div>
+            <div class="ftb-swatch" data-color="0x2ecc71" style="background:#2ecc71;" title="Green"></div>
+            <div class="ftb-swatch" data-color="0xf39c12" style="background:#f39c12;" title="Orange"></div>
+            <div class="ftb-swatch" data-color="0x9b59b6" style="background:#9b59b6;" title="Purple"></div>
+            <div class="ftb-swatch" data-color="0x1abc9c" style="background:#1abc9c;" title="Teal"></div>
+            <div class="ftb-swatch" data-color="0xe91e63" style="background:#e91e63;" title="Pink"></div>
+            <div class="ftb-swatch" data-color="0xffffff" style="background:#ffffff;border:1px solid var(--border-strong);" title="White"></div>
+            <div class="ftb-swatch" data-color="0x888899" style="background:#888899;" title="Gray"></div>
+            <div class="ftb-swatch" data-color="0x1a1a2e" style="background:#1a1a2e;border:1px solid var(--border-strong);" title="Dark"></div>
+          </div>
           <div class="ftb-separator"></div>
           <button class="ftb-btn" id="ftb-align" title="Align" data-action="align">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="14" x="2" y="5" rx="2"/><rect width="6" height="10" x="16" y="7" rx="2"/><path d="M12 2v20"/></svg>
-          </button>
-          <button class="ftb-btn" id="ftb-fill" title="Fill" data-action="fill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.622 17.897-10.68-2.913"/><path d="M18.376 2.622a1 1 0 1 1 3.002 3.002L17.36 9.643a.5.5 0 0 0 0 .707l.944.944a2.41 2.41 0 0 1 0 3.408l-.944.944a.5.5 0 0 1-.707 0L8.354 7.348a.5.5 0 0 1 0-.707l.944-.944a2.41 2.41 0 0 1 3.408 0l.944.944a.5.5 0 0 0 .707 0z"/><path d="M9 8c-1.804 2.71-3.97 3.46-6.583 3.948a.507.507 0 0 0-.302.819l7.32 8.883a1 1 0 0 0 1.185.204C12.735 20.405 16 16.792 16 15"/></svg>
           </button>
           <div class="ftb-separator"></div>
           <button class="ftb-btn" id="ftb-copy" title="Copy" data-action="copy">
@@ -2555,19 +2618,7 @@
           </div>
         </div>
 
-        <!-- Color Palette (floats over canvas when annotation tool active) -->
-        <div id="color-palette">
-          <div class="color-swatch active" data-color="0x4a9eff" style="background:#4a9eff;" title="Blue"></div>
-          <div class="color-swatch" data-color="0xe74c3c" style="background:#e74c3c;" title="Red"></div>
-          <div class="color-swatch" data-color="0x2ecc71" style="background:#2ecc71;" title="Green"></div>
-          <div class="color-swatch" data-color="0xf39c12" style="background:#f39c12;" title="Orange"></div>
-          <div class="color-swatch" data-color="0x9b59b6" style="background:#9b59b6;" title="Purple"></div>
-          <div class="color-swatch" data-color="0x1abc9c" style="background:#1abc9c;" title="Teal"></div>
-          <div class="color-swatch" data-color="0xe91e63" style="background:#e91e63;" title="Pink"></div>
-          <div class="color-swatch" data-color="0xffffff" style="background:#ffffff; border-color: var(--border-strong);" title="White"></div>
-          <div class="color-swatch" data-color="0x888899" style="background:#888899;" title="Gray"></div>
-          <div class="color-swatch" data-color="0x1a1a2e" style="background:#1a1a2e; border-color: var(--border-strong);" title="Dark"></div>
-        </div>
+        <!-- Color Palette removed — now integrated into floating toolbar -->
         <!-- Properties Bar (floats below color palette when annotations selected) -->
         <div id="props-bar">
           <div id="props-stroke" class="props-group" style="display:none;">

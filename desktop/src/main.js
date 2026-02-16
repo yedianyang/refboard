@@ -4,7 +4,7 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction } from './canvas/index.js';
+import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
 import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
@@ -1239,6 +1239,7 @@ function initFloatingToolbar() {
   // We hook into the existing MutationObserver approach or use a lightweight poller.
 
   let lastSelectionSize = 0;
+  let lastAnnotationKey = '';
 
   function checkSelection() {
     const sel = getSelection();
@@ -1247,12 +1248,71 @@ function initFloatingToolbar() {
     if (count > 0 && count !== lastSelectionSize) {
       showToolbar();
       updateLockButtonState();
+      updateAnnotationControls();
     } else if (count === 0 && lastSelectionSize > 0) {
       hideToolbar();
     } else if (count > 0) {
       requestPositionUpdate();
+      // Lightweight check: only update annotation controls if selection composition changed
+      const key = Array.from(sel).map(c => c.data?.id || c.data?.path || '').join(',');
+      if (key !== lastAnnotationKey) {
+        lastAnnotationKey = key;
+        updateAnnotationControls();
+      }
     }
     lastSelectionSize = count;
+  }
+
+  function updateAnnotationControls() {
+    const sel = getSelection();
+    const hasAnnotation = Array.from(sel).some(c => c.isShape || c.isText);
+    const hasShape = Array.from(sel).some(c => c.isShape);
+
+    // Show/hide annotation-only elements
+    toolbar.querySelectorAll('.ftb-annotation-only').forEach(el => {
+      el.style.display = hasAnnotation ? '' : 'none';
+    });
+
+    if (hasShape) {
+      // Sync dash toggle state
+      const dashBtn = document.getElementById('ftb-dash');
+      const firstShape = Array.from(sel).find(c => c.isShape);
+      if (dashBtn && firstShape) {
+        dashBtn.classList.toggle('toggled', firstShape.data.lineStyle === 'dashed');
+      }
+
+      // Sync fill toggle state
+      const fillBtn = document.getElementById('ftb-fill-toggle');
+      if (fillBtn && firstShape) {
+        fillBtn.classList.toggle('toggled', !!firstShape.data.hasFill);
+        // Show filled icon when toggled
+        if (firstShape.data.hasFill) {
+          fillBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" opacity="0.3"/><rect x="3" y="3" width="18" height="18" rx="2" fill="none"/></svg>';
+        } else {
+          fillBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
+        }
+      }
+
+      // Sync stroke width active option
+      if (firstShape) {
+        const sw = firstShape.data.strokeWidth || 2;
+        toolbar.querySelectorAll('.ftb-stroke-opt').forEach(o => {
+          o.classList.toggle('active', parseFloat(o.dataset.sw) === sw);
+        });
+      }
+
+      // Sync color indicator + swatches
+      if (firstShape) {
+        const activeColor = firstShape.data.color;
+        const indicator = document.getElementById('ftb-color-indicator');
+        if (indicator) indicator.style.background = '#' + activeColor.toString(16).padStart(6, '0');
+        const swatches = document.querySelectorAll('#ftb-color-popup .ftb-swatch');
+        swatches.forEach(sw => {
+          const swColor = parseInt(sw.dataset.color, 16);
+          sw.classList.toggle('active', swColor === activeColor);
+        });
+      }
+    }
   }
 
   // Observe selection changes via requestAnimationFrame loop
@@ -1286,6 +1346,34 @@ function initFloatingToolbar() {
   // --- Button Handlers ---
 
   toolbar.addEventListener('click', (e) => {
+    // Handle stroke width option clicks
+    const strokeOpt = e.target.closest('.ftb-stroke-opt');
+    if (strokeOpt) {
+      e.stopPropagation();
+      const sw = parseFloat(strokeOpt.dataset.sw);
+      changeShapeStrokeWidth(sw);
+      toolbar.querySelectorAll('.ftb-stroke-opt').forEach(o => o.classList.remove('active'));
+      strokeOpt.classList.add('active');
+      closeSubmenus();
+      return;
+    }
+
+    // Handle color swatch clicks in popup
+    const swatch = e.target.closest('.ftb-swatch');
+    if (swatch) {
+      e.stopPropagation();
+      const color = parseInt(swatch.dataset.color, 16);
+      changeSelectionColor(color);
+      // Update active swatch indicator
+      toolbar.querySelectorAll('.ftb-swatch').forEach(sw => sw.classList.remove('active'));
+      swatch.classList.add('active');
+      // Update color button indicator
+      const indicator = document.getElementById('ftb-color-indicator');
+      if (indicator) indicator.style.background = swatch.style.background.split(';')[0];
+      closeSubmenus();
+      return;
+    }
+
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     e.stopPropagation();
@@ -1295,6 +1383,20 @@ function initFloatingToolbar() {
       case 'lock':
         handleContextAction('toggle-lock');
         updateLockButtonState();
+        break;
+      case 'toggle-dash':
+        toggleSelectionLineStyle();
+        updateAnnotationControls();
+        break;
+      case 'toggle-stroke':
+        toggleSubmenu('ftb-stroke-popup', btn);
+        break;
+      case 'toggle-fill':
+        toggleSelectionFill();
+        updateAnnotationControls();
+        break;
+      case 'toggle-colors':
+        toggleSubmenu('ftb-color-popup', btn);
         break;
       case 'copy':
         handleContextAction('duplicate');
@@ -1310,9 +1412,6 @@ function initFloatingToolbar() {
       case 'more':
         // Show context menu with more options
         showMoreMenu(btn);
-        break;
-      case 'fill':
-        // Fill button — could cycle colors or open color picker; for now no-op
         break;
       // Alignment submenu actions
       case 'align-left':

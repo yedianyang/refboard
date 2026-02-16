@@ -141,6 +141,8 @@ export {
   changeShapeStrokeWidth,
   changeTextFontSize,
   changeSelectionOpacity,
+  toggleSelectionFill,
+  toggleSelectionLineStyle,
   getAnnotationColor,
   openLightbox,
   closeLightbox,

@@ -233,6 +233,8 @@ export function pasteFromClipboard() {
         height: item.height,
         color: item.data.color,
         strokeWidth: item.data.strokeWidth,
+        hasFill: item.data.hasFill,
+        lineStyle: item.data.lineStyle,
       });
       setCardSelected(newCard, true);
     } else {

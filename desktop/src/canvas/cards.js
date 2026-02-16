@@ -7,6 +7,7 @@ import {
   CARD_MAX_WIDTH, CARD_PADDING, CARD_RADIUS,
   TEXT_DEFAULT_WIDTH, TEXT_DEFAULT_HEIGHT, TEXT_MIN_WIDTH, TEXT_PADDING,
   SHAPE_STROKE_WIDTH, SHAPE_DEFAULT_COLOR, SHAPE_MIN_SIZE,
+  SHAPE_DEFAULT_FILL, SHAPE_DEFAULT_LINE_STYLE,
 } from './state.js';
 import { requestCull } from './renderer.js';
 import { startCardDrag } from './selection.js';
@@ -346,16 +347,79 @@ export function finishTextEdit() {
 // Shape Annotations (Rectangle, Ellipse, Line)
 // ============================================================
 
+// --- Dashed line helpers (PixiJS 8 has no native dash) ---
+
+function dashedLine(gfx, x1, y1, x2, y2, dash, gap) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) return;
+  const ux = dx / len, uy = dy / len;
+  let d = 0;
+  let drawing = true;
+  while (d < len) {
+    const seg = drawing ? dash : gap;
+    const end = Math.min(d + seg, len);
+    if (drawing) {
+      gfx.moveTo(x1 + ux * d, y1 + uy * d);
+      gfx.lineTo(x1 + ux * end, y1 + uy * end);
+    }
+    d = end;
+    drawing = !drawing;
+  }
+}
+
+function dashedRect(gfx, x, y, w, h, dash, gap) {
+  dashedLine(gfx, x, y, x + w, y, dash, gap);
+  dashedLine(gfx, x + w, y, x + w, y + h, dash, gap);
+  dashedLine(gfx, x + w, y + h, x, y + h, dash, gap);
+  dashedLine(gfx, x, y + h, x, y, dash, gap);
+}
+
+function dashedEllipse(gfx, cx, cy, rx, ry, dash, gap) {
+  const n = Math.max(48, Math.round(Math.max(rx, ry) * 0.8));
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    pts.push({ x: cx + rx * Math.cos(t), y: cy + ry * Math.sin(t) });
+  }
+  let carry = 0;
+  let drawing = true;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const sx = pts[i].x, sy = pts[i].y;
+    const ex = pts[i + 1].x, ey = pts[i + 1].y;
+    const segLen = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
+    let d = 0;
+    while (d < segLen) {
+      const need = drawing ? dash - carry : gap - carry;
+      const avail = segLen - d;
+      const step = Math.min(need, avail);
+      const frac1 = d / segLen, frac2 = (d + step) / segLen;
+      if (drawing) {
+        gfx.moveTo(sx + (ex - sx) * frac1, sy + (ey - sy) * frac1);
+        gfx.lineTo(sx + (ex - sx) * frac2, sy + (ey - sy) * frac2);
+      }
+      carry += step;
+      d += step;
+      if (carry >= (drawing ? dash : gap)) {
+        carry = 0;
+        drawing = !drawing;
+      }
+    }
+  }
+}
+
 export function createShapeCard(shapeType, x, y, opts = {}) {
   const w = opts.width || 120;
   const h = opts.height || 80;
   const color = opts.color ?? SHAPE_DEFAULT_COLOR;
   const strokeWidth = opts.strokeWidth || SHAPE_STROKE_WIDTH;
+  const hasFill = opts.hasFill ?? SHAPE_DEFAULT_FILL;
+  const lineStyle = opts.lineStyle ?? SHAPE_DEFAULT_LINE_STYLE;
   const id = opts.id || `shape-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
   const card = {
     container: new Container(),
-    data: { type: 'shape', id, shapeType, color, strokeWidth },
+    data: { type: 'shape', id, shapeType, color, strokeWidth, hasFill, lineStyle },
     cardWidth: w,
     cardHeight: h,
     isShape: true,
@@ -366,7 +430,7 @@ export function createShapeCard(shapeType, x, y, opts = {}) {
   card.container.position.set(x, y);
 
   const shapeGfx = new Graphics();
-  drawShapeGraphics(shapeGfx, shapeType, w, h, color, strokeWidth);
+  drawShapeGraphics(shapeGfx, shapeType, w, h, color, strokeWidth, { hasFill, lineStyle });
   card.shapeGfx = shapeGfx;
 
   const hoverBorder = new Graphics()
@@ -396,18 +460,43 @@ export function createShapeCard(shapeType, x, y, opts = {}) {
   return card;
 }
 
-export function drawShapeGraphics(gfx, shapeType, w, h, color, sw) {
+export function drawShapeGraphics(gfx, shapeType, w, h, color, sw, opts = {}) {
   const strokeW = sw || SHAPE_STROKE_WIDTH;
+  const hasFill = opts.hasFill ?? false;
+  const lineStyle = opts.lineStyle ?? 'solid';
+  const dashed = lineStyle === 'dashed';
+  const dash = 8, gap = 5;
+
   gfx.clear();
+
   if (shapeType === 'rect') {
-    gfx.roundRect(0, 0, w, h, 3)
-      .stroke({ color, width: strokeW });
+    if (hasFill) {
+      gfx.roundRect(0, 0, w, h, 3).fill({ color, alpha: 0.15 });
+    }
+    if (dashed) {
+      dashedRect(gfx, 0, 0, w, h, dash, gap);
+      gfx.stroke({ color, width: strokeW });
+    } else {
+      gfx.roundRect(0, 0, w, h, 3).stroke({ color, width: strokeW });
+    }
   } else if (shapeType === 'ellipse') {
-    gfx.ellipse(w / 2, h / 2, w / 2, h / 2)
-      .stroke({ color, width: strokeW });
+    if (hasFill) {
+      gfx.ellipse(w / 2, h / 2, w / 2, h / 2).fill({ color, alpha: 0.15 });
+    }
+    if (dashed) {
+      dashedEllipse(gfx, w / 2, h / 2, w / 2, h / 2, dash, gap);
+      gfx.stroke({ color, width: strokeW });
+    } else {
+      gfx.ellipse(w / 2, h / 2, w / 2, h / 2).stroke({ color, width: strokeW });
+    }
   } else if (shapeType === 'line') {
-    gfx.moveTo(0, 0).lineTo(w, h)
-      .stroke({ color, width: strokeW });
+    if (dashed) {
+      dashedLine(gfx, 0, 0, w, h, dash, gap);
+      gfx.stroke({ color, width: strokeW });
+    } else {
+      gfx.moveTo(0, 0).lineTo(w, h).stroke({ color, width: strokeW });
+    }
+    // Arrowhead (always solid)
     const angle = Math.atan2(h, w);
     const arrLen = Math.max(10, strokeW * 5);
     gfx.moveTo(w, h)
@@ -422,7 +511,10 @@ export function drawShapeGraphics(gfx, shapeType, w, h, color, sw) {
 export function resizeShapeCard(card, w, h) {
   card.cardWidth = w;
   card.cardHeight = h;
-  drawShapeGraphics(card.shapeGfx, card.data.shapeType, w, h, card.data.color, card.data.strokeWidth);
+  drawShapeGraphics(card.shapeGfx, card.data.shapeType, w, h, card.data.color, card.data.strokeWidth, {
+    hasFill: card.data.hasFill,
+    lineStyle: card.data.lineStyle,
+  });
   card.hoverBorder.clear()
     .roundRect(-4, -4, w + 8, h + 8, 2)
     .stroke({ color: THEME.cardHover, width: 1.5 });

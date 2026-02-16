@@ -20,11 +20,7 @@ import { setCardLocked, pushUndo } from './shortcuts.js';
 // ============================================================
 
 export function updateColorPaletteVisibility() {
-  const palette = document.getElementById('color-palette');
-  if (!palette) return;
-  const toolActive = ANNOTATION_TOOLS.has(state.currentTool);
-  const annotationSelected = state.currentTool === 'select' && hasAnnotationSelected();
-  palette.classList.toggle('visible', toolActive || annotationSelected);
+  // Color palette moved to floating toolbar; this is now a no-op
 }
 
 export function hasAnnotationSelected() {
@@ -47,7 +43,10 @@ export function changeSelectionColor(colorHex) {
   for (const card of state.selection) {
     if (card.isShape) {
       card.data.color = colorHex;
-      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, colorHex);
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, colorHex, card.data.strokeWidth, {
+        hasFill: card.data.hasFill,
+        lineStyle: card.data.lineStyle,
+      });
     } else if (card.isText) {
       const hexStr = '#' + colorHex.toString(16).padStart(6, '0');
       card.data.color = colorHex;
@@ -61,7 +60,36 @@ export function changeShapeStrokeWidth(width) {
   for (const card of state.selection) {
     if (card.isShape) {
       card.data.strokeWidth = width;
-      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, width);
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, width, {
+        hasFill: card.data.hasFill,
+        lineStyle: card.data.lineStyle,
+      });
+    }
+  }
+  markDirty();
+}
+
+export function toggleSelectionFill() {
+  for (const card of state.selection) {
+    if (card.isShape) {
+      card.data.hasFill = !card.data.hasFill;
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, card.data.strokeWidth, {
+        hasFill: card.data.hasFill,
+        lineStyle: card.data.lineStyle,
+      });
+    }
+  }
+  markDirty();
+}
+
+export function toggleSelectionLineStyle() {
+  for (const card of state.selection) {
+    if (card.isShape) {
+      card.data.lineStyle = card.data.lineStyle === 'dashed' ? 'solid' : 'dashed';
+      drawShapeGraphics(card.shapeGfx, card.data.shapeType, card.cardWidth, card.cardHeight, card.data.color, card.data.strokeWidth, {
+        hasFill: card.data.hasFill,
+        lineStyle: card.data.lineStyle,
+      });
     }
   }
   markDirty();
@@ -92,21 +120,7 @@ export function getAnnotationColor() {
 }
 
 export function initColorPalette() {
-  const palette = document.getElementById('color-palette');
-  if (!palette) return;
-  document.querySelectorAll('.color-swatch').forEach((sw) => {
-    const swColor = parseInt(sw.dataset.color, 16);
-    sw.classList.toggle('active', swColor === state.activeAnnotationColor);
-  });
-  palette.addEventListener('click', (e) => {
-    const swatch = e.target.closest('.color-swatch');
-    if (!swatch) return;
-    const color = parseInt(swatch.dataset.color, 16);
-    setAnnotationColor(color);
-    if (hasAnnotationSelected()) {
-      changeSelectionColor(color);
-    }
-  });
+  // Color palette moved to floating toolbar; this is now a no-op
 }
 
 // ============================================================
@@ -562,6 +576,8 @@ export function getBoardState() {
     height: card.cardHeight,
     ...(card.locked ? { locked: true } : {}),
     ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
+    ...(card.data.hasFill ? { hasFill: true } : {}),
+    ...(card.data.lineStyle && card.data.lineStyle !== 'solid' ? { lineStyle: card.data.lineStyle } : {}),
   }));
 
   const groups = state.allGroups.map((g) => ({
@@ -637,6 +653,8 @@ export function restoreBoardState(savedState) {
         strokeWidth: s.strokeWidth,
         width: s.width,
         height: s.height,
+        hasFill: s.hasFill ?? false,
+        lineStyle: s.lineStyle ?? 'solid',
       });
       if (card && s.locked) setCardLocked(card, true);
       if (card && s.opacity != null && s.opacity !== 1) {
