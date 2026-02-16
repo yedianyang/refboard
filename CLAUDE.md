@@ -350,6 +350,9 @@ console.log(result.field1, result.field2);
 | 空项目卡在 loading | `loadProject()` 返回 `undefined` | 返回 `{ loaded: 0, total: 0 }`，显示空状态提示 |
 | 纹理内存泄漏 | 切换项目没销毁旧纹理 | `texture.destroy(true)` 销毁 baseTexture |
 | 拖拽事件穿透 | 子元素没设置 `eventMode` | 设置 `eventMode = 'static'` |
+| Group 纯视觉无法交互 | Group 只是画了边框，没有选中/拖拽逻辑 | 需要 `editingGroup` 状态 + `updateGroupBounds()` + group-aware click/drag |
+| Frame 缩放变形 | 直接缩放 sprite 导致图片拉伸 | 用 PixiJS mask 裁剪，sprite 保持原始尺寸 |
+| 快捷键冲突 | canvas.js 和 main.js 都监听同一快捷键 | 功能区分：Cmd+G=Group, Cmd+Shift+G=Generate |
 
 ### 团队协作
 
@@ -380,7 +383,8 @@ console.log(result.field1, result.field2);
 ## 当前开发重点 (2026-02)
 
 ### P0 进行中
-- [ ] AI Vision 配置面板（Settings > AI Vision）
+- [ ] canvas.js 模块化拆分（7 个模块文件）
+- [ ] 浮动工具栏上下文感知（不同对象类型显示不同工具）
 - [ ] HTTP API `/api/import`、`/api/delete`、`/api/move`、`/api/update`
 
 ### P1 待开始
@@ -395,3 +399,10 @@ console.log(result.field1, result.field2);
 - [x] 拖拽/粘贴图片导入
 - [x] Home 主页
 - [x] 文本标注 + 图形框
+- [x] AI Vision 配置面板（Settings UI + 后端 wiring）
+- [x] CLIP HTTP API（5 个端点）
+- [x] 浮动选择工具栏（基础版）
+- [x] Nav bar 重构（Lucide icons）
+- [x] Frame 缩放裁剪（PixiJS mask）
+- [x] 图标矢量化（emoji → Lucide SVG）
+- [x] Group 行为修复（选中/拖拽/边框跟随）

@@ -66,6 +66,8 @@
 | ⬜ | **OpenClaw 深度集成方案** | 设计 OpenClaw 如何更好地参与面板交互（@Docs 调研） |
 | ✅ | **CLIP API 扩展** | /api/embed, /api/embed-batch, /api/similar, /api/search-semantic, /api/cluster |
 | 🔄 | **AI Vision 模型扩展** | 调研更多支持图片分析的模型，加入 Settings 页面 (@Researcher) |
+| ⬜ | **canvas.js 模块化拆分** | 纯重构：拆成 canvas/index.js, renderer.js, cards.js, groups.js, selection.js, shortcuts.js, toolbar.js（每文件 300-500 行）|
+| ⬜ | **浮动工具栏上下文感知** | 不同类型对象（图片/框/文字/线条）显示不同工具选项（等拆分完后讨论设计）|
 
 ### P1 短期
 

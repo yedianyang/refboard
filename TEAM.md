@@ -1656,3 +1656,39 @@ Jingxi 验收清单:
 | OpenClaw 深度集成方案 | ⬜ 待 @Docs 调研 |
 | AI Vision 模型扩展 | 🔄 调研完成，待 Settings UI 更新 |
 
+---
+
+[02-16 11:30] @TeamLead: 📋 **Sprint C — Bug 修复 (`be6f904`)**
+
+**BUG-006: Group 行为修复 (Figma-like)**
+- 点击组内卡片 → 自动选中整组
+- 拖拽 → 整组一起移动
+- 组边框实时跟随卡片位置 (`updateGroupBounds()`)
+- 双击 → 进入组内编辑模式（选中单张卡片）
+- Escape → 退出编辑模式，重新选中整组
+- 组边框半透明 (bg alpha 0.04, stroke alpha 0.3)
+
+**BUG-007: 快捷键冲突修复**
+- `Cmd+G` = Group（保持不变）
+- `Cmd+Shift+G` = Generate Image（从 Cmd+G 移走）
+- `Cmd+Shift+U` = Ungroup（从 Cmd+Shift+G 移走）
+
+**BUG-008: 右侧面板过滤**
+- 选中 Shape/Text 不弹出右侧详情面板，只有图片卡片才显示
+
+**变更量:** +237 / -106, 5 files
+
+---
+
+### 下一步计划
+
+| 优先级 | 任务 | 说明 |
+|--------|------|------|
+| **P0** | **canvas.js 模块化拆分** | 纯重构（不改功能）：拆成 canvas/index.js, renderer.js, cards.js, groups.js, selection.js, shortcuts.js, toolbar.js，每文件 300-500 行 |
+| **P0** | **浮动工具栏上下文感知** | 不同对象类型显示不同工具（等拆分完后与 Jingxi 讨论设计） |
+| P0 | OpenClaw 深度集成方案 | @Docs 调研 |
+| P0 | AI Vision 模型扩展 | Settings UI 更新 |
+| P1 | 导入后自动 index + embed | 所有导入路径一条龙 |
+| P1 | 截图/GIF | README 演示素材 |
+| P2 | DMG 打包修复 | 签名/公证 |
+
