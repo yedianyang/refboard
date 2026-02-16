@@ -704,6 +704,31 @@ export function startAutoSave(saveFn) {
 // ============================================================
 
 export async function loadProject(dirPath) {
+  // Clear previous project's cards, groups, and selection
+  for (const card of state.allCards) {
+    if (card.texture) {
+      card.texture.destroy(true);
+      card.texture = null;
+    }
+    if (card.container.parent) {
+      card.container.parent.removeChild(card.container);
+    }
+    card.container.destroy({ children: true });
+  }
+  for (const group of state.allGroups) {
+    if (group.container?.parent) {
+      group.container.parent.removeChild(group.container);
+    }
+  }
+  state.allCards.length = 0;
+  state.allGroups.length = 0;
+  state.selection.clear();
+  state.undoStack.length = 0;
+  state.redoStack.length = 0;
+  state.clipboard.length = 0;
+  state.boardDirty = false;
+  state.activeFilter = null;
+
   const images = await invoke('scan_images', { dirPath });
   if (images.length === 0) {
     console.warn('No images found in', dirPath);

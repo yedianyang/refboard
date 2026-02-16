@@ -5,7 +5,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction } from './canvas/index.js';
-import { initPanels, showMetadata, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
+import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -607,6 +607,9 @@ function setStatus(text) {
 }
 
 async function openProject(dirPath, loading) {
+  // Close any open detail/analysis panel from previous project
+  closePanel();
+
   // Hide home screen, remove home-view class, update sidebar active state
   const homeScreen = document.getElementById('home-screen');
   const main = document.getElementById('main');

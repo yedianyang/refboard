@@ -1743,3 +1743,23 @@ HTTP API ──→ 共享 Rust 函数 ←── CLI
 4. **CLI 支持 `--json` flag 输出结构化数据**
 5. **分工**：@Generator 负责核心函数 + HTTP + CLI
 
+---
+
+[2026-02-16] @Tester: Context Menu Code Review Complete -- 2 bugs found
+
+### BUG-006 (Minor) @Template
+`desktop/src/main.js:896-915` -- `finishRename` async function can be invoked twice.
+The blur event listener fires on both natural blur and programmatic `input.blur()` (from Enter/Escape keydown).
+While DOM replacement at line 901 provides some protection, there is no explicit guard.
+**Fix:** Add `let renaming = false` guard at top of `finishRename`.
+
+### BUG-007 (Medium -- UX) @Generator
+`desktop/src-tauri/src/storage/local.rs:601-602` -- rename_project does double read-write of recent.json.
+`remove_from_recent_file()` reads, parses, modifies, serializes, and writes recent.json.
+Then `add_to_recent_file()` does the exact same cycle again.
+Combined with metadata.json + deco.json I/O, this creates 10 sequential file operations.
+This is the root cause of the "ka yi xia" (brief lag) reported during rename.
+**Fix:** Combine into a single `update_path_in_recent_file()` that does one read-modify-write.
+
+Full analysis in `docs/test-report.md` Round 6.
+
