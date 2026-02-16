@@ -184,11 +184,18 @@ export function initPropsBar() {
     });
   }
   if (opacitySlider) {
+    const updateSliderTrack = () => {
+      const pct = (opacitySlider.value - opacitySlider.min) / (opacitySlider.max - opacitySlider.min) * 100;
+      opacitySlider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border) ${pct}%, var(--border) 100%)`;
+    };
+    updateSliderTrack();
     opacitySlider.addEventListener('input', () => {
       const pct = parseInt(opacitySlider.value, 10);
       if (opacityValue) opacityValue.textContent = pct + '%';
       changeSelectionOpacity(pct / 100);
+      updateSliderTrack();
     });
+    opacitySlider._updateTrack = updateSliderTrack;
   }
 }
 
@@ -229,7 +236,10 @@ export function updatePropsBar() {
     const opacityValue = document.getElementById('props-opacity-value');
     const firstCard = Array.from(state.selection)[0];
     const pct = Math.round((firstCard.data.opacity ?? 1) * 100);
-    if (opacitySlider) opacitySlider.value = pct;
+    if (opacitySlider) {
+      opacitySlider.value = pct;
+      if (opacitySlider._updateTrack) opacitySlider._updateTrack();
+    }
     if (opacityValue) opacityValue.textContent = pct + '%';
   }
 

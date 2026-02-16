@@ -496,11 +496,39 @@
       outline: none;
     }
     .props-select:focus { border-color: var(--accent); }
+    /* macOS-style slider */
     .props-slider {
-      width: 60px;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 72px;
       height: 4px;
+      border-radius: 2px;
+      background: var(--border);
       cursor: pointer;
-      accent-color: var(--accent);
+      outline: none;
+    }
+    .props-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.15);
+      box-shadow: 0 0.5px 2px rgba(0,0,0,0.2), 0 0 0 0.5px rgba(0,0,0,0.05);
+      cursor: pointer;
+    }
+    .props-slider::-webkit-slider-thumb:hover {
+      box-shadow: 0 0.5px 4px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(0,0,0,0.08);
+    }
+    .props-slider::-webkit-slider-thumb:active {
+      background: #f0f0f0;
+    }
+    [data-theme="light"] .props-slider {
+      background: rgba(0,0,0,0.1);
+    }
+    [data-theme="light"] .props-slider::-webkit-slider-thumb {
+      box-shadow: 0 0.5px 2px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(0,0,0,0.1);
     }
     .props-value {
       font-size: 10px;
