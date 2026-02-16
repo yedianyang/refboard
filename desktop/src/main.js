@@ -696,108 +696,128 @@ async function initHomeScreen(homeScreen, loading) {
   const openBtn = document.getElementById('home-open-btn');
   const newBtn = document.getElementById('home-new-btn');
 
-  // Load projects: scan default folder + merge recent
-  try {
-    // Read app config to get default projects folder
-    let projectsFolder = null;
+  // Reusable function to fetch and render project list
+  async function refreshProjectList() {
     try {
-      const appConfig = await invoke('get_app_config');
-      projectsFolder = appConfig.projectsFolder || null;
-    } catch {}
-
-    // If no folder configured, use ~/Documents/Deco as default
-    if (!projectsFolder) {
+      // Read app config to get default projects folder
+      let projectsFolder = null;
       try {
-        const { documentDir } = await import('@tauri-apps/api/path');
-        const docs = await documentDir();
-        const sep = docs.endsWith('/') ? '' : '/';
-        projectsFolder = `${docs}${sep}Deco`;
+        const appConfig = await invoke('get_app_config');
+        projectsFolder = appConfig.projectsFolder || null;
       } catch {}
-    }
 
-    // Scan default folder for projects
-    let scannedProjects = [];
-    if (projectsFolder) {
+      // If no folder configured, use ~/Documents/Deco as default
+      if (!projectsFolder) {
+        try {
+          const { documentDir } = await import('@tauri-apps/api/path');
+          const docs = await documentDir();
+          const sep = docs.endsWith('/') ? '' : '/';
+          projectsFolder = `${docs}${sep}Deco`;
+        } catch {}
+      }
+
+      // Scan default folder for projects
+      let scannedProjects = [];
+      if (projectsFolder) {
+        try {
+          scannedProjects = await invoke('scan_projects_folder', { folder: projectsFolder });
+        } catch (err) {
+          console.warn('Could not scan projects folder:', err);
+        }
+      }
+
+      // Also load recent projects (may include projects outside the default folder)
+      let recentProjects = [];
       try {
-        scannedProjects = await invoke('scan_projects_folder', { folder: projectsFolder });
-      } catch (err) {
-        console.warn('Could not scan projects folder:', err);
-      }
-    }
+        recentProjects = await invoke('list_projects');
+      } catch {}
 
-    // Also load recent projects (may include projects outside the default folder)
-    let recentProjects = [];
-    try {
-      recentProjects = await invoke('list_projects');
-    } catch {}
-
-    // Merge: scanned first, then recent (dedup by path)
-    const seen = new Set();
-    const projects = [];
-    for (const p of scannedProjects) {
-      if (!seen.has(p.path)) {
-        seen.add(p.path);
-        projects.push(p);
+      // Merge: scanned first, then recent (dedup by path)
+      const seen = new Set();
+      const projects = [];
+      for (const p of scannedProjects) {
+        if (!seen.has(p.path)) {
+          seen.add(p.path);
+          projects.push(p);
+        }
       }
-    }
-    for (const p of recentProjects) {
-      if (!seen.has(p.path)) {
-        seen.add(p.path);
-        projects.push(p);
+      for (const p of recentProjects) {
+        if (!seen.has(p.path)) {
+          seen.add(p.path);
+          projects.push(p);
+        }
       }
-    }
 
-    if (projects.length > 0) {
-      gridEl.innerHTML = projects.map((p) => {
-        const safeName = p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        const safePath = p.path.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-        return `
-        <button class="home-project-card" data-path="${safePath}">
-          <div class="home-project-thumb">
-            <span class="home-project-thumb-placeholder"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
-          </div>
-          <div class="home-project-info">
-            <div class="home-project-name">${safeName}</div>
-            <div class="home-project-meta">
-              <span>${p.imageCount} images</span>
+      if (projects.length > 0) {
+        gridEl.innerHTML = projects.map((p) => {
+          const safeName = p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          const safePath = p.path.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          return `
+          <button class="home-project-card" data-path="${safePath}">
+            <div class="home-project-thumb">
+              <span class="home-project-thumb-placeholder"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
             </div>
-          </div>
-        </button>`;
-      }).join('');
+            <div class="home-project-info">
+              <div class="home-project-name">${safeName}</div>
+              <div class="home-project-meta">
+                <span>${p.imageCount} images</span>
+              </div>
+            </div>
+          </button>`;
+        }).join('');
 
-      // Click card to open project
-      gridEl.querySelectorAll('.home-project-card').forEach((card) => {
-        card.addEventListener('click', () => {
-          const path = card.dataset.path;
-          openProject(path, loading);
+        // Click card to open project
+        gridEl.querySelectorAll('.home-project-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            const path = card.dataset.path;
+            openProject(path, loading);
+          });
         });
-      });
 
-      // Lazy-load thumbnail mosaics for each project card
-      for (const card of gridEl.querySelectorAll('.home-project-card')) {
-        const path = card.dataset.path;
-        const thumbEl = card.querySelector('.home-project-thumb');
-        if (!thumbEl) continue;
-        invoke('scan_images', { dirPath: path }).then((images) => {
-          if (!images || images.length === 0) return;
-          const count = Math.min(images.length, 4);
-          const mosaic = document.createElement('div');
-          mosaic.className = 'home-thumb-mosaic' + (count === 1 ? ' single' : '');
-          for (let i = 0; i < count; i++) {
-            const img = document.createElement('img');
-            img.src = convertFileSrc(images[i].path);
-            img.alt = '';
-            img.loading = 'lazy';
-            mosaic.appendChild(img);
-          }
-          thumbEl.innerHTML = '';
-          thumbEl.appendChild(mosaic);
-        }).catch(() => {});
+        // Lazy-load thumbnail mosaics for each project card
+        for (const card of gridEl.querySelectorAll('.home-project-card')) {
+          const path = card.dataset.path;
+          const thumbEl = card.querySelector('.home-project-thumb');
+          if (!thumbEl) continue;
+          invoke('scan_images', { dirPath: path }).then((images) => {
+            if (!images || images.length === 0) return;
+            const count = Math.min(images.length, 4);
+            const mosaic = document.createElement('div');
+            mosaic.className = 'home-thumb-mosaic' + (count === 1 ? ' single' : '');
+            for (let i = 0; i < count; i++) {
+              const img = document.createElement('img');
+              img.src = convertFileSrc(images[i].path);
+              img.alt = '';
+              img.loading = 'lazy';
+              mosaic.appendChild(img);
+            }
+            thumbEl.innerHTML = '';
+            thumbEl.appendChild(mosaic);
+          }).catch(() => {});
+        }
+      } else {
+        gridEl.innerHTML = `
+          <div class="home-empty">
+            <div class="home-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
+            <div class="home-empty-title">No recent projects</div>
+            Open an image folder or create a new project to get started.
+          </div>`;
       }
+    } catch (err) {
+      console.warn('Could not load recent projects:', err);
     }
-  } catch (err) {
-    console.warn('Could not load recent projects:', err);
   }
+
+  // Initial load
+  await refreshProjectList();
+
+  // Refresh project list when window regains focus (picks up Finder renames/deletes)
+  const appWindow = getCurrentWindow();
+  appWindow.onFocusChanged(({ payload: focused }) => {
+    if (focused && !homeScreen.classList.contains('hidden')) {
+      refreshProjectList();
+    }
+  });
 
   // Grid/list view toggle
   const gridBtn = document.getElementById('home-grid-btn');
