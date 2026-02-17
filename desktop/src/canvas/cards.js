@@ -128,13 +128,14 @@ export function resizeCardTo(card, w, h) {
   card.cardWidth = w;
   card.cardHeight = h;
 
+  if (card.sprite) {
+    card.sprite.width = w - CARD_PADDING * 2;
+    card.sprite.height = h - CARD_PADDING * 2;
+  }
   if (card._frameMask) {
     card._frameMask.clear()
       .rect(CARD_PADDING, CARD_PADDING, w - CARD_PADDING * 2, h - CARD_PADDING * 2)
       .fill(0xffffff);
-  } else if (card.sprite) {
-    card.sprite.width = w - CARD_PADDING * 2;
-    card.sprite.height = h - CARD_PADDING * 2;
   }
 
   if (card.bg) {
