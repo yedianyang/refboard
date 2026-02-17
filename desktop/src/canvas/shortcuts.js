@@ -116,7 +116,6 @@ export function setupKeyboard() {
     if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
     if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
     if ((e.key === 'l' || e.key === 'L') && !meta && !e.shiftKey) { setTool('line'); return; }
-    if ((e.key === 'c' || e.key === 'C') && !meta && !e.shiftKey) { setTool('connector'); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 

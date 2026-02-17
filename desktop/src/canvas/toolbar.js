@@ -111,6 +111,26 @@ export function toggleSelectionLineStyle() {
   markDirty();
 }
 
+export function changeConnectionLineType(lineType) {
+  for (const card of state.selection) {
+    if (card.isShape && card.data.shapeType === 'connection') {
+      card.data.lineType = lineType;
+      redrawConnectionShape(card);
+    }
+  }
+  markDirty();
+}
+
+export function changeConnectionArrowType(arrowType) {
+  for (const card of state.selection) {
+    if (card.isShape && card.data.shapeType === 'connection') {
+      card.data.arrowType = arrowType;
+      redrawConnectionShape(card);
+    }
+  }
+  markDirty();
+}
+
 export function changeTextFontSize(size) {
   for (const card of state.selection) {
     if (card.isText && card.textObj) {
@@ -256,13 +276,13 @@ export function updatePropsBar() {
 export function setTool(tool) {
   state.currentTool = tool;
   document.querySelectorAll('.sidebar-btn').forEach((btn) => btn.classList.remove('active'));
-  const titles = { select: 'Select', hand: 'Hand', text: 'Note', rect: 'Rect', ellipse: 'Ellipse', line: 'Line', connector: 'Connect' };
+  const titles = { select: 'Select', hand: 'Hand', text: 'Note', rect: 'Rect', ellipse: 'Ellipse', line: 'Line' };
   const btn = Array.from(document.querySelectorAll('.sidebar-btn'))
     .find((b) => b.title?.startsWith(titles[tool] || ''));
   if (btn) btn.classList.add('active');
   state.app.canvas.style.cursor = tool === 'hand' ? 'grab'
     : tool === 'text' ? 'text'
-    : SHAPE_TOOLS.has(tool) || tool === 'connector' ? 'crosshair'
+    : SHAPE_TOOLS.has(tool) ? 'crosshair'
     : 'default';
   updateColorPaletteVisibility();
 }
