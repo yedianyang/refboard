@@ -27,6 +27,9 @@ pub struct AppConfig {
     /// Storage path for local AI models (CLIP, ONNX). Default: system cache.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub models_folder: Option<String>,
+    /// UI font size preset: "compact" | "default" | "large". None = "default".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<String>,
 }
 
 /// Recent project entry for the home screen.

@@ -296,6 +296,32 @@ async fn set_app_config(
     storage.write_app_config(&config).await
 }
 
+/// Get the current UI font size preset.
+#[tauri::command]
+async fn get_font_size(
+    storage: tauri::State<'_, storage::Storage>,
+) -> Result<String, String> {
+    let config = storage.read_app_config().await?;
+    Ok(config.font_size.unwrap_or_else(|| "default".to_string()))
+}
+
+/// Set the UI font size preset ("compact" | "default" | "large").
+#[tauri::command]
+async fn set_font_size(
+    storage: tauri::State<'_, storage::Storage>,
+    size: String,
+) -> Result<(), String> {
+    let valid = ["compact", "default", "large"];
+    if !valid.contains(&size.as_str()) {
+        return Err(format!("Invalid font size: {size}. Must be one of: compact, default, large"));
+    }
+    let mut config = storage.read_app_config().await?;
+    config.font_size = if size == "default" { None } else { Some(size.clone()) };
+    storage.write_app_config(&config).await?;
+    crate::log::log("CONFIG", &format!("Font size set to: {size}"));
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Auto-Index + Embed
 // ---------------------------------------------------------------------------
@@ -573,6 +599,8 @@ pub fn run() {
             remove_from_recent,
             get_app_config,
             set_app_config,
+            get_font_size,
+            set_font_size,
             ai::analyze_image,
             ai::cmd_analyze_batch,
             ai::get_ai_config,
