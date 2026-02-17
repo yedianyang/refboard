@@ -12,7 +12,6 @@ import {
 import { requestCull } from './renderer.js';
 import { startCardDrag } from './selection.js';
 import { markDirty } from './toolbar.js';
-import { drawConnectionCurve, getAnchorPosition, getCardKey } from './connections.js';
 
 // ============================================================
 // Image Cards
@@ -150,13 +149,13 @@ export function resizeCardTo(card, w, h) {
   if (card.bg) {
     if (card.isText) {
       card.bg.clear(); // Text cards have no visible background
-    } else if (card.sprite || card._textureUrl) {
-      // Image card (loaded or pending/culled) — border only, no opaque fill
+    } else if (card.sprite) {
+      // Image loaded — border only, no opaque fill that would cover the sprite
       card.bg.clear()
         .roundRect(0, 0, w, h, CARD_RADIUS)
         .stroke({ color: THEME.cardBorder, width: 1 });
     } else {
-      // Non-image placeholder — show filled bg
+      // Placeholder state — show filled bg
       card.bg.clear()
         .roundRect(0, 0, w, h, CARD_RADIUS)
         .fill({ color: THEME.cardBg })
@@ -460,16 +459,6 @@ export function createShapeCard(shapeType, x, y, opts = {}) {
     isShape: true,
   };
 
-  // Connection-specific data fields
-  if (shapeType === 'connection') {
-    card.data.sourceKey = opts.sourceKey || null;
-    card.data.targetKey = opts.targetKey || null;
-    card.data.sourceAnchor = opts.sourceAnchor || 'right';
-    card.data.targetAnchor = opts.targetAnchor || 'left';
-    card.data.lineType = opts.lineType || 'bezier';
-    card.data.arrowType = opts.arrowType || 'end';
-  }
-
   card.container.eventMode = 'static';
   card.container.cursor = 'pointer';
   card.container.position.set(x, y);
@@ -550,23 +539,6 @@ export function drawShapeGraphics(gfx, shapeType, w, h, color, sw, opts = {}) {
     gfx.moveTo(w, h)
       .lineTo(w - arrLen * Math.cos(angle + 0.4), h - arrLen * Math.sin(angle + 0.4))
       .stroke({ color, width: strokeW });
-  } else if (shapeType === 'connection') {
-    // Connection curve: rendered via shared drawConnectionCurve from connections.js
-    // Endpoints passed as local coordinates in opts (computed by redrawConnectionShape)
-    const sPos = opts.sPos || { x: 0, y: 0 };
-    const tPos = opts.tPos || { x: w, y: h };
-    const sAnchor = opts.sourceAnchor || 'right';
-    const tAnchor = opts.targetAnchor || 'left';
-    const lineType = opts.lineType || 'bezier';
-    const arrowType = opts.arrowType || 'end';
-
-    drawConnectionCurve(gfx, sPos, tPos, sAnchor, tAnchor, {
-      color,
-      strokeWidth: strokeW,
-      lineType,
-      arrowType,
-      lineStyle,
-    });
   }
 }
 
@@ -581,103 +553,4 @@ export function resizeShapeCard(card, w, h) {
     .roundRect(-4, -4, w + 8, h + 8, 2)
     .stroke({ color: THEME.cardHover, width: 1.5 });
   card.container.hitArea = new Rectangle(-4, -4, w + 8, h + 8);
-}
-
-// ============================================================
-// Connection Shape — Dynamic endpoint rendering
-// ============================================================
-
-const CONNECTION_SHAPE_PAD = 40; // extra padding for bezier curves
-
-/** Look up a card by its unique key (path for images, id for text/shape). */
-export function findCardByKey(key) {
-  return state.allCards.find(c => {
-    if (c.isText || c.isShape) return c.data.id === key;
-    return c.data.path === key;
-  });
-}
-
-/**
- * Recompute endpoints and redraw a connection shape card.
- * Call this whenever connected cards move or the connection data changes.
- * - sourceKey/targetKey set → dynamic endpoints from connected card anchors
- * - sourceKey/targetKey null → fixed endpoints using card's own position
- */
-export function redrawConnectionShape(card) {
-  if (!card.isShape || card.data.shapeType !== 'connection') return;
-
-  const data = card.data;
-  let sWorld, tWorld;
-
-  // Resolve source endpoint
-  if (data.sourceKey) {
-    const sourceCard = findCardByKey(data.sourceKey);
-    if (sourceCard) {
-      sWorld = getAnchorPosition(sourceCard, data.sourceAnchor || 'right');
-    }
-  }
-  if (!sWorld) {
-    // Fixed endpoint: use card's stored position
-    sWorld = { x: card.container.x, y: card.container.y };
-  }
-
-  // Resolve target endpoint
-  if (data.targetKey) {
-    const targetCard = findCardByKey(data.targetKey);
-    if (targetCard) {
-      tWorld = getAnchorPosition(targetCard, data.targetAnchor || 'left');
-    }
-  }
-  if (!tWorld) {
-    // Fixed endpoint: use card position + stored dimensions
-    tWorld = {
-      x: card.container.x + (card.data.width || card.cardWidth),
-      y: card.container.y + (card.data.height || card.cardHeight),
-    };
-  }
-
-  // Compute bounding box with padding for bezier overshoot
-  const pad = CONNECTION_SHAPE_PAD;
-  const minX = Math.min(sWorld.x, tWorld.x) - pad;
-  const minY = Math.min(sWorld.y, tWorld.y) - pad;
-  const maxX = Math.max(sWorld.x, tWorld.x) + pad;
-  const maxY = Math.max(sWorld.y, tWorld.y) + pad;
-
-  // Reposition container and resize
-  card.container.position.set(minX, minY);
-  card.cardWidth = maxX - minX;
-  card.cardHeight = maxY - minY;
-
-  // Convert to local coordinates
-  const sPos = { x: sWorld.x - minX, y: sWorld.y - minY };
-  const tPos = { x: tWorld.x - minX, y: tWorld.y - minY };
-
-  // Redraw graphics
-  drawShapeGraphics(card.shapeGfx, 'connection', card.cardWidth, card.cardHeight,
-    data.color, data.strokeWidth, {
-      sPos,
-      tPos,
-      sourceAnchor: data.sourceAnchor || 'right',
-      targetAnchor: data.targetAnchor || 'left',
-      lineType: data.lineType || 'bezier',
-      arrowType: data.arrowType || 'end',
-      lineStyle: data.lineStyle || 'solid',
-    });
-
-  // Update hover border and hit area
-  card.hoverBorder.clear()
-    .roundRect(-4, -4, card.cardWidth + 8, card.cardHeight + 8, 2)
-    .stroke({ color: THEME.cardHover, width: 1.5 });
-  card.container.hitArea = new Rectangle(-4, -4, card.cardWidth + 8, card.cardHeight + 8);
-}
-
-/** Find and redraw all connection shape cards that reference a given card. */
-export function redrawConnectionShapesFor(card) {
-  const key = getCardKey(card);
-  for (const c of state.allCards) {
-    if (c.isShape && c.data.shapeType === 'connection' &&
-        (c.data.sourceKey === key || c.data.targetKey === key)) {
-      redrawConnectionShape(c);
-    }
-  }
 }

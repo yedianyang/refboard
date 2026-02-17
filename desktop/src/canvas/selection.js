@@ -7,10 +7,10 @@ import {
   SHAPE_TOOLS, SHAPE_MIN_SIZE,
 } from './state.js';
 import { screenToWorld, requestCull, getCardsBounds } from './renderer.js';
-import { resizeCardTo, drawResizeHandleGraphics, getCornerPositions, createTextCard, createShapeCard, drawShapeGraphics, startTextEdit, redrawConnectionShape, redrawConnectionShapesFor } from './cards.js';
+import { resizeCardTo, drawResizeHandleGraphics, getCornerPositions, createTextCard, createShapeCard, drawShapeGraphics, startTextEdit } from './cards.js';
 import { updateGroupBounds, enterGroupEditMode, exitGroupEditMode, selectGroup } from './groups.js';
 import { updateColorPaletteVisibility, updatePropsBar, updateSelectionInfo, markDirty, openLightbox, setTool } from './toolbar.js';
-import { findCardAtWorld, findNearestAnchor, createConnection, showConnectionPorts, hideConnectionPorts, updateDragConnectionPreview, requestConnectionRedraw, getAnchorPosition, getSmartAnchors, getCardKey, drawConnectionCurve } from './connections.js';
+import { findCardAtWorld, findNearestAnchor, createConnection, showConnectionPorts, hideConnectionPorts, updateDragConnectionPreview, requestConnectionRedraw } from './connections.js';
 
 // ============================================================
 // Selection
@@ -283,15 +283,14 @@ export function startCardDrag(card, e) {
   if (state.spaceDown || state.currentTool === 'hand') return;
   const wp = screenToWorld(e.global.x, e.global.y);
 
-  // Line/Connector tool: start drawing a line from this card (smart binding)
-  if (state.currentTool === 'line' || state.currentTool === 'connector') {
+  // Connector tool: start drawing a connection from this card instead of dragging
+  if (state.currentTool === 'connector') {
     const anchor = findNearestAnchor(card, wp.x, wp.y);
     const preview = new Graphics();
     preview.zIndex = 9999;
     state.world.addChild(preview);
     state.dragState = {
-      type: 'drawLine',
-      startWorld: wp,
+      type: 'drawConnection',
       sourceCard: card,
       sourceAnchor: anchor,
       preview,
@@ -385,7 +384,6 @@ export function setupGlobalDrag() {
         drawGuides(snaps.hSnap, snaps.vSnap);
         if (state.dragState.card.group) updateGroupBounds(state.dragState.card.group);
         requestConnectionRedraw();
-        redrawConnectionShapesFor(state.dragState.card);
         break;
       }
       case 'multicard': {
@@ -411,19 +409,11 @@ export function setupGlobalDrag() {
         }
         for (const group of dragGroups) updateGroupBounds(group);
         requestConnectionRedraw();
-        for (const card of state.dragState.cards) {
-          redrawConnectionShapesFor(card);
-        }
         break;
       }
       case 'drawConnection': {
         const wp = screenToWorld(e.global.x, e.global.y);
         updateDragConnectionPreview(state.dragState, wp);
-        break;
-      }
-      case 'drawLine': {
-        const wp = screenToWorld(e.global.x, e.global.y);
-        updateDrawLinePreview(state.dragState, wp);
         break;
       }
       case 'selectRect': {
@@ -478,19 +468,16 @@ export function setupGlobalDrag() {
       return;
     }
 
-    // Unified line/connector tool — smart binding
-    if (state.currentTool === 'line' || state.currentTool === 'connector') {
+    if (state.currentTool === 'connector') {
       const wp = screenToWorld(e.global.x, e.global.y);
       const hitCard = findCardAtWorld(wp.x, wp.y);
-      const preview = new Graphics();
-      preview.zIndex = 9999;
-      state.world.addChild(preview);
-
       if (hitCard) {
         const anchor = findNearestAnchor(hitCard, wp.x, wp.y);
+        const preview = new Graphics();
+        preview.zIndex = 9999;
+        state.world.addChild(preview);
         state.dragState = {
-          type: 'drawLine',
-          startWorld: wp,
+          type: 'drawConnection',
           sourceCard: hitCard,
           sourceAnchor: anchor,
           preview,
@@ -498,16 +485,6 @@ export function setupGlobalDrag() {
           _hoverAnchor: null,
         };
         showConnectionPorts(hitCard);
-      } else {
-        state.dragState = {
-          type: 'drawLine',
-          startWorld: wp,
-          sourceCard: null,
-          sourceAnchor: null,
-          preview,
-          _hoverTarget: null,
-          _hoverAnchor: null,
-        };
       }
       return;
     }
@@ -566,7 +543,6 @@ export function finishDrag(e) {
         card.data.x = card.container.x;
         card.data.y = card.container.y;
         if (card.group) updateGroupBounds(card.group);
-        redrawConnectionShapesFor(card);
         markDirty();
       }
       hideResizeHandles();
@@ -591,9 +567,6 @@ export function finishDrag(e) {
           if (card.group) movedGroups.add(card.group);
         }
         for (const group of movedGroups) updateGroupBounds(group);
-        for (const card of state.dragState.cards) {
-          redrawConnectionShapesFor(card);
-        }
         markDirty();
       }
       hideResizeHandles();
@@ -662,161 +635,9 @@ export function finishDrag(e) {
       }
       break;
     }
-    case 'drawLine': {
-      finishDrawLine(state.dragState, e);
-      break;
-    }
   }
 
   state.dragState = null;
-}
-
-// ============================================================
-// Unified Draw Line (smart binding preview + finalize)
-// ============================================================
-
-/** Infer anchor direction from a free point toward a target. */
-function inferAnchor(fromX, fromY, toX, toY) {
-  const dx = toX - fromX;
-  const dy = toY - fromY;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx > 0 ? 'right' : 'left';
-  }
-  return dy > 0 ? 'bottom' : 'top';
-}
-
-/** Update the drawLine preview: line/bezier from source to cursor with port highlights. */
-function updateDrawLinePreview(ds, worldPos) {
-  if (!ds.preview) return;
-  ds.preview.clear();
-
-  // Source position and anchor
-  let sPos, sAnchor;
-  if (ds.sourceCard) {
-    sAnchor = ds.sourceAnchor;
-    sPos = getAnchorPosition(ds.sourceCard, sAnchor);
-  } else {
-    sPos = ds.startWorld;
-    sAnchor = inferAnchor(sPos.x, sPos.y, worldPos.x, worldPos.y);
-  }
-
-  // Detect target card under cursor
-  const targetCard = findCardAtWorld(worldPos.x, worldPos.y);
-  let tPos, tAnchor;
-
-  if (targetCard && targetCard !== ds.sourceCard) {
-    if (ds.sourceCard) {
-      const smart = getSmartAnchors(ds.sourceCard, targetCard);
-      tAnchor = smart.targetAnchor;
-      // Also update source anchor for better bezier curve
-      sAnchor = smart.sourceAnchor;
-      sPos = getAnchorPosition(ds.sourceCard, sAnchor);
-    } else {
-      tAnchor = findNearestAnchor(targetCard, worldPos.x, worldPos.y);
-    }
-    tPos = getAnchorPosition(targetCard, tAnchor);
-    showConnectionPorts(targetCard);
-    ds._hoverTarget = targetCard;
-    ds._hoverAnchor = tAnchor;
-  } else {
-    tPos = worldPos;
-    tAnchor = inferAnchor(worldPos.x, worldPos.y, sPos.x, sPos.y);
-    hideConnectionPorts();
-    ds._hoverTarget = null;
-    ds._hoverAnchor = null;
-  }
-
-  // Use bezier when at least one end is bound to a card; straight for free-to-free
-  const useBezier = ds.sourceCard || ds._hoverTarget;
-
-  drawConnectionCurve(ds.preview, sPos, tPos, sAnchor, tAnchor, {
-    color: THEME.selectBorder,
-    strokeWidth: 2,
-    lineType: useBezier ? 'bezier' : 'straight',
-    lineStyle: 'dashed',
-    arrowType: 'end',
-  });
-}
-
-/** Finalize the drawLine drag: create connection shape or plain line shape. */
-function finishDrawLine(ds, e) {
-  // Clean up preview
-  if (ds.preview) {
-    state.world.removeChild(ds.preview);
-    ds.preview.destroy();
-  }
-  hideConnectionPorts();
-
-  const wp = screenToWorld(e.global.x, e.global.y);
-  const targetCard = findCardAtWorld(wp.x, wp.y);
-  const sourceCard = ds.sourceCard;
-
-  // Minimum drag distance (filter accidental clicks)
-  const dx = wp.x - ds.startWorld.x;
-  const dy = wp.y - ds.startWorld.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  // If not enough distance and no target card, discard
-  if (dist < SHAPE_MIN_SIZE && !(targetCard && targetCard !== sourceCard)) {
-    setTool('select');
-    return;
-  }
-
-  if (sourceCard || (targetCard && targetCard !== sourceCard)) {
-    // At least one end is bound → connection shape
-    const validTarget = targetCard && targetCard !== sourceCard ? targetCard : null;
-
-    // Compute anchors
-    let sAnchor = ds.sourceAnchor;
-    let tAnchor = ds._hoverAnchor;
-    if (sourceCard && validTarget) {
-      const smart = getSmartAnchors(sourceCard, validTarget);
-      sAnchor = sAnchor || smart.sourceAnchor;
-      tAnchor = tAnchor || smart.targetAnchor;
-    } else if (!sAnchor) {
-      sAnchor = inferAnchor(ds.startWorld.x, ds.startWorld.y, wp.x, wp.y);
-    }
-    if (!tAnchor && validTarget) {
-      tAnchor = findNearestAnchor(validTarget, wp.x, wp.y);
-    }
-
-    const shape = createShapeCard('connection', ds.startWorld.x, ds.startWorld.y, {
-      width: Math.max(Math.abs(dx), 20),
-      height: Math.max(Math.abs(dy), 20),
-      color: state.activeAnnotationColor,
-      strokeWidth: state.activeShapeStrokeWidth,
-      lineStyle: state.activeShapeLineStyle,
-      sourceKey: sourceCard ? getCardKey(sourceCard) : null,
-      targetKey: validTarget ? getCardKey(validTarget) : null,
-      sourceAnchor: sAnchor || 'right',
-      targetAnchor: tAnchor || 'left',
-      lineType: 'bezier',
-      arrowType: 'end',
-    });
-    redrawConnectionShape(shape);
-    clearSelection();
-    setCardSelected(shape, true);
-  } else {
-    // Both ends free → regular line shape
-    const sx = Math.min(ds.startWorld.x, wp.x);
-    const sy = Math.min(ds.startWorld.y, wp.y);
-    const sw = Math.abs(dx);
-    const sh = Math.abs(dy);
-    if (sw >= SHAPE_MIN_SIZE || sh >= SHAPE_MIN_SIZE) {
-      const shape = createShapeCard('line', sx, sy, {
-        width: Math.max(sw, SHAPE_MIN_SIZE),
-        height: Math.max(sh, SHAPE_MIN_SIZE),
-        color: state.activeAnnotationColor,
-        strokeWidth: state.activeShapeStrokeWidth,
-        hasFill: false,
-        lineStyle: state.activeShapeLineStyle,
-      });
-      clearSelection();
-      setCardSelected(shape, true);
-    }
-  }
-
-  setTool('select');
 }
 
 // ============================================================

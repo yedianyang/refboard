@@ -3,12 +3,12 @@
 import { Graphics } from 'pixi.js';
 import { state, THEME, SHAPE_STROKE_WIDTH, ANNOTATION_TOOLS, MAX_UNDO } from './state.js';
 import { screenToWorld, fitAll, fitSelection, zoomTo100, toggleGrid, toggleMinimap, requestCull, requestMinimapRedraw, getCardsBounds } from './renderer.js';
-import { resizeCardTo, removeCardFromCanvas, createTextCard, createShapeCard, addImageCard, drawShapeGraphics, autoSizeTextCard, redrawConnectionShape, redrawConnectionShapesFor } from './cards.js';
+import { resizeCardTo, removeCardFromCanvas, createTextCard, createShapeCard, addImageCard, drawShapeGraphics, autoSizeTextCard } from './cards.js';
 import { updateGroupBounds, groupSelected, ungroupSelected, exitGroupEditMode } from './groups.js';
 import { clearSelection, setCardSelected, selectAll, showResizeHandles, hideResizeHandles } from './selection.js';
 import { updateColorPaletteVisibility, updatePropsBar, markDirty, setTool, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, changeSelectionOpacity } from './toolbar.js';
 import { icon } from '../icons.js';
-import { removeConnectionsForCard, findConnectionAt, deleteConnection, requestConnectionRedraw, getCardKey } from './connections.js';
+import { removeConnectionsForCard, findConnectionAt, deleteConnection, requestConnectionRedraw } from './connections.js';
 
 // ============================================================
 // Undo/Redo
@@ -47,10 +47,6 @@ export function applyAction(action, isUndo) {
         if (entry.card.group) affectedGroups.add(entry.card.group);
       }
       for (const group of affectedGroups) updateGroupBounds(group);
-      // Redraw connection shapes referencing moved cards
-      for (const entry of action.entries) {
-        redrawConnectionShapesFor(entry.card);
-      }
       break;
     }
     case 'resize': {
@@ -65,12 +61,6 @@ export function applyAction(action, isUndo) {
         for (const entry of action.entries) {
           state.world.addChild(entry.card.container);
           state.allCards.push(entry.card);
-        }
-        // Redraw restored connection shapes
-        for (const entry of action.entries) {
-          if (entry.card.isShape && entry.card.data.shapeType === 'connection') {
-            redrawConnectionShape(entry.card);
-          }
         }
       } else {
         for (const entry of action.entries) {
@@ -163,11 +153,6 @@ export function setupKeyboard() {
         if (card.group) nudgedGroups.add(card.group);
       }
       for (const group of nudgedGroups) updateGroupBounds(group);
-      // Redraw connection shapes referencing nudged cards
-      for (const card of state.selection) {
-        if (!card.locked) redrawConnectionShapesFor(card);
-      }
-      requestConnectionRedraw();
       markDirty();
       return;
     }
@@ -205,25 +190,7 @@ export function deleteSelected() {
   if (state.selection.size === 0) return;
   const deletable = Array.from(state.selection).filter(c => !c.locked);
   if (deletable.length === 0) return;
-
-  // Cascade: find connection shapes referencing deleted cards
-  const deletableSet = new Set(deletable);
-  const cascaded = [];
-  for (const card of deletable) {
-    if (card.isShape && card.data.shapeType === 'connection') continue;
-    const key = getCardKey(card);
-    for (const c of state.allCards) {
-      if (c.isShape && c.data.shapeType === 'connection' &&
-          !deletableSet.has(c) && !c.locked &&
-          (c.data.sourceKey === key || c.data.targetKey === key)) {
-        cascaded.push(c);
-        deletableSet.add(c);
-      }
-    }
-  }
-
-  const allToDelete = [...deletable, ...cascaded];
-  const entries = allToDelete.map((card) => ({
+  const entries = deletable.map((card) => ({
     card,
     pos: { x: card.container.x, y: card.container.y },
   }));
