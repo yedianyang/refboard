@@ -15,10 +15,10 @@
 }
 .settings-page-card {
   display: flex;
-  width: 680px;
+  width: 780px;
   max-width: calc(100vw - 80px);
-  height: 520px;
-  max-height: calc(100vh - 100px);
+  height: 600px;
+  max-height: calc(100vh - 80px);
   background: var(--dialog-bg);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
