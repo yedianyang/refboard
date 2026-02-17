@@ -6,8 +6,6 @@
   height: 38px;
   padding: 0 12px 0 80px; /* 80px left for macOS traffic lights */
   background: var(--surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   z-index: 10;
   flex-shrink: 0;
@@ -26,7 +24,7 @@
 #toolbar input[type="text"] {
   flex: 1;
   max-width: 400px;
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -35,14 +33,15 @@
   font-size: 12px;
   outline: none;
   -webkit-app-region: no-drag;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-quick) var(--ease-out);
 }
 #toolbar input[type="text"]:focus {
-  border-color: var(--border-hover);
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 #toolbar button {
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -52,12 +51,15 @@
   font-size: 12px;
   white-space: nowrap;
   -webkit-app-region: no-drag;
-  transition: all 0.12s ease;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out), border-color var(--dur-quick) var(--ease-out);
 }
 #toolbar button:hover {
   background: var(--btn-hover);
   border-color: var(--border-hover);
   color: var(--text);
+}
+#toolbar button:active {
+  background: var(--btn-active);
 }
 #toolbar button.toolbar-icon-btn {
   width: 28px;
@@ -75,6 +77,9 @@
 #toolbar button.toolbar-icon-btn:hover {
   background: var(--btn-hover);
   color: var(--text);
+}
+#toolbar button.toolbar-icon-btn:active {
+  background: var(--btn-active);
 }
 #toolbar button.toolbar-icon-btn.active {
   background: var(--accent-bg);
@@ -109,9 +114,7 @@
 /* ---- Tool Sidebar (left palette) ---- */
 #sidebar {
   width: 40px;
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-solid);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -133,11 +136,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.1s ease;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
 }
 .sidebar-btn:hover {
   background: var(--btn-hover);
   color: var(--text);
+}
+.sidebar-btn:active {
+  background: var(--btn-active);
 }
 .sidebar-btn.active {
   background: var(--accent-bg);
@@ -157,11 +163,11 @@
   padding: 4px;
   gap: 2px;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   pointer-events: auto;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out);
 }
 #floating-toolbar.visible {
   display: flex;
@@ -170,7 +176,6 @@
 }
 [data-theme="light"] #floating-toolbar {
   background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .ftb-btn {
@@ -184,7 +189,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.1s ease;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
   position: relative;
 }
 .ftb-btn:hover {
@@ -213,7 +218,7 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity 80ms var(--ease-out);
 }
 .ftb-btn:hover[title]::after {
   opacity: 1;
@@ -287,7 +292,7 @@
   height: 18px;
   border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.1s;
+  transition: transform 80ms var(--ease-out);
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -313,13 +318,12 @@
   padding: 4px;
   gap: 2px;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-float);
   white-space: nowrap;
 }
 .ftb-submenu.open { display: flex; }
 [data-theme="light"] .ftb-submenu {
   background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* Color Palette removed — now in floating toolbar */
@@ -373,7 +377,7 @@
   padding: 4px 8px;
   gap: 8px;
   align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 #props-bar.visible { display: flex; }
 
