@@ -10,10 +10,9 @@ import {
   AUTO_SAVE_INTERVAL,
 } from './state.js';
 import { drawGrid, applyViewport, requestCull, updateZoomDisplay, invalidateMinimapCardCache, requestMinimapRedraw, getCardsBounds, fitAll } from './renderer.js';
-import { createPlaceholderCard, loadTextureIntoCard, resizeCardTo, createTextCard, createShapeCard, drawShapeGraphics, autoSizeTextCard, addImageCard } from './cards.js';
+import { createPlaceholderCard, loadTextureIntoCard, resizeCardTo, createTextCard, createShapeCard, drawShapeGraphics, autoSizeTextCard, addImageCard, redrawConnectionShape } from './cards.js';
 import { updateGroupBounds, groupSelected, selectGroup } from './groups.js';
 import { clearSelection, setCardSelected, showResizeHandles, hideResizeHandles } from './selection.js';
-import { serializeConnections, restoreConnections, renderAllConnections } from './connections.js';
 import { setCardLocked, pushUndo } from './shortcuts.js';
 
 // ============================================================
@@ -634,6 +633,15 @@ export function getBoardState() {
     ...(card.data.opacity != null && card.data.opacity !== 1 ? { opacity: card.data.opacity } : {}),
     ...(card.data.hasFill ? { hasFill: true } : {}),
     ...(card.data.lineStyle && card.data.lineStyle !== 'solid' ? { lineStyle: card.data.lineStyle } : {}),
+    // Connection-specific fields (v4)
+    ...(card.data.shapeType === 'connection' ? {
+      sourceKey: card.data.sourceKey,
+      targetKey: card.data.targetKey,
+      sourceAnchor: card.data.sourceAnchor,
+      targetAnchor: card.data.targetAnchor,
+      lineType: card.data.lineType,
+      arrowType: card.data.arrowType,
+    } : {}),
   }));
 
   const groups = state.allGroups.map((g) => ({
@@ -645,7 +653,7 @@ export function getBoardState() {
   const zOrder = state.allCards.map((c) => (c.isText || c.isShape) ? c.data.id : c.data.path);
 
   return {
-    version: 3,
+    version: 4,
     viewport: {
       x: state.viewport.x,
       y: state.viewport.y,
@@ -656,7 +664,6 @@ export function getBoardState() {
     shapeAnnotations,
     groups,
     zOrder,
-    connections: serializeConnections(),
   };
 }
 
@@ -677,7 +684,16 @@ export function restoreBoardState(savedState) {
       card.data.x = saved.x;
       card.data.y = saved.y;
       if (saved.width && saved.height) {
-        resizeCardTo(card, saved.width, saved.height);
+        // For image cards with loaded texture, recalculate height to maintain
+        // the natural aspect ratio (saved height may be stale placeholder value)
+        if (card._originalSpriteWidth && card._originalSpriteHeight) {
+          const aspect = card._originalSpriteWidth / card._originalSpriteHeight;
+          const spriteW = saved.width - CARD_PADDING * 2;
+          const h = spriteW / aspect + CARD_PADDING * 2;
+          resizeCardTo(card, saved.width, h);
+        } else {
+          resizeCardTo(card, saved.width, saved.height);
+        }
       }
       if (saved.locked) setCardLocked(card, true);
       if (saved.opacity != null && saved.opacity !== 1) {
@@ -724,6 +740,15 @@ export function restoreBoardState(savedState) {
         height: s.height,
         hasFill: s.hasFill ?? false,
         lineStyle: s.lineStyle ?? 'solid',
+        // Connection-specific fields (v4)
+        ...(s.shapeType === 'connection' ? {
+          sourceKey: s.sourceKey,
+          targetKey: s.targetKey,
+          sourceAnchor: s.sourceAnchor,
+          targetAnchor: s.targetAnchor,
+          lineType: s.lineType,
+          arrowType: s.arrowType,
+        } : {}),
       });
       if (card && s.locked) setCardLocked(card, true);
       if (card && s.opacity != null && s.opacity !== 1) {
@@ -799,14 +824,44 @@ export function restoreBoardState(savedState) {
     }
   }
 
-  // Restore connections (after all cards and groups are loaded)
-  if (savedState.connections && savedState.connections.length > 0) {
+  // v3 backward compat: migrate legacy connections[] to connection shape cards
+  if (savedState.connections && savedState.connections.length > 0 &&
+      (!savedState.version || savedState.version < 4)) {
     const cardByKeyConn = new Map();
     for (const card of state.allCards) {
       const key = (card.isText || card.isShape) ? card.data.id : card.data.path;
       cardByKeyConn.set(key, card);
     }
-    restoreConnections(savedState.connections, cardByKeyConn);
+    for (const conn of savedState.connections) {
+      const sourceCard = cardByKeyConn.get(conn.source);
+      const targetCard = cardByKeyConn.get(conn.target);
+      if (!sourceCard || !targetCard) continue;
+
+      const midX = (sourceCard.container.x + targetCard.container.x) / 2;
+      const midY = (sourceCard.container.y + targetCard.container.y) / 2;
+      createShapeCard('connection', midX, midY, {
+        id: conn.id,
+        color: conn.color ?? 0x4a9eff,
+        strokeWidth: conn.strokeWidth || 2,
+        width: 100,
+        height: 100,
+        lineStyle: conn.lineStyle || 'solid',
+        sourceKey: conn.source,
+        targetKey: conn.target,
+        sourceAnchor: conn.sourceAnchor || 'right',
+        targetAnchor: conn.targetAnchor || 'left',
+        lineType: conn.lineType || 'bezier',
+        arrowType: conn.arrowType || 'end',
+      });
+      restored++;
+    }
+  }
+
+  // Redraw all connection shapes (recompute endpoints after all cards are positioned)
+  for (const card of state.allCards) {
+    if (card.isShape && card.data.shapeType === 'connection') {
+      redrawConnectionShape(card);
+    }
   }
 
   requestCull();
