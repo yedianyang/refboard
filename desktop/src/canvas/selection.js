@@ -10,6 +10,7 @@ import { screenToWorld, requestCull, getCardsBounds } from './renderer.js';
 import { resizeCardTo, drawResizeHandleGraphics, getCornerPositions, createTextCard, createShapeCard, drawShapeGraphics, startTextEdit } from './cards.js';
 import { updateGroupBounds, enterGroupEditMode, exitGroupEditMode, selectGroup } from './groups.js';
 import { updateColorPaletteVisibility, updatePropsBar, updateSelectionInfo, markDirty, openLightbox, setTool } from './toolbar.js';
+import { findCardAtWorld, findNearestAnchor, createConnection, showConnectionPorts, hideConnectionPorts, updateDragConnectionPreview, requestConnectionRedraw } from './connections.js';
 
 // ============================================================
 // Selection
@@ -355,6 +356,7 @@ export function setupGlobalDrag() {
         const snaps = applySnapToCard(state.dragState.card, state.dragState._snapTargets);
         drawGuides(snaps.hSnap, snaps.vSnap);
         if (state.dragState.card.group) updateGroupBounds(state.dragState.card.group);
+        requestConnectionRedraw();
         break;
       }
       case 'multicard': {
@@ -373,6 +375,12 @@ export function setupGlobalDrag() {
           if (card.group) dragGroups.add(card.group);
         }
         for (const group of dragGroups) updateGroupBounds(group);
+        requestConnectionRedraw();
+        break;
+      }
+      case 'drawConnection': {
+        const wp = screenToWorld(e.global.x, e.global.y);
+        updateDragConnectionPreview(state.dragState, wp);
         break;
       }
       case 'selectRect': {
@@ -424,6 +432,27 @@ export function setupGlobalDrag() {
       setCardSelected(textCard, true);
       setTool('select');
       startTextEdit(textCard);
+      return;
+    }
+
+    if (state.currentTool === 'connector') {
+      const wp = screenToWorld(e.global.x, e.global.y);
+      const hitCard = findCardAtWorld(wp.x, wp.y);
+      if (hitCard) {
+        const anchor = findNearestAnchor(hitCard, wp.x, wp.y);
+        const preview = new Graphics();
+        preview.zIndex = 9999;
+        state.world.addChild(preview);
+        state.dragState = {
+          type: 'drawConnection',
+          sourceCard: hitCard,
+          sourceAnchor: anchor,
+          preview,
+          _hoverTarget: null,
+          _hoverAnchor: null,
+        };
+        showConnectionPorts(hitCard);
+      }
       return;
     }
 
@@ -554,6 +583,23 @@ export function finishDrag(e) {
         setCardSelected(shape, true);
       }
       setTool('select');
+      break;
+    }
+    case 'drawConnection': {
+      if (state.dragState.preview) {
+        state.world.removeChild(state.dragState.preview);
+        state.dragState.preview.destroy();
+      }
+      hideConnectionPorts();
+      const wp = screenToWorld(e.global.x, e.global.y);
+      const targetCard = findCardAtWorld(wp.x, wp.y);
+      if (targetCard && targetCard !== state.dragState.sourceCard) {
+        const targetAnchor = findNearestAnchor(targetCard, wp.x, wp.y);
+        createConnection(state.dragState.sourceCard, targetCard, {
+          sourceAnchor: state.dragState.sourceAnchor,
+          targetAnchor,
+        });
+      }
       break;
     }
   }

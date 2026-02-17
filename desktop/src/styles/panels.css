@@ -398,3 +398,46 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Connection list in metadata panel */
+.meta-connections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meta-connection-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--btn-bg);
+  cursor: pointer;
+  transition: background var(--dur-micro) var(--ease-out);
+}
+.meta-connection-item:hover {
+  background: var(--btn-hover);
+}
+.meta-conn-arrow {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.meta-conn-name {
+  font-size: 11px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.meta-conn-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+  flex-shrink: 0;
+}

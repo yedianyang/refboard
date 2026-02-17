@@ -8,6 +8,7 @@ import { updateGroupBounds, groupSelected, ungroupSelected, exitGroupEditMode } 
 import { clearSelection, setCardSelected, selectAll, showResizeHandles, hideResizeHandles } from './selection.js';
 import { updateColorPaletteVisibility, updatePropsBar, markDirty, setTool, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, changeSelectionOpacity } from './toolbar.js';
 import { icon } from '../icons.js';
+import { removeConnectionsForCard, findConnectionAt, deleteConnection, requestConnectionRedraw } from './connections.js';
 
 // ============================================================
 // Undo/Redo
@@ -105,6 +106,7 @@ export function setupKeyboard() {
     if ((e.key === 'r' || e.key === 'R') && !meta && !e.shiftKey) { setTool('rect'); return; }
     if ((e.key === 'o' || e.key === 'O') && !meta && !e.shiftKey) { setTool('ellipse'); return; }
     if ((e.key === 'l' || e.key === 'L') && !meta && !e.shiftKey) { setTool('line'); return; }
+    if ((e.key === 'c' || e.key === 'C') && !meta && !e.shiftKey) { setTool('connector'); return; }
     if (e.key === 'g' && !meta) { toggleGrid(); return; }
     if (e.key === 'm' && !meta) { toggleMinimap(); return; }
 
@@ -178,6 +180,13 @@ export function setupKeyboard() {
 // ============================================================
 
 export function deleteSelected() {
+  // Delete selected connection if any
+  if (state.selectedConnection && state.selection.size === 0) {
+    deleteConnection(state.selectedConnection);
+    state.selectedConnection = null;
+    requestConnectionRedraw();
+    return;
+  }
   if (state.selection.size === 0) return;
   const deletable = Array.from(state.selection).filter(c => !c.locked);
   if (deletable.length === 0) return;
@@ -189,6 +198,7 @@ export function deleteSelected() {
   pushUndo({ type: 'delete', entries });
 
   for (const { card } of entries) {
+    removeConnectionsForCard(card);
     removeCardFromCanvas(card);
   }
   hideResizeHandles();

@@ -13,6 +13,7 @@ import { drawGrid, applyViewport, requestCull, updateZoomDisplay, invalidateMini
 import { createPlaceholderCard, loadTextureIntoCard, resizeCardTo, createTextCard, createShapeCard, drawShapeGraphics, autoSizeTextCard, addImageCard } from './cards.js';
 import { updateGroupBounds, groupSelected, selectGroup } from './groups.js';
 import { clearSelection, setCardSelected, showResizeHandles, hideResizeHandles } from './selection.js';
+import { serializeConnections, restoreConnections, renderAllConnections } from './connections.js';
 import { setCardLocked, pushUndo } from './shortcuts.js';
 
 // ============================================================
@@ -256,11 +257,14 @@ export function updatePropsBar() {
 export function setTool(tool) {
   state.currentTool = tool;
   document.querySelectorAll('.sidebar-btn').forEach((btn) => btn.classList.remove('active'));
-  const titles = { select: 'Select', hand: 'Hand', text: 'Note', rect: 'Rect', ellipse: 'Ellipse', line: 'Line' };
+  const titles = { select: 'Select', hand: 'Hand', text: 'Note', rect: 'Rect', ellipse: 'Ellipse', line: 'Line', connector: 'Connect' };
   const btn = Array.from(document.querySelectorAll('.sidebar-btn'))
     .find((b) => b.title?.startsWith(titles[tool] || ''));
   if (btn) btn.classList.add('active');
-  state.app.canvas.style.cursor = tool === 'hand' ? 'grab' : tool === 'text' ? 'text' : SHAPE_TOOLS.has(tool) ? 'crosshair' : 'default';
+  state.app.canvas.style.cursor = tool === 'hand' ? 'grab'
+    : tool === 'text' ? 'text'
+    : SHAPE_TOOLS.has(tool) || tool === 'connector' ? 'crosshair'
+    : 'default';
   updateColorPaletteVisibility();
 }
 
@@ -641,7 +645,7 @@ export function getBoardState() {
   const zOrder = state.allCards.map((c) => (c.isText || c.isShape) ? c.data.id : c.data.path);
 
   return {
-    version: 2,
+    version: 3,
     viewport: {
       x: state.viewport.x,
       y: state.viewport.y,
@@ -652,6 +656,7 @@ export function getBoardState() {
     shapeAnnotations,
     groups,
     zOrder,
+    connections: serializeConnections(),
   };
 }
 
@@ -792,6 +797,16 @@ export function restoreBoardState(savedState) {
         }
       }
     }
+  }
+
+  // Restore connections (after all cards and groups are loaded)
+  if (savedState.connections && savedState.connections.length > 0) {
+    const cardByKeyConn = new Map();
+    for (const card of state.allCards) {
+      const key = (card.isText || card.isShape) ? card.data.id : card.data.path;
+      cardByKeyConn.set(key, card);
+    }
+    restoreConnections(savedState.connections, cardByKeyConn);
   }
 
   requestCull();

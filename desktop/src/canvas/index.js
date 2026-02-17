@@ -40,6 +40,16 @@ export async function initCanvas(containerEl) {
   state.world.sortableChildren = true;
   state.app.stage.addChild(state.world);
 
+  // Connection layer (behind cards, in world space)
+  state.connectionGfx = new Graphics();
+  state.connectionGfx.zIndex = -2;
+  state.world.addChild(state.connectionGfx);
+
+  // Connection port overlay (above cards, in world space)
+  state.connectionPortGfx = new Graphics();
+  state.connectionPortGfx.zIndex = 9990;
+  state.world.addChild(state.connectionPortGfx);
+
   // Alignment guide lines (in world space, above cards)
   state.guideGfx = new Graphics();
   state.guideGfx.zIndex = 9998;
@@ -79,7 +89,7 @@ export async function initCanvas(containerEl) {
   ro.observe(containerEl);
 
   // Wire sidebar tool buttons to click handlers
-  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line' };
+  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line', 'Connect': 'connector' };
   document.querySelectorAll('.sidebar-btn').forEach((btn) => {
     const title = btn.title || '';
     for (const [prefix, tool] of Object.entries(toolMap)) {
@@ -116,6 +126,15 @@ export { clearSelection, setCardSelected, selectAll, getSelectionScreenBounds } 
 // shortcuts.js
 export { handleContextAction, tidyUp, undo, redo, deleteSelected, alignSelected, distributeSelected } from './shortcuts.js';
 export { tidyUp as autoLayout } from './shortcuts.js';
+
+// connections.js
+export {
+  createConnection, deleteConnection, removeConnectionsForCard,
+  renderAllConnections, requestConnectionRedraw,
+  serializeConnections, restoreConnections,
+  findConnectionAt, getConnectionsForCard, getConnectedCard,
+  getCardKey,
+} from './connections.js';
 
 // toolbar.js
 export {

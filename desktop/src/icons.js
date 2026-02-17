@@ -76,6 +76,10 @@ const ICONS = {
 
   // --- Navigation ---
   'panel-left': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+
+  // --- Arrows (connections) ---
+  'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
 };
 
 /**

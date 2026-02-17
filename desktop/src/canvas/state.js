@@ -44,6 +44,14 @@ export const state = {
 
   activeFilter: null,
 
+  // Connection state
+  allConnections: [],
+  connectionGfx: null,
+  connectionPortGfx: null,
+  dragConnection: null,
+  selectedConnection: null,
+  _connRAF: null,
+
   minimapCardCache: null,
   cullRAF: null,
   minimapRAF: null,
@@ -154,6 +162,13 @@ export const MAX_UNDO = 100;
 // Shape tool sets
 export const SHAPE_TOOLS = new Set(['rect', 'ellipse', 'line']);
 export const ANNOTATION_TOOLS = new Set(['rect', 'ellipse', 'line', 'text']);
+
+// Connection constants
+export const CONNECTION_PORT_RADIUS = 5;
+export const CONNECTION_HIT_THRESHOLD = 12;
+export const CONNECTION_ARROW_SIZE = 10;
+export const CONNECTION_DEFAULT_CURVATURE = 0.4;
+export const CONNECTION_TOOLS = new Set(['connector']);
 
 // Auto-save
 export const AUTO_SAVE_INTERVAL = 30000;

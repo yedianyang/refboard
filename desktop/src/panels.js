@@ -7,6 +7,7 @@ import { listen } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { loadWebConfig, saveWebConfig } from './collection.js';
 import { icon } from './icons.js';
+import { getConnectionsForCard, getConnectedCard, getCardKey } from './canvas/index.js';
 
 // ============================================================
 // State
@@ -343,7 +344,80 @@ export function showMetadata(card) {
     eraEl.parentElement.style.display = 'none';
   }
 
+  // Connections
+  renderConnectionsSection(card);
+
   openPanel('metadata');
+}
+
+// ============================================================
+// Connections Display (Image Detail)
+// ============================================================
+
+function renderConnectionsSection(card) {
+  const section = document.getElementById('meta-connections-section');
+  const container = document.getElementById('meta-connections');
+  if (!section || !container) return;
+
+  const connections = getConnectionsForCard(card);
+  if (connections.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'flex';
+  container.innerHTML = '';
+
+  for (const conn of connections) {
+    const otherCard = getConnectedCard(conn, card);
+    if (!otherCard) continue;
+
+    const isSource = conn.data.source === getCardKey(card);
+    const direction = isSource ? 'outgoing' : 'incoming';
+    const arrowIcon = isSource ? 'arrow-right' : 'arrow-left';
+
+    const item = document.createElement('div');
+    item.className = 'meta-connection-item';
+
+    // Direction arrow
+    const arrowEl = document.createElement('span');
+    arrowEl.className = 'meta-conn-arrow';
+    arrowEl.innerHTML = icon(arrowIcon, 12);
+    item.appendChild(arrowEl);
+
+    // Connected card name
+    const nameEl = document.createElement('span');
+    nameEl.className = 'meta-conn-name';
+    nameEl.textContent = getCardDisplayName(otherCard);
+    nameEl.title = `${direction}: ${getCardDisplayName(otherCard)}`;
+    item.appendChild(nameEl);
+
+    // Label (if any)
+    if (conn.data.label) {
+      const labelEl = document.createElement('span');
+      labelEl.className = 'meta-conn-label';
+      labelEl.textContent = conn.data.label;
+      item.appendChild(labelEl);
+    }
+
+    // Click to navigate to connected card
+    item.addEventListener('click', () => {
+      if (!otherCard.container?.parent) return;
+      const key = getCardKey(otherCard);
+      if (!otherCard.isText && !otherCard.isShape) {
+        window.dispatchEvent(new CustomEvent('deco:scroll-to-card', { detail: { path: key } }));
+      }
+      showMetadata(otherCard);
+    });
+
+    container.appendChild(item);
+  }
+}
+
+function getCardDisplayName(card) {
+  if (card.isText) return card.data.text?.slice(0, 30) || 'Text note';
+  if (card.isShape) return `Shape (${card.data.shapeType})`;
+  return card.data.name || card.data.path?.split('/').pop() || 'Unknown';
 }
 
 // ============================================================
