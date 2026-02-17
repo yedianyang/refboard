@@ -27,7 +27,7 @@ export function drawGrid() {
   for (let y = offsetY; y <= h; y += gridSize) {
     state.gridGfx.moveTo(0, y).lineTo(w, y);
   }
-  state.gridGfx.stroke({ color: THEME.gridLine, width: 0.5, alpha: 0.4 });
+  state.gridGfx.stroke({ color: THEME.gridLine, width: 0.5, alpha: 0.3 });
 
   const majorSize = gridSize * 5;
   const majorOffX = state.viewport.x % majorSize;
@@ -39,7 +39,7 @@ export function drawGrid() {
   for (let y = majorOffY; y <= h; y += majorSize) {
     state.gridGfx.moveTo(0, y).lineTo(w, y);
   }
-  state.gridGfx.stroke({ color: THEME.gridLineMajor, width: 0.5, alpha: 0.6 });
+  state.gridGfx.stroke({ color: THEME.gridLineMajor, width: 0.5, alpha: 0.4 });
 }
 
 // ============================================================

@@ -6,7 +6,7 @@
   --surface-solid: #2d2d2d;
   --surface-card: rgba(44, 44, 44, 0.6);
   --surface-deep: #161616;
-  --canvas-bg: #1e1e1e;
+  --canvas-bg: #222222;
   --dialog-bg: rgba(44, 44, 46, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --input-bg: rgba(0, 0, 0, 0.25);
@@ -72,7 +72,7 @@
   --surface-solid: #ffffff;
   --surface-card: rgba(255, 255, 255, 0.7);
   --surface-deep: #f0f0f2;
-  --canvas-bg: #ececec;
+  --canvas-bg: #f0f0f0;
   --dialog-bg: rgba(255, 255, 255, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.25);
   --input-bg: rgba(0, 0, 0, 0.04);
