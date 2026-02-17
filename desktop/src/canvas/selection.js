@@ -284,7 +284,7 @@ export function startCardDrag(card, e) {
   const wp = screenToWorld(e.global.x, e.global.y);
 
   // Line/Connector tool: start drawing a line from this card (smart binding)
-  if (state.currentTool === 'line') {
+  if (state.currentTool === 'line' || state.currentTool === 'connector') {
     const anchor = findNearestAnchor(card, wp.x, wp.y);
     const preview = new Graphics();
     preview.zIndex = 9999;
@@ -479,7 +479,7 @@ export function setupGlobalDrag() {
     }
 
     // Unified line/connector tool — smart binding
-    if (state.currentTool === 'line') {
+    if (state.currentTool === 'line' || state.currentTool === 'connector') {
       const wp = screenToWorld(e.global.x, e.global.y);
       const hitCard = findCardAtWorld(wp.x, wp.y);
       const preview = new Graphics();

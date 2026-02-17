@@ -169,6 +169,7 @@ export const CONNECTION_PORT_RADIUS = 5;
 export const CONNECTION_HIT_THRESHOLD = 12;
 export const CONNECTION_ARROW_SIZE = 10;
 export const CONNECTION_DEFAULT_CURVATURE = 0.4;
+export const CONNECTION_TOOLS = new Set(['connector']);
 
 // Auto-save
 export const AUTO_SAVE_INTERVAL = 30000;

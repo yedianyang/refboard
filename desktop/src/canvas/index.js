@@ -89,7 +89,7 @@ export async function initCanvas(containerEl) {
   ro.observe(containerEl);
 
   // Wire sidebar tool buttons to click handlers
-  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line' };
+  const toolMap = { 'Select': 'select', 'Hand': 'hand', 'Note': 'text', 'Rect': 'rect', 'Ellipse': 'ellipse', 'Line': 'line', 'Connect': 'connector' };
   document.querySelectorAll('.sidebar-btn').forEach((btn) => {
     const title = btn.title || '';
     for (const [prefix, tool] of Object.entries(toolMap)) {
@@ -164,8 +164,6 @@ export {
   changeSelectionOpacity,
   toggleSelectionFill,
   toggleSelectionLineStyle,
-  changeConnectionLineType,
-  changeConnectionArrowType,
   getAnnotationColor,
   openLightbox,
   closeLightbox,

@@ -92,6 +92,7 @@
         <button class="sidebar-btn" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg></button>
         <button class="sidebar-btn" title="Line (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
         <button class="sidebar-btn" title="Note (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></button>
+        <button class="sidebar-btn" title="Connect (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg></button>
         <div style="flex: 1;"></div>
         <button class="sidebar-btn" id="web-sidebar-btn" title="Web Collection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></button>
         <button class="sidebar-btn" id="tag-sidebar-btn" title="Tags"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8 18.01"/><circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/></svg></button>
@@ -125,15 +126,15 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </button>
           <!-- Shape-only: Dash, Fill -->
-          <div class="ftb-separator" data-context="shape,line,connection"></div>
-          <button class="ftb-btn" id="ftb-dash" title="Dash" data-action="toggle-dash" data-context="shape,line,connection">
+          <div class="ftb-separator" data-context="shape,line"></div>
+          <button class="ftb-btn" id="ftb-dash" title="Dash" data-action="toggle-dash" data-context="shape,line">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h3"/><path d="M10.5 12h3"/><path d="M16 12h3"/></svg>
           </button>
           <button class="ftb-btn" id="ftb-fill-toggle" title="Fill" data-action="toggle-fill" data-context="shape">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
           </button>
-          <!-- Stroke: shape + line + connection -->
-          <button class="ftb-btn" id="ftb-stroke-btn" title="Stroke" data-action="toggle-stroke" data-context="shape,line,connection">
+          <!-- Stroke: shape + line -->
+          <button class="ftb-btn" id="ftb-stroke-btn" title="Stroke" data-action="toggle-stroke" data-context="shape,line">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M2 14h20" stroke-width="3"/><path d="M2 8h20" stroke-width="5"/></svg>
           </button>
           <!-- Stroke width popup -->
@@ -145,26 +146,8 @@
             <button class="ftb-stroke-opt" data-sw="6"><span class="ftb-stroke-line" style="height:6px;"></span><span>6px</span></button>
             <button class="ftb-stroke-opt" data-sw="8"><span class="ftb-stroke-line" style="height:8px;"></span><span>8px</span></button>
           </div>
-          <!-- Connection-only: Line Type, Arrow Type -->
-          <div class="ftb-separator" data-context="connection"></div>
-          <button class="ftb-btn" id="ftb-line-type" title="Line Type" data-action="toggle-line-type" data-context="connection">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c4-4 8-16 20-16"/></svg>
-          </button>
-          <div class="ftb-submenu ftb-color-popup" id="ftb-line-type-popup">
-            <button class="ftb-line-type-opt" data-lt="bezier"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20c4-4 8-16 20-16"/></svg> Bezier</button>
-            <button class="ftb-line-type-opt" data-lt="straight"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="20" x2="22" y2="4"/></svg> Straight</button>
-          </div>
-          <button class="ftb-btn" id="ftb-arrow-type" title="Arrow" data-action="toggle-arrow-type" data-context="connection">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="15 8 19 12 15 16"/></svg>
-          </button>
-          <div class="ftb-submenu ftb-color-popup" id="ftb-arrow-type-popup">
-            <button class="ftb-arrow-type-opt" data-at="none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/></svg> None</button>
-            <button class="ftb-arrow-type-opt" data-at="end"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="15 8 19 12 15 16"/></svg> End</button>
-            <button class="ftb-arrow-type-opt" data-at="start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="9 8 5 12 9 16"/></svg> Start</button>
-            <button class="ftb-arrow-type-opt" data-at="both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="15 8 19 12 15 16"/><polyline points="9 8 5 12 9 16"/></svg> Both</button>
-          </div>
-          <!-- Color: shape + text + line + connection -->
-          <button class="ftb-btn" id="ftb-color-btn" title="Color" data-action="toggle-colors" data-context="shape,text,line,connection">
+          <!-- Color: shape + text + line -->
+          <button class="ftb-btn" id="ftb-color-btn" title="Color" data-action="toggle-colors" data-context="shape,text,line">
             <span class="ftb-color-indicator" id="ftb-color-indicator" style="background:#4a9eff;"></span>
           </button>
           <!-- Color swatch popup -->
@@ -608,16 +591,6 @@
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input id="settings-models-folder" type="text" class="settings-input" placeholder="~/.cache/huggingface" style="flex: 1;" />
                 <button id="settings-browse-models-btn" class="btn-secondary" style="flex: none; white-space: nowrap;">Browse</button>
-              </div>
-            </div>
-            <div class="settings-divider"></div>
-            <div class="settings-group">
-              <label class="settings-label">Font Size</label>
-              <div class="settings-desc">Adjust UI text size. Does not affect canvas content.</div>
-              <div class="segmented-control" id="settings-font-size">
-                <button class="segmented-btn" data-value="compact">Compact</button>
-                <button class="segmented-btn active" data-value="default">Default</button>
-                <button class="segmented-btn" data-value="large">Large</button>
               </div>
             </div>
           </div>

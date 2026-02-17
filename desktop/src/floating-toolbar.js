@@ -1,7 +1,7 @@
 // Deco 2.0 — Floating Selection Toolbar
 // Context-aware toolbar that appears above the current selection
 
-import { getSelection, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle, changeConnectionLineType, changeConnectionArrowType } from './canvas/index.js';
+import { getSelection, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
 import { closePanel } from './panels.js';
 
 export function initFloatingToolbar() {
@@ -111,8 +111,7 @@ export function initFloatingToolbar() {
       if (card.isText) types.add('text');
       else if (card.isShape) {
         const st = card.shapeType || card._shapeType || card.data?.shapeType || '';
-        if (st === 'connection') types.add('connection');
-        else if (st === 'line') types.add('line');
+        if (st === 'line') types.add('line');
         else types.add('shape');
       } else types.add('image');
     }
@@ -143,24 +142,6 @@ export function initFloatingToolbar() {
 
     const hasShape = Array.from(sel).some(c => c.isShape);
     const hasText = Array.from(sel).some(c => c.isText);
-
-    // Connection-specific controls sync
-    const hasConnection = Array.from(sel).some(c => c.isShape && c.data?.shapeType === 'connection');
-    if (hasConnection) {
-      const firstConn = Array.from(sel).find(c => c.isShape && c.data?.shapeType === 'connection');
-      if (firstConn) {
-        // Sync line type active option
-        const lt = firstConn.data.lineType || 'bezier';
-        toolbar.querySelectorAll('.ftb-line-type-opt').forEach(o => {
-          o.classList.toggle('active', o.dataset.lt === lt);
-        });
-        // Sync arrow type active option
-        const at = firstConn.data.arrowType || 'end';
-        toolbar.querySelectorAll('.ftb-arrow-type-opt').forEach(o => {
-          o.classList.toggle('active', o.dataset.at === at);
-        });
-      }
-    }
 
     if (hasShape) {
       // Sync dash toggle state
@@ -296,30 +277,6 @@ export function initFloatingToolbar() {
       return;
     }
 
-    // Handle line type option clicks
-    const lineTypeOpt = e.target.closest('.ftb-line-type-opt');
-    if (lineTypeOpt) {
-      e.stopPropagation();
-      const lt = lineTypeOpt.dataset.lt;
-      changeConnectionLineType(lt);
-      toolbar.querySelectorAll('.ftb-line-type-opt').forEach(o => o.classList.remove('active'));
-      lineTypeOpt.classList.add('active');
-      closeSubmenus();
-      return;
-    }
-
-    // Handle arrow type option clicks
-    const arrowTypeOpt = e.target.closest('.ftb-arrow-type-opt');
-    if (arrowTypeOpt) {
-      e.stopPropagation();
-      const at = arrowTypeOpt.dataset.at;
-      changeConnectionArrowType(at);
-      toolbar.querySelectorAll('.ftb-arrow-type-opt').forEach(o => o.classList.remove('active'));
-      arrowTypeOpt.classList.add('active');
-      closeSubmenus();
-      return;
-    }
-
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     e.stopPropagation();
@@ -357,12 +314,6 @@ export function initFloatingToolbar() {
         break;
       case 'toggle-font-size':
         toggleSubmenu('ftb-font-size-popup', btn);
-        break;
-      case 'toggle-line-type':
-        toggleSubmenu('ftb-line-type-popup', btn);
-        break;
-      case 'toggle-arrow-type':
-        toggleSubmenu('ftb-arrow-type-popup', btn);
         break;
       case 'toggle-bold':
         toggleTextBold();
