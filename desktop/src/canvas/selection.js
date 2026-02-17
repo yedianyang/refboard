@@ -3,7 +3,7 @@
 import { Graphics, Rectangle } from 'pixi.js';
 import {
   state, THEME,
-  HANDLE_SIZE, SNAP_THRESHOLD, GUIDE_COLOR,
+  HANDLE_SIZE, SNAP_THRESHOLD, GUIDE_COLOR, DRAG_THRESHOLD,
   SHAPE_TOOLS, SHAPE_MIN_SIZE,
 } from './state.js';
 import { screenToWorld, requestCull, getCardsBounds } from './renderer.js';
@@ -283,6 +283,24 @@ export function startCardDrag(card, e) {
   if (state.spaceDown || state.currentTool === 'hand') return;
   const wp = screenToWorld(e.global.x, e.global.y);
 
+  // Connector tool: start drawing a connection from this card instead of dragging
+  if (state.currentTool === 'connector') {
+    const anchor = findNearestAnchor(card, wp.x, wp.y);
+    const preview = new Graphics();
+    preview.zIndex = 9999;
+    state.world.addChild(preview);
+    state.dragState = {
+      type: 'drawConnection',
+      sourceCard: card,
+      sourceAnchor: anchor,
+      preview,
+      _hoverTarget: null,
+      _hoverAnchor: null,
+    };
+    showConnectionPorts(card);
+    return;
+  }
+
   if (card.group && state.editingGroup !== card.group) {
     if (!state.selection.has(card) || ![...card.group.cards].every(c => state.selection.has(c))) {
       clearSelection();
@@ -300,6 +318,7 @@ export function startCardDrag(card, e) {
       startPositions,
       lastWorld: wp,
       moved: false,
+      startScreen: { x: e.global.x, y: e.global.y },
       clickCard: card, // Track which card was clicked for double-click detection
     };
     return;
@@ -316,6 +335,7 @@ export function startCardDrag(card, e) {
       startPositions,
       lastWorld: wp,
       moved: false,
+      startScreen: { x: e.global.x, y: e.global.y },
     };
   } else {
     state.dragState = {
@@ -324,6 +344,7 @@ export function startCardDrag(card, e) {
       offset: { x: wp.x - card.container.x, y: wp.y - card.container.y },
       startPos: { x: card.container.x, y: card.container.y },
       moved: false,
+      startScreen: { x: e.global.x, y: e.global.y },
     };
   }
 }
@@ -346,6 +367,12 @@ export function setupGlobalDrag() {
     switch (state.dragState.type) {
       case 'card': {
         if (state.dragState.card.locked) break;
+        // Dead zone: ignore micro-movement so click isn't treated as drag
+        if (!state.dragState.moved) {
+          const sdx = e.global.x - state.dragState.startScreen.x;
+          const sdy = e.global.y - state.dragState.startScreen.y;
+          if (sdx * sdx + sdy * sdy < DRAG_THRESHOLD * DRAG_THRESHOLD) break;
+        }
         state.dragState.moved = true;
         const wp = screenToWorld(e.global.x, e.global.y);
         state.dragState.card.container.x = wp.x - state.dragState.offset.x;
@@ -360,6 +387,12 @@ export function setupGlobalDrag() {
         break;
       }
       case 'multicard': {
+        // Dead zone: ignore micro-movement so click isn't treated as drag
+        if (!state.dragState.moved) {
+          const sdx = e.global.x - state.dragState.startScreen.x;
+          const sdy = e.global.y - state.dragState.startScreen.y;
+          if (sdx * sdx + sdy * sdy < DRAG_THRESHOLD * DRAG_THRESHOLD) break;
+        }
         state.dragState.moved = true;
         const wp = screenToWorld(e.global.x, e.global.y);
         const dx = wp.x - state.dragState.lastWorld.x;

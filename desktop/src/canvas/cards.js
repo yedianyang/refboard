@@ -100,6 +100,14 @@ export async function loadTextureIntoCard(card) {
     sprite.mask = frameMask;
 
     resizeCardTo(card, cardW + CARD_PADDING * 2, cardH + CARD_PADDING * 2);
+
+    // Clear opaque bg fill now that sprite is loaded — keeps border only
+    if (card.bg) {
+      const w = card.cardWidth, h = card.cardHeight;
+      card.bg.clear()
+        .roundRect(0, 0, w, h, CARD_RADIUS)
+        .stroke({ color: THEME.cardBorder, width: 1 });
+    }
   } catch (err) {
     console.warn(`Failed to load image: ${card.data.name}`, err);
   }
@@ -141,7 +149,13 @@ export function resizeCardTo(card, w, h) {
   if (card.bg) {
     if (card.isText) {
       card.bg.clear(); // Text cards have no visible background
+    } else if (card.sprite) {
+      // Image loaded — border only, no opaque fill that would cover the sprite
+      card.bg.clear()
+        .roundRect(0, 0, w, h, CARD_RADIUS)
+        .stroke({ color: THEME.cardBorder, width: 1 });
     } else {
+      // Placeholder state — show filled bg
       card.bg.clear()
         .roundRect(0, 0, w, h, CARD_RADIUS)
         .fill({ color: THEME.cardBg })

@@ -151,6 +151,7 @@ export const TEXTURE_UNLOAD_PAD = 1200;
 
 // Snap / guides
 export const SNAP_THRESHOLD = 5;
+export const DRAG_THRESHOLD = 4; // px — dead zone before click becomes drag
 export const GUIDE_COLOR = 0xe91e63;
 
 // Minimap
