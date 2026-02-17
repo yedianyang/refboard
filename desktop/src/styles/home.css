@@ -70,12 +70,10 @@
 }
 .home-action-btn {
   flex: 1;
-  padding: 18px 20px;
+  padding: 20px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   color: var(--text);
   cursor: pointer;
   font-size: 13px;
@@ -83,14 +81,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: all 0.2s ease;
+  transition: background 80ms var(--ease-out), border-color var(--dur-quick) var(--ease-out), transform var(--dur-standard) var(--ease-out), box-shadow var(--dur-standard) var(--ease-out);
   font-family: inherit;
 }
 .home-action-btn:hover {
   background: var(--btn-hover);
   border-color: var(--border-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
 }
 .home-action-icon {
   width: 40px;
@@ -127,11 +125,9 @@
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color var(--dur-quick) var(--ease-out), transform var(--dur-standard) var(--ease-out), box-shadow var(--dur-standard) var(--ease-out);
   font-family: inherit;
   color: inherit;
   text-align: left;
@@ -143,7 +139,7 @@
 .home-project-card:hover {
   border-color: var(--border-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-lg);
 }
 .home-project-thumb {
   height: 120px;
@@ -298,10 +294,11 @@
   font-size: 11px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .home-search-input:focus {
-  border-color: var(--border-hover);
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 .home-search-input::placeholder { color: var(--text-muted); }
 .home-search-icon {
