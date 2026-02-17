@@ -123,95 +123,113 @@ crate::log::log("CLIP", "Model warmup started");
 - 动效：`ease-out` 0.2s (按钮)，0.35s (面板)
 - 参考：`~/.claude/CLAUDE.md` macOS HIG 详细规范
 
-## Agent Team 分工指南
+## Agent Team 协作规范
 
-| Agent | Model | 职责 | 文件 ownership |
-|-------|-------|------|----------------|
-| **Main (Team Lead)** | opus-4-6 | 任务协调、进度追踪 | `TEAM.md`, `TODO.md` |
-| **Designer** | opus-4-6 | UI/UX、CSS、动效 | `*.css`, `panels.js`, HTML 模板 |
-| **Generator** | opus-4-6 | Rust 后端、核心逻辑 | `src-tauri/src/*.rs`, `lib/*.js` |
-| **Researcher** | opus-4-6 | 技术调研、竞品分析 | `docs/research/*.md` |
-| **Template** | sonnet-4-5 | 前端交互、DOM 操作 | `main.js`, `canvas.js`, `search.js` |
-| **Tester** | sonnet-4-5 | 功能测试、Bug 报告 | `docs/test-report.md` |
-| **Docs** | sonnet-4-5 | 文档更新、发布准备 | `README.md`, `CHANGELOG.md`, `docs/*.md` |
+> 基于 Claude Code Agent Teams 官方架构（TeamCreate + TaskList + Mailbox + delegate mode）
 
-### Team Lead 职责
+### 架构总览
 
-**⚠️ 核心原则：Team Lead 不写代码！**
-- ❌ 禁止自己写代码、修改源文件
-- ✅ 必须把任务分配给对应 teammate
-- ✅ 可以更新 TEAM.md / TODO.md
+```
+┌─────────────────────────────────────────────────┐
+│  Team Lead (delegate mode, 不写代码)              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
+│  │ Mailbox  │  │ TaskList │  │ TeamConf │      │
+│  │ (自动投递) │  │ (共享状态) │  │ config.json│    │
+│  └──────────┘  └──────────┘  └──────────┘      │
+│       ↕              ↕              ↕            │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│  │Designer │  │Generator│  │Template │  ...    │
+│  │(独立ctx) │  │(独立ctx) │  │(独立ctx) │        │
+│  └─────────┘  └─────────┘  └─────────┘        │
+└─────────────────────────────────────────────────┘
+```
 
-**任务下发流程：**
-1. 分析任务涉及哪些文件
-2. 确定分配给哪个 teammate
-3. 用标准模板写任务描述
-4. @teammate 下发任务
-5. 等待完成，检查结果
+**核心机制（用内建工具，不用手动文件）：**
+- **TaskCreate/TaskList/TaskUpdate** — 共享任务列表，替代 TODO.md
+- **SendMessage** — agent 间直接通讯，替代 TEAM.md 留言
+- **delegate mode** (Shift+Tab) — 强制 Lead 只协调不写码
+- **plan approval** — teammate 提交 Plan → Lead 审批 → 才能动手
 
-**Checkpoint（每 10 分钟）：**
-- 检查 context 剩余量
-- 更新 TEAM.md 当前状态
-- Context < 30% 立即保存进度
+### 角色定义 & 文件 Ownership
 
-**并行策略：**
-- ✅ 可并行：Designer + Generator（前后端）、Researcher
-- ❌ 必须串行：Tester 等功能完成、Docs 等测试完成
+| Agent (name) | subagent_type | Model | 文件 ownership | 用途 |
+|---|---|---|---|---|
+| **lead** | main | opus | 不碰源码 | 拆任务、分配、审批 Plan、合成结果 |
+| **designer** | designer | opus | `*.css`, `*.html` 模板, `panels.js` | UI/UX、CSS、动效 |
+| **generator** | generator | opus | `src-tauri/src/*.rs`, `lib/*.js` | Rust 后端、核心逻辑 |
+| **template** | template | sonnet | `canvas/*.js`, `main.js`, `search.js` | 前端交互、PixiJS |
+| **researcher** | researcher | opus | `docs/research/*.md` | 技术调研（只读） |
+| **tester** | tester | sonnet | `*.test.js`, `#[cfg(test)]` | 测试（不改源码） |
+| **docs** | docs | sonnet | `README.md`, `CHANGELOG.md`, `docs/` | 文档 |
 
-### 协作规则
-1. 开始工作前在 `TEAM.md` 写消息
-2. **修改代码前必须提交 Plan**（见下方模板）
-3. 完成任务后更新 `TODO.md`
-4. Bug 修复：Tester 报告 → 对应 Agent 修复 → Tester 验证
-5. 需要协作时 @对应角色
-6. **踩坑必记录** → 更新 `CLAUDE.md`「踩坑经验」章节
-7. **完成任务后必须 Git 提交**
+### Team Lead 规则
+
+1. **启用 delegate mode** — Lead 只能用 SendMessage、TaskCreate/Update、TeamCreate 工具
+2. **拆任务时确保文件不冲突** — 每个 task 明确列出 ownership 文件，避免两人改同一个文件
+3. **每 task 5-6 个子步骤** — 太大容易跑偏，太小协调开销超过收益
+4. **用 TaskUpdate 设 dependencies** — `addBlockedBy` 表达串行关系（如 tester 等 generator 完成）
+5. **用 plan approval** — 对复杂/高风险任务，spawn 时要求 plan approval，Lead 审批后才能实现
+
+### 任务流程（内建机制驱动）
+
+```
+Lead: TaskCreate → TaskUpdate(owner=teammate)
+  ↓
+Teammate: TaskUpdate(status=in_progress) → [plan mode if required]
+  ↓
+Teammate: ExitPlanMode → Lead: plan_approval_response(approve)
+  ↓
+Teammate: 编码 → 测试 → git commit → TaskUpdate(status=completed)
+  ↓
+Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
+```
+
+### 通讯规范
+
+- **SendMessage(type=message)** — 点对点通讯，替代 @mention
+- **SendMessage(type=broadcast)** — 全员广播，仅用于紧急事项（成本高）
+- **idle 通知** — teammate 停下时系统自动通知 Lead，不需手动 check
+- **DM 可见性** — teammate 间 DM 摘要会出现在 Lead 的 idle 通知中
+
+### 并行策略
+
+```
+可并行（无文件冲突）：
+  designer(CSS) + generator(Rust) + template(canvas JS) + researcher(docs)
+
+必须串行（用 addBlockedBy）：
+  generator → template  （API 契约：generator 先定义，template 再调用）
+  generator + template → tester  （功能完成后才测试）
+  tester → docs  （测试通过后才写文档）
+```
+
+### Rust ↔ JS 协作（API 契约）
+
+当 generator 和 template 协作时：
+
+1. **generator** 定义并实现 Tauri command + response struct
+2. **generator** 完成后用 SendMessage 通知 template：
+   > `invoke('cmd_xxx', {param})` 返回 `{field1, field2}`
+3. **template** 按契约实现前端调用
+4. Lead 用 `addBlockedBy` 确保 template 的 task 被 generator 的 task 阻塞
+
+### Spawn 示例
+
+```
+创建一个 agent team 来实现 [功能名]：
+- generator: 实现 Rust 后端 [具体描述]，文件: src-tauri/src/xxx.rs
+- template: 实现前端交互 [具体描述]，文件: desktop/src/canvas/xxx.js
+- designer: 更新样式 [具体描述]，文件: desktop/src/styles/xxx.css
+要求 generator 和 template 提交 plan approval。
+用 delegate mode，我不直接写代码。
+```
 
 ---
 
 ## 工程流程
 
-### 任务循环 (Task Loop)
-
-```
-Plan → 审批 → 编码 → 测试 → Commit → Push
-```
-
-每个任务必须完整走完这个循环，不允许跳过任何步骤。
-
-### Plan 审批模板
-
-**修改代码前必须先提交 Plan，等 Team Lead `✅ Approved` 后再动手：**
-
-```markdown
-## Plan: [任务名称]
-
-**目标：** [一句话描述]
-
-**修改文件：**
-- `path/to/file.rs` — [改什么]
-- `path/to/file.js` — [改什么]
-
-**实现步骤：**
-1. [步骤1]
-2. [步骤2]
-3. [步骤3]
-
-**影响范围：** [可能影响的其他功能]
-
-**测试方案：** [如何验证]
-```
-
 ### Git 提交规范
 
-**每个任务完成后必须提交：**
-```bash
-git add -A
-git commit -m "type: 简短描述"
-git push
-```
-
-**Commit 类型：**
 | type | 说明 |
 |------|------|
 | `feat` | 新功能 |
@@ -222,95 +240,19 @@ git push
 | `test` | 测试相关 |
 | `chore` | 构建/配置/杂项 |
 
-**示例：**
-```
-feat: add batch analyze API endpoint
-fix: resolve empty project loading issue
-style: replace emoji with Lucide icons
-docs: update HTTP API reference
-```
-
-**提交时机：**
-- ✅ 任务完成 + 测试通过 → 立即提交
-- ❌ 不要积攒多个任务一起提交
-- ❌ 不要提交未测试的代码
-
-### Generator + Template 协作（API 契约）
-
-当任务涉及 Rust 后端 + JS 前端协作时：
-
-**1. Generator 先定义 API 契约**
-```rust
-#[tauri::command]
-fn cmd_xxx(param: String) -> Result<XxxResponse, String>
-
-#[derive(Serialize)]
-struct XxxResponse {
-    field1: String,
-    field2: Vec<String>,
-}
-```
-
-**2. Generator 完成后通知 Template**
-> @Template API 已就绪：`invoke('cmd_xxx', {param})` 返回 `{field1, field2}`
-
-**3. Template 按契约实现前端调用**
-```javascript
-const result = await invoke('cmd_xxx', { param: 'value' });
-console.log(result.field1, result.field2);
-```
-
-### Tester 持续监控
-
-- 持续运行 `npm test` / `cargo test`
-- 发现回归 → **立即通知对应 teammate**
-- 通知格式：`🔴 回归！@Generator xxx.rs 第 N 行，原本 pass 现在 fail`
+**规则：**
+- 每个 task 完成 + 测试通过 → 立即 commit
+- 不积攒多个 task 一起提交
+- 不提交未测试的代码
 
 ### 踩坑经验记录
 
-每次遇到 bug/问题/解决方案，**立即更新本文件「踩坑经验」章节**：
+遇到 bug/问题时更新本文件「踩坑经验」章节：
 
 ```markdown
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
 | [描述问题] | [根本原因] | [解决方法] |
-```
-
-避免后续 agent 重复踩坑。
-
----
-
-### Tester 角色特殊规范
-
-**Tester agent 权限受限：**
-- ✅ 读取所有源码（理解逻辑）
-- ✅ 创建/修改测试文件：`*.test.js`, `*.test.ts`, `#[cfg(test)]` 块
-- ✅ 运行测试命令
-- ❌ **不能修改非测试源码**
-
-**持续监控模式：**
-- 持续运行 `npm test` / `cargo test`
-- 发现回归 → **立即通知对应 teammate**
-- 通知格式：`🔴 回归！@Generator xxx.rs 第 N 行，原本 pass 现在 fail`
-
-**Tester 工作流程：**
-1. 先读 `.claude/skills/testing/SKILL.md`
-2. 读懂被测模块逻辑，不要盲写测试
-3. 写测试 → 运行 → 如果测试代码有问题自己修
-4. **发现源码 Bug → 在 TEAM.md @对应角色，不要自己改源码**
-5. 测试全绿后报告完成
-
-**Spawn Tester 示例：**
-```
-@tester 请为 desktop/src/canvas.js 编写单元测试：
-1. 读取并理解 canvas.js 的所有导出函数
-2. 为每个函数编写测试，覆盖正常路径 + 边界条件 + 错误处理
-3. 测试文件写到 desktop/src/canvas.test.js
-4. 运行 npm test 确认全部通过
-5. 如有失败，修复测试代码（不要改源码）
-6. 完成后在 TEAM.md 报告
-```
-
 ## 注意事项
 
 ### 必须遵守

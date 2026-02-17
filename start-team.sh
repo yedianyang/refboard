@@ -5,7 +5,7 @@
 set -e
 
 SESSION="deco-team"
-PROJECT_DIR="$HOME/Projects/deco"
+PROJECT_DIR="$HOME/Projects/refboard"
 
 # 颜色
 GREEN='\033[0;32m'
