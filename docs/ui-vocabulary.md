@@ -196,6 +196,8 @@ The landing page displayed when no project is open.
 | List View Button | 列表视图按钮 | Switches recent projects to list layout | `#home-list-btn` |
 | View Toggle | 视图切换 | Container for grid/list toggle buttons | `.home-view-toggle` |
 | Empty State | 空状态 | Placeholder shown when no recent projects exist | `.home-empty` |
+| New Project Card | 新建项目卡片 | First item in the project grid; dashed-border card with + icon that opens the New Project dialog. Replaces the old separate "New Project" button | `.home-new-project-card` / `#home-new-card` |
+| New Project Icon | 新建项目图标 | Centered + icon inside the New Project Card thumbnail area | `.home-new-project-icon` |
 
 ---
 
@@ -344,7 +346,7 @@ Modal dialog with a two-column layout: categories on the left, settings form on 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
 | Settings Page | 设置页 | Full-screen modal overlay for app configuration | `#settings-page` |
-| Settings Card | 设置卡片 | The centered dialog container (680x520px) | `.settings-page-card` |
+| Settings Card | 设置卡片 | The centered dialog container (1040x800px) | `.settings-page-card` |
 | Settings Left | 设置左栏 | Category navigation sidebar (200px) | `.settings-page-left` |
 | Settings Right | 设置右栏 | Form area with header, body, and footer | `.settings-page-right` |
 | Settings Category | 设置分类按钮 | Navigation button for a settings section | `.settings-cat` |
@@ -367,12 +369,17 @@ Modal dialog with a two-column layout: categories on the left, settings form on 
 | Projects Folder | 项目文件夹 | Default root folder for Deco projects | `#settings-projects-folder` |
 | Models Folder | 模型文件夹 | Storage path for CLIP/ONNX models | `#settings-models-folder` |
 | Browse Folder Button | 浏览文件夹按钮 | Opens native folder picker dialog | `#settings-browse-folder-btn` |
+| Vision Model Options | 视觉模型选项 | Radio card group for choosing the local vision model (CLIP vs Grounding DINO + SAM) | `.vision-model-options` / `#settings-vision-model` |
+| Vision Model Option | 视觉模型选项项 | A single `<label>` wrapping a hidden radio input and a visual card | `.vision-model-option` |
+| Vision Model Card | 视觉模型卡片 | Bordered card that highlights with accent color when its radio is selected | `.vision-model-card` |
+| Vision Model Title | 视觉模型标题 | Model name text (e.g., "CLIP", "Grounding DINO + SAM") inside the card | `.vision-model-title` |
+| Vision Model Description | 视觉模型描述 | Brief capability and performance summary below the model title | `.vision-model-desc` |
 
 ### AI Provider Settings / AI 提供商设置
 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
-| AI Panel | AI 面板 | AI provider selection and configuration | `#settings-panel-ai` |
+| AI Panel | AI 面板 | AI provider selection and configuration; uses a nested list+form two-column layout | `#settings-panel-ai` / `.settings-panel-ai-layout` |
 | Provider List | 提供商列表 | Scrollable list of AI providers (OpenAI, Claude, etc.) | `#ai-provider-list` / `.ai-provider-list` |
 | Provider Item | 提供商项 | Clickable provider entry with icon and name | `.ai-provider-item` |
 | Provider Icon | 提供商图标 | Letter badge identifying the provider | `.ai-provider-icon` |
@@ -463,6 +470,12 @@ Bottom bar (24px) showing status messages, selection info, item count, and zoom 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
 | Status Bar | 状态栏 | Bottom bar with status text, selection info, counts, and zoom | `#statusbar` |
+| Statusbar File Menu | 状态栏文件菜单 | Dropdown menu container at the left of the status bar; opens upward | `.statusbar-menu` / `#statusbar-file-menu` |
+| File Menu Button | 文件菜单按钮 | "File" button that toggles the dropdown open/closed | `.statusbar-menu-btn` / `#statusbar-file-btn` |
+| File Menu Dropdown | 文件菜单下拉 | Upward-opening dropdown panel with file actions (Open Folder, New Project) | `.statusbar-dropdown` / `#statusbar-file-dropdown` |
+| File Menu Item | 文件菜单项 | Individual action button inside the file dropdown | `.statusbar-dropdown-item` |
+| Open Folder (Statusbar) | 打开文件夹(状态栏) | File menu item that opens a folder picker to load an image directory | `#sb-open-folder` |
+| New Project (Statusbar) | 新建项目(状态栏) | File menu item that opens the New Project dialog | `#sb-new-project` |
 | Status Text | 状态文字 | Current operation status message (e.g., "Ready", "Imported 5 images") | `#status-text` |
 | Selection Info | 选择信息 | Details about the current selection (name, size, count) | `#selection-info` |
 | Item Count | 元素计数 | Total count of images and annotations on canvas | `#canvas-item-count` |
@@ -508,6 +521,8 @@ Reusable components used across multiple panels and views.
 | Primary Button | 主按钮 | Filled accent-colored button for primary actions | `.btn-primary` |
 | Secondary Button | 次按钮 | Bordered button for secondary actions | `.btn-secondary` |
 | Spinner | 加载旋转 | Animated circular loading indicator | `.spinner` |
+| Segmented Control | 分段控件 | macOS-style toggle bar with mutually exclusive options (e.g., font size presets: Compact / Default / Large). Active segment is highlighted with a solid background and shadow | `.segmented-control` |
+| Segmented Button | 分段按钮 | Individual option button inside a Segmented Control; toggled via `.active` class | `.segmented-btn` |
 
 ---
 
@@ -624,4 +639,4 @@ Reference for all keyboard shortcuts documented in the hints overlay.
 
 ---
 
-*Last updated: 2026-02-17*
+*Last updated: 2026-02-18*

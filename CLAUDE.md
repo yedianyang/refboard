@@ -20,10 +20,20 @@ deco/
 ├── desktop/                    # v2.0 Desktop App (Tauri)
 │   ├── src/
 │   │   ├── main.js            # 入口 + Home 页面 + 项目管理
-│   │   ├── canvas.js          # PixiJS 无限画布 + 卡片交互
+│   │   ├── canvas/            # PixiJS 无限画布（8 个模块）
+│   │   │   ├── init.js        #   App 启动、world container
+│   │   │   ├── cards.js       #   卡片创建、纹理加载、resize
+│   │   │   ├── selection.js   #   点击/拖拽、框选、drag threshold
+│   │   │   ├── connections.js #   连线工具、端口检测、bezier 路径
+│   │   │   ├── groups.js      #   分组创建、编辑、边框跟随
+│   │   │   ├── grid.js        #   网格渲染、snap-to-grid
+│   │   │   ├── minimap.js     #   小地图
+│   │   │   └── state.js       #   共享状态、常量、主题色
 │   │   ├── panels.js          # 侧边栏/面板 UI
 │   │   ├── search.js          # 搜索 UI
-│   │   └── collection.js      # Web 采集 UI
+│   │   ├── collection.js      # Web 采集 UI
+│   │   └── styles/            # CSS 样式文件
+│   │       └── settings.css   #   设置面板样式
 │   ├── src-tauri/src/
 │   │   ├── lib.rs             # Tauri 命令注册 + 文件操作
 │   │   ├── ai.rs              # AI Provider 抽象层
@@ -37,8 +47,6 @@ deco/
 ├── docs/
 │   ├── research/              # 技术调研
 │   └── reference/             # UI 参考图
-├── TEAM.md                    # 团队协作看板
-├── TODO.md                    # 任务追踪
 └── CHANGELOG.md               # 版本历史
 ```
 
@@ -155,12 +163,13 @@ crate::log::log("CLIP", "Model warmup started");
 | Agent (name) | subagent_type | Model | 文件 ownership | 用途 |
 |---|---|---|---|---|
 | **lead** | main | opus | 不碰源码 | 拆任务、分配、审批 Plan、合成结果 |
-| **designer** | designer | opus | `*.css`, `*.html` 模板, `panels.js` | UI/UX、CSS、动效 |
-| **generator** | generator | opus | `src-tauri/src/*.rs`, `lib/*.js` | Rust 后端、核心逻辑 |
-| **template** | template | sonnet | `canvas/*.js`, `main.js`, `search.js` | 前端交互、PixiJS |
+| **designer** | designer | sonnet | `styles/*.css`, `index.html`, `panels.js` | UI/UX、CSS、动效 |
+| **generator** | generator | opus | `src-tauri/src/*.rs`, `Cargo.toml`, `lib/*.js`, `bin/*.js` | Rust 后端、核心逻辑 |
+| **template** | template | sonnet | `canvas/*.js`, `main.js`, `search.js`, `collection.js` | 前端交互、PixiJS |
 | **researcher** | researcher | opus | `docs/research/*.md` | 技术调研（只读） |
-| **tester** | tester | sonnet | `*.test.js`, `#[cfg(test)]` | 测试（不改源码） |
-| **docs** | docs | sonnet | `README.md`, `CHANGELOG.md`, `docs/` | 文档 |
+| **tester** | tester | sonnet | `*.test.js`, `#[cfg(test)]` blocks, `docs/test-report.md` | 测试（不改源码） |
+| **docs** | docs | sonnet | `README.md`, `CHANGELOG.md`, `docs/*.md` | 文档 |
+| **code-reviewer** | code-reviewer | sonnet | 无写权限 | 只读审查 |
 
 ### Team Lead 规则
 
@@ -168,7 +177,11 @@ crate::log::log("CLIP", "Model warmup started");
 2. **拆任务时确保文件不冲突** — 每个 task 明确列出 ownership 文件，避免两人改同一个文件
 3. **每 task 5-6 个子步骤** — 太大容易跑偏，太小协调开销超过收益
 4. **用 TaskUpdate 设 dependencies** — `addBlockedBy` 表达串行关系（如 tester 等 generator 完成）
-5. **用 plan approval** — 对复杂/高风险任务，spawn 时要求 plan approval，Lead 审批后才能实现
+5. **Plan Approval（分层策略）** — 仅对以下任务要求 plan approval：
+   - 跨 2+ 模块 / API 契约变更
+   - 架构变更 / 新依赖引入
+   - 数据库 schema 变更
+   - 单文件 bug fix、单模块功能不需要 plan approval
 
 ### 任务流程（内建机制驱动）
 
@@ -253,6 +266,8 @@ Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
 | [描述问题] | [根本原因] | [解决方法] |
+```
+
 ## 注意事项
 
 ### 必须遵守
@@ -295,6 +310,9 @@ Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
 | Group 纯视觉无法交互 | Group 只是画了边框，没有选中/拖拽逻辑 | 需要 `editingGroup` 状态 + `updateGroupBounds()` + group-aware click/drag |
 | Frame 缩放变形 | 直接缩放 sprite 导致图片拉伸 | 用 PixiJS mask 裁剪，sprite 保持原始尺寸 |
 | 快捷键冲突 | canvas.js 和 main.js 都监听同一快捷键 | 功能区分：Cmd+G=Group, Cmd+Shift+G=Generate |
+| 卡片 pointerdown 阻断 stage handler | card 的 eventMode='static' 先触发，stage 的 `if(e.target!==stage) return` 过滤 | 在 startCardDrag() 开头拦截特殊工具（如 connector） |
+| 图片被不透明 bg 遮盖 | createPlaceholderCard 画了 fill，texture 加载后 bg 未清除 | texture 加载后 bg.clear() 只留 stroke，resizeCardTo 同理 |
+| 单击误触发拖拽 | globalpointermove 任何移动即设 moved=true | 加 DRAG_THRESHOLD=4px dead zone，squared distance 判断 |
 
 ### 团队协作
 
@@ -350,3 +368,10 @@ Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
 - [x] main.js 模块化拆分（5 个独立模块）
 - [x] 导入后自动 index + embed（spawn_auto_index）
 - [x] BUG-009 finishRename 防重入
+- [x] BUG-010 Connector 工具修复（card pointerdown 拦截）
+- [x] BUG-011 图片被 bg 遮盖修复（texture 加载后清除 fill）
+- [x] BUG-012 单击拖拽误触发修复（4px dead zone）
+- [x] canvas.js 模块化拆分（8 个模块: init/cards/selection/connections/groups/grid/minimap/state）
+- [x] Node connections 功能（bezier 路径、端口检测、curvature 调节）
+- [x] UI 词汇表文档（docs/ui-vocabulary.md）
+- [x] Agent Team 架构升级（内建 TaskList/Mailbox/delegate mode）

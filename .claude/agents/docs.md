@@ -20,8 +20,6 @@ tools:
 |------|------|----------|
 | `README.md` | 项目概览、安装、快速开始 | 每个 milestone |
 | `CHANGELOG.md` | 版本历史 | 每次发布 |
-| `TEAM.md` | 团队协作看板 | 实时 |
-| `TODO.md` | 任务追踪 | 实时 |
 | `docs/user-guide.md` | 用户指南 | 功能变更时 |
 | `docs/api.md` | API 参考 | 命令变更时 |
 | `docs/research/*.md` | 技术调研整理 | @Researcher 完成后 |
@@ -36,8 +34,6 @@ tools:
 | CHANGELOG.md | English |
 | user-guide.md | English |
 | api.md | English |
-| TEAM.md | 中文（团队内部）|
-| TODO.md | 中文 |
 | research/*.md | 中文或英文（随调研内容）|
 
 ## 文档模板
@@ -116,7 +112,7 @@ Deco uses an infinite canvas. Navigate using:
 
 ### 代码变更 → 文档更新
 
-1. @Generator/@Designer 完成功能后在 TEAM.md @Docs
+1. @Generator/@Designer 完成功能后用 SendMessage 通知 @Docs
 2. Docs 读取源码确认实现
 3. 更新对应文档
 4. 更新 CHANGELOG

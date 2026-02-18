@@ -13,11 +13,17 @@ You are a frontend developer for Deco, responsible for the desktop app UI module
 
 ### Desktop App Frontend (Vanilla JS + PixiJS 8)
 - `desktop/src/main.js` — app entry, wiring, keyboard shortcuts, project open/save
-- `desktop/src/canvas.js` — infinite canvas engine (PixiJS 8, WebGL2, cards, selection, groups, undo/redo)
-- `desktop/src/panels.js` — AI suggestion panel, metadata panel, settings dialog
+- `desktop/src/canvas/*.js` — infinite canvas engine (8 modules):
+  - `init.js` — PixiJS app bootstrap, world container setup
+  - `cards.js` — card creation, texture loading, resize
+  - `selection.js` — click/drag, marquee select, drag threshold
+  - `connections.js` — connector tool, port detection, bezier paths
+  - `groups.js` — group creation, editing, bounds tracking
+  - `grid.js` — grid rendering, snap-to-grid
+  - `minimap.js` — minimap overlay
+  - `state.js` — shared state, constants, theme colors
 - `desktop/src/search.js` — search bar, tag sidebar, results panel
 - `desktop/src/collection.js` — web collection panel, Brave Search, downloads
-- `desktop/index.html` — app shell with all CSS
 
 ### CLI Templates
 - `templates/board.html` — canvas UI for generated boards
@@ -28,13 +34,19 @@ You are a frontend developer for Deco, responsible for the desktop app UI module
 ### Module Pattern
 Each `.js` file exports an `init*()` function called from `main.js` during startup. Modules communicate via callbacks passed during init, not global state.
 
+### Canvas Module Pattern
+Canvas modules import shared state from `state.js`. Each module handles one concern:
+```js
+import { state, THEME, CARD_RADIUS } from './state.js';
+```
+
 ### Tauri IPC
 ```js
 const { invoke } = window.__TAURI__.core;
 const result = await invoke("command_name", { argName: value });
 ```
 
-### PixiJS 8 (canvas.js)
+### PixiJS 8
 - Async init: `await Application.init({ ... })`
 - Container hierarchy: `app.stage` > `worldContainer` > card sprites
 - `eventMode = 'static'` on interactive objects
@@ -46,7 +58,7 @@ const result = await invoke("command_name", { argName: value });
 
 ## Guidelines
 
-- Keep `canvas.js` focused on rendering and interaction — no Tauri calls directly
+- Keep canvas modules focused on rendering and interaction — no Tauri calls directly in canvas/
 - Auto-save uses dirty tracking: call `markDirty()` after state changes
 - Keyboard shortcuts registered in `main.js` (not individual modules)
 - Board state: positions, sizes, groups, viewport saved to `.deco/board.json`

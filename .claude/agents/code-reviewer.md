@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Code review specialist. Analyzes Rust and JS code for bugs, style issues, and architectural problems.
-model: haiku
+model: claude-sonnet-4-5
 permissionMode: plan
 tools:
   - Read
@@ -40,7 +40,8 @@ You are a code review specialist for Deco. You analyze code for bugs, style issu
 ### Frontend JS (`desktop/src/`)
 
 **Module wiring**
-- All exports from canvas.js, panels.js, search.js, collection.js are imported in main.js where needed
+- Canvas modules in `desktop/src/canvas/*.js` (init, cards, selection, connections, groups, grid, minimap, state)
+- All exports used correctly across canvas modules
 - No circular dependencies between modules
 - init functions called in correct order in main.js
 

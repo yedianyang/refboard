@@ -2,6 +2,410 @@
 
 ---
 
+## Round 7 -- Home Redesign, Statusbar File Menu, Vision Model Settings (Code Review + Build)
+
+> Tester: Automated (Claude Code) | Date: 2026-02-18
+> Type: Static analysis + build verification (no runtime E2E)
+> Platform: darwin (macOS Darwin 25.1.0)
+> Branch: feature/node-connections
+> Files Reviewed:
+>   - `desktop/src/home.js` -- Home screen (New Project card, open folder, context menu, lazy thumbnails)
+>   - `desktop/index.html` -- HTML structure (statusbar file menu, vision model radios, open-folder-btn)
+>   - `desktop/src/main.js` -- Statusbar File menu wiring
+>   - `desktop/src/panels.js` -- Settings load/save (vision model radio)
+>   - `desktop/src-tauri/src/storage/types.rs` -- AppConfig struct (vision_model field)
+>   - `desktop/src/styles/home.css` -- New Project card styles
+>   - `desktop/src/styles/canvas.css` -- Statusbar dropdown styles
+>   - `desktop/src/styles/settings.css` -- Vision model radio card styles
+
+---
+
+### Summary
+
+| Area | Verdict | Issues Found |
+|------|---------|--------------|
+| Home Page Redesign | PASS | 1 observation (duplicate get_app_config call) |
+| Statusbar File Menu | PASS | 0 |
+| Vision Model Settings | PASS | 1 potential bug (load reads config twice) |
+| Build: cargo check | PASS | 1 warning (unused method, pre-existing) |
+| Build: vite build | PASS | 0 errors |
+| Rust tests (cargo test) | PASS | 84/84 passed |
+
+**Overall: All features are correctly wired. No blocking bugs found.** Two minor observations noted below.
+
+---
+
+### 1. Home Page Redesign
+
+#### 1.1 New Project card as first grid item
+
+**Files:** `desktop/src/home.js:86-97`, `desktop/src/styles/home.css:224-260`
+
+The New Project card is generated as an HTML string (`newProjectCard`) and prepended to the grid content:
+- When projects exist: `gridEl.innerHTML = newProjectCard + projects.map(...)` (line 100)
+- When no projects: `gridEl.innerHTML = newProjectCard` (line 147)
+
+**HTML structure:**
+```html
+<button class="home-project-card home-new-project-card" id="home-new-card">
+```
+
+**CSS verification:**
+- `.home-new-project-card` has `border-style: dashed` and `border-color: var(--border-strong)` -- correct dashed border
+- `.home-new-project-card:hover` sets `border-color: var(--accent)` and `background: var(--accent-bg)` -- correct accent hover
+- `.home-new-project-icon` styles the + SVG icon with color transition
+- List view specific styles are present at `.home-project-grid.list-view .home-new-project-card`
+
+**Verdict: PASS.** New Project card is always the first item, with correct dashed border and accent hover.
+
+#### 1.2 Open Folder button moved to sidebar
+
+**Files:** `desktop/index.html:78`, `desktop/src/home.js:30-31`
+
+The `open-folder-btn` button is now inside the `#sidebar` (tool palette), at the bottom section (line 78 of index.html). In `home.js`, the old `newBtn` variable is explicitly set to `null` (line 31), confirming the button was removed from the home screen header.
+
+The click handler at `home.js:321-332` wires it to the native directory picker dialog.
+
+**Verdict: PASS.** Open Folder button is in the sidebar with correct click handler.
+
+#### 1.3 Context menu skips New Project card
+
+**File:** `desktop/src/home.js:240-245`
+
+```javascript
+gridEl.addEventListener('contextmenu', (e) => {
+  const card = e.target.closest('.home-project-card[data-path]');
+  if (!card) return;
+  ...
+});
+```
+
+The selector `.home-project-card[data-path]` requires the `data-path` attribute. The New Project card (`#home-new-card`) does NOT have a `data-path` attribute, so it is correctly excluded from context menu activation.
+
+**Verdict: PASS.** Context menu only appears on project cards with `data-path`.
+
+#### 1.4 Lazy-load thumbnails skip New Project card
+
+**File:** `desktop/src/home.js:126`
+
+```javascript
+for (const card of gridEl.querySelectorAll('.home-project-card[data-path]')) {
+```
+
+Same `[data-path]` selector ensures thumbnail loading only runs on actual project cards.
+
+**Verdict: PASS.**
+
+#### 1.5 Click handlers skip New Project card for project opening
+
+**File:** `desktop/src/home.js:118`
+
+```javascript
+gridEl.querySelectorAll('.home-project-card[data-path]').forEach((card) => {
+```
+
+The project-opening click handler also uses `[data-path]`, so clicking the New Project card does NOT try to open a project. Instead, the New Project card has its own dedicated handler at line 151-163 that opens the new project dialog.
+
+**Verdict: PASS.**
+
+#### 1.6 Empty state
+
+When `projects.length === 0` (line 146-148), only the New Project card is shown. The static "No recent projects" empty state in `index.html:58-62` will be replaced by `gridEl.innerHTML = newProjectCard`.
+
+**Verdict: PASS.** Empty state shows just the New Project card.
+
+#### 1.7 Window functions for external use
+
+**File:** `desktop/src/home.js:404-422`
+
+`window.__deco_openFolder` and `window.__deco_newProject` are set at the end of `initHomeScreen`. These are consumed by the statusbar File menu in `main.js`.
+
+**Verdict: PASS.** Functions are correctly exposed on `window`.
+
+---
+
+### 2. Statusbar File Menu
+
+#### 2.1 HTML structure
+
+**File:** `desktop/index.html:399-412`
+
+```html
+<div class="statusbar-menu" id="statusbar-file-menu">
+  <button class="statusbar-menu-btn" id="statusbar-file-btn">File</button>
+  <div class="statusbar-dropdown" id="statusbar-file-dropdown">
+    <button class="statusbar-dropdown-item" id="sb-open-folder">...</button>
+    <button class="statusbar-dropdown-item" id="sb-new-project">...</button>
+  </div>
+</div>
+```
+
+All IDs match their JS references:
+- `statusbar-file-btn` -- referenced in `main.js:497`
+- `statusbar-file-dropdown` -- referenced in `main.js:498`
+- `sb-open-folder` -- referenced in `main.js:510`
+- `sb-new-project` -- referenced in `main.js:515`
+
+#### 2.2 JavaScript wiring
+
+**File:** `desktop/src/main.js:497-520`
+
+- **Click toggle:** `fileBtn.addEventListener('click', ...)` calls `fileDropdown.classList.toggle('open')` and syncs `.active` on the button. Uses `e.stopPropagation()` to prevent the outside-click handler from immediately closing it.
+- **Outside click close:** `window.addEventListener('click', ...)` removes `.open` and `.active`. This fires for any click outside the button (the button click itself does `stopPropagation`).
+- **Open Folder item:** Closes dropdown, calls `window.__deco_openFolder()`.
+- **New Project item:** Closes dropdown, calls `window.__deco_newProject()`.
+
+#### 2.3 CSS: dropdown opens upward
+
+**File:** `desktop/src/styles/canvas.css:109-121`
+
+```css
+.statusbar-dropdown {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 4px);  /* opens upward */
+  left: 0;
+  ...
+}
+.statusbar-dropdown.open { display: flex; flex-direction: column; }
+```
+
+The `bottom: calc(100% + 4px)` positions the dropdown above the button, which is correct since the statusbar is at the bottom of the window.
+
+#### 2.4 Edge case: __deco functions not yet defined
+
+The File menu is wired in `main.js` at lines 497-520, which runs inside `main()`. The `initHomeScreen` call at line 491 sets the `window.__deco_*` functions. Since `initHomeScreen` is `await`-ed before the File menu wiring code at line 497, the functions will always be defined when the menu items are clicked.
+
+However, there is a guard: `if (window.__deco_openFolder)` (line 513) and `if (window.__deco_newProject)` (line 518). Even if some error prevented `initHomeScreen` from completing, the menu items will silently do nothing rather than crash.
+
+**Verdict: PASS.** Statusbar File menu is correctly wired with proper toggle, outside-click close, and upward positioning.
+
+---
+
+### 3. Vision Model Settings
+
+#### 3.1 Rust AppConfig field
+
+**File:** `desktop/src-tauri/src/storage/types.rs:34-35`
+
+```rust
+#[serde(default, skip_serializing_if = "Option::is_none")]
+pub vision_model: Option<String>,
+```
+
+The struct has `#[serde(rename_all = "camelCase")]` at line 16, so this field serializes as `visionModel` in JSON. When `None`, it is omitted from JSON output (`skip_serializing_if`).
+
+**Verdict: PASS.** Rust field correctly maps to JS `visionModel`.
+
+#### 3.2 HTML radio cards
+
+**File:** `desktop/index.html:595-611`
+
+```html
+<div class="vision-model-options" id="settings-vision-model">
+  <label class="vision-model-option">
+    <input type="radio" name="vision-model" value="clip" checked />
+    <div class="vision-model-card">...</div>
+  </label>
+  <label class="vision-model-option">
+    <input type="radio" name="vision-model" value="grounding-dino-sam" />
+    <div class="vision-model-card">...</div>
+  </label>
+</div>
+```
+
+- Default checked is `clip` -- correct
+- Radio `name="vision-model"` -- consistent across both options
+- Values: `"clip"` and `"grounding-dino-sam"` -- match the Rust doc comment
+
+#### 3.3 CSS: radio card selector
+
+**File:** `desktop/src/styles/settings.css:163-202`
+
+- `input[type="radio"]` is hidden (`display: none`)
+- `.vision-model-card` gets border/background transitions
+- `:checked + .vision-model-card` applies accent border and accent background
+- `:checked + .vision-model-card .vision-model-title` applies accent color to title
+- Hover state on `.vision-model-option:hover .vision-model-card` changes border
+
+The CSS uses the adjacent sibling selector (`+`) which works because the `<input>` is immediately followed by the `.vision-model-card` div inside each `<label>`.
+
+**Verdict: PASS.** CSS correctly styles active/inactive radio cards.
+
+#### 3.4 Load logic
+
+**File:** `desktop/src/panels.js:679-685`
+
+```javascript
+try {
+  const appConfig2 = await invoke('get_app_config');
+  const vm = appConfig2.visionModel || 'clip';
+  const radio = document.querySelector(`input[name="vision-model"][value="${vm}"]`);
+  if (radio) radio.checked = true;
+} catch {}
+```
+
+**Analysis of edge cases:**
+- When `visionModel` is `undefined` (field omitted from JSON): `undefined || 'clip'` = `'clip'` -- correct
+- When `visionModel` is `null`: `null || 'clip'` = `'clip'` -- correct
+- When `visionModel` is `"grounding-dino-sam"`: string is truthy, used as-is -- correct
+- When `visionModel` is `"clip"`: the value `"clip"` is truthy, selector finds the clip radio -- correct (though save never stores "clip", it stores null)
+
+**OBSERVATION:** This is the second call to `get_app_config` in `loadSettingsFromBackend()`. The first call is at line 643 (to load projectsFolder and modelsFolder). This is redundant -- the same config object could be reused. Not a bug, but an unnecessary network round-trip.
+
+#### 3.5 Save logic
+
+**File:** `desktop/src/panels.js:970-974`
+
+```javascript
+const visionRadio = document.querySelector('input[name="vision-model"]:checked');
+if (visionRadio) {
+  appConfig.visionModel = visionRadio.value === 'clip' ? null : visionRadio.value;
+}
+```
+
+**Analysis:**
+- When CLIP is selected: `visionRadio.value === 'clip'` is true, so `appConfig.visionModel = null`. Since the Rust field has `skip_serializing_if = "Option::is_none"`, this omits the field from JSON entirely. On next load, `undefined || 'clip'` correctly defaults to CLIP.
+- When Grounding DINO + SAM is selected: `visionRadio.value` is `"grounding-dino-sam"`, stored directly.
+- The `appConfig` object is obtained from `get_app_config` at line 963, then modified, then written back via `set_app_config` at line 975. This read-modify-write pattern preserves other fields.
+
+**Verdict: PASS.** Save/load cycle is correct for all states.
+
+---
+
+### 4. Build Verification
+
+#### 4.1 Rust: cargo check
+
+```
+$ cd desktop/src-tauri && cargo check
+warning: method `name` is never used (ai.rs:222)
+Finished `dev` profile in 0.76s
+```
+
+One pre-existing warning about an unused trait method. No errors.
+
+**Verdict: PASS.**
+
+#### 4.2 Rust: cargo test
+
+```
+$ cd desktop/src-tauri && cargo test
+84 passed; 0 failed; 0 ignored
+```
+
+All 84 unit tests pass across all modules (ai, cli, keyring, ops, search, web).
+
+**Verdict: PASS.**
+
+#### 4.3 Vite build
+
+```
+$ npx vite build
+740 modules transformed
+dist/index.html    54.51 kB
+dist/assets/...    (all chunks generated successfully)
+Built in 1.26s
+```
+
+No errors, no warnings. All imports resolve correctly.
+
+**Verdict: PASS.**
+
+---
+
+### Cross-Reference Verification
+
+| HTML ID / Class | JS Reference | CSS Rule | Match? |
+|---|---|---|---|
+| `#home-new-card` | `home.js:87,151` | `.home-new-project-card` (class) | YES |
+| `.home-new-project-card` | `home.js:87` | `home.css:224-260` | YES |
+| `.home-new-project-icon` | `home.js:89` | `home.css:236-244` | YES |
+| `#open-folder-btn` | `home.js:30` | (sidebar-btn class) | YES |
+| `[data-path]` selector | `home.js:118,126,241` | N/A | YES (New Project card has no data-path) |
+| `#statusbar-file-btn` | `main.js:497` | `.statusbar-menu-btn` | YES |
+| `#statusbar-file-dropdown` | `main.js:498` | `.statusbar-dropdown` | YES |
+| `#sb-open-folder` | `main.js:510` | `.statusbar-dropdown-item` | YES |
+| `#sb-new-project` | `main.js:515` | `.statusbar-dropdown-item` | YES |
+| `input[name="vision-model"]` | `panels.js:683,971` | `settings.css:172,185,200` | YES |
+| `#settings-vision-model` | `index.html:595` | `.vision-model-options` | YES |
+| `vision_model` (Rust) | `visionModel` (JS) | `rename_all = "camelCase"` | YES |
+| `window.__deco_openFolder` | `home.js:404`, `main.js:513` | N/A | YES |
+| `window.__deco_newProject` | `home.js:413`, `main.js:518` | N/A | YES |
+
+All selectors, IDs, class names, and field names are consistent across HTML, JS, CSS, and Rust.
+
+---
+
+### Observations (non-blocking)
+
+#### OBS-001: Duplicate get_app_config call in loadSettingsFromBackend
+
+**Severity:** Minor (performance)
+**File:** `desktop/src/panels.js:643` and `desktop/src/panels.js:681`
+
+The `loadSettingsFromBackend()` function calls `invoke('get_app_config')` twice -- once at line 643 to read `projectsFolder`/`modelsFolder`, and again at line 681 to read `visionModel`. These could be combined into a single call by reusing the `appConfig` variable.
+
+**Suggested fix (for @template to implement):**
+```javascript
+// At line 643, save to a variable accessible later:
+let appConfig;
+try {
+  appConfig = await invoke('get_app_config');
+  // ... use appConfig.projectsFolder, modelsFolder
+} catch {}
+
+// At line 679, reuse instead of calling again:
+if (appConfig) {
+  const vm = appConfig.visionModel || 'clip';
+  const radio = document.querySelector(`input[name="vision-model"][value="${vm}"]`);
+  if (radio) radio.checked = true;
+}
+```
+
+#### OBS-002: New Project card re-created on every refresh
+
+**Severity:** Informational
+**File:** `desktop/src/home.js:86-163`
+
+Each call to `refreshProjectList()` re-generates the entire grid HTML including the New Project card and re-attaches all event listeners (click for project cards, click for New Project card, lazy thumbnail loading). This uses `gridEl.innerHTML = ...` which destroys and recreates all DOM nodes. For the current project count this is fine, but for a large number of projects the thumbnail loading (`invoke('scan_images', ...)`) for every card on every refresh could cause noticeable delay.
+
+Not a bug -- just an architectural note for future optimization.
+
+---
+
+### Tests Needed
+
+The following test cases should be written to cover these new features:
+
+**JavaScript (desktop/src/home.test.js):**
+- New Project card is first child of grid after `refreshProjectList`
+- New Project card has no `data-path` attribute
+- Context menu handler ignores cards without `data-path`
+- Thumbnail loader only processes cards with `data-path`
+- `window.__deco_openFolder` and `window.__deco_newProject` are defined after init
+- Empty project list shows only the New Project card
+
+**JavaScript (desktop/src/main.test.js):**
+- File dropdown toggles `.open` class on click
+- File dropdown closes on outside click
+- `sb-open-folder` calls `window.__deco_openFolder`
+- `sb-new-project` calls `window.__deco_newProject`
+
+**JavaScript (desktop/src/panels.test.js):**
+- Vision model radio loads `'clip'` when `visionModel` is undefined
+- Vision model radio loads `'clip'` when `visionModel` is null
+- Vision model radio loads `'grounding-dino-sam'` when set
+- Save settings writes `null` for CLIP selection
+- Save settings writes `"grounding-dino-sam"` for Grounding DINO selection
+
+---
+
+*Report generated 2026-02-18 by automated testing agent (Tester role). Static analysis + build verification -- no runtime E2E.*
+
+---
+---
+
 ## Round 6 -- Homepage Right-Click Context Menu (Code Review)
 
 > Tester: Automated (Claude Code) | Date: 2026-02-16

@@ -157,7 +157,7 @@
 └── Art Deco/                    # 项目根目录
     ├── deco.json            # 项目配置 (version, name, created)
     ├── metadata.json            # 项目元数据 (name, path, tags, image_count)
-    ├── board.json               # 画布状态 (viewport, items, groups, annotations)
+    ├── board.json               # 画布状态 (viewport, items, groups, annotations, connections)
     ├── images/                  # 原始图片
     │   ├── image1.jpg
     │   └── image2.png
