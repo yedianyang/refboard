@@ -25,7 +25,7 @@
   flex-shrink: 0;
 }
 .web-panel-header h3 {
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -33,7 +33,7 @@
   white-space: nowrap;
 }
 #web-results-count {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   flex: 1;
   text-align: right;
@@ -52,7 +52,7 @@
   border: 1px solid var(--border-strong);
   background: var(--surface-deep);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-label);
   outline: none;
   font-family: inherit;
 }
@@ -70,7 +70,7 @@
   background: var(--accent-bg);
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-label);
   white-space: nowrap;
 }
 #web-search-btn:hover {
@@ -127,7 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: bold;
 }
 .web-result-img {
@@ -149,18 +149,18 @@
   opacity: 1;
 }
 .web-result-title {
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .web-result-domain {
-  font-size: 9px;
+  font-size: var(--font-micro);
   color: var(--text-secondary);
 }
 .web-result-dims {
-  font-size: 9px;
+  font-size: var(--font-micro);
   color: var(--text-secondary);
 }
 .web-dl-btn {
@@ -192,7 +192,7 @@
 .web-empty, .web-error {
   grid-column: 1 / -1;
   padding: 20px 12px;
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
   text-align: center;
   line-height: 1.5;
@@ -208,5 +208,5 @@
   gap: 8px;
   padding: 24px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--font-label);
 }

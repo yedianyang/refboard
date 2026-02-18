@@ -1,7 +1,7 @@
 // Deco 2.0 — Viewport, Pan/Zoom, Grid, Culling, Minimap
 
 import { Assets, Sprite, Graphics } from 'pixi.js';
-import { state, THEME, CARD_PADDING, TEXTURE_UNLOAD_PAD, MINIMAP } from './state.js';
+import { state, THEME, CARD_PADDING, CARD_RADIUS, TEXTURE_UNLOAD_PAD, MINIMAP } from './state.js';
 
 // ============================================================
 // Grid Background
@@ -243,6 +243,12 @@ export async function reloadCardTexture(card) {
     card.container.addChildAt(sprite, 1);
     if (card._frameMask) {
       sprite.mask = card._frameMask;
+    }
+    // Ensure bg is stroke-only (no opaque fill covering the sprite)
+    if (card.bg) {
+      card.bg.clear()
+        .roundRect(0, 0, card.cardWidth, card.cardHeight, CARD_RADIUS)
+        .stroke({ color: THEME.cardBorder, width: 1 });
     }
   } catch (err) {
     card._textureUnloaded = true;

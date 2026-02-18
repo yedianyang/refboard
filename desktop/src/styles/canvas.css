@@ -24,7 +24,7 @@
 }
 #lightbox-caption {
   margin-top: 12px;
-  font-size: 12px;
+  font-size: var(--font-label);
   color: rgba(255, 255, 255, 0.6);
   text-align: center;
   pointer-events: none;
@@ -34,7 +34,7 @@
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: rgba(255, 255, 255, 0.4);
   pointer-events: none;
 }
@@ -73,18 +73,75 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 24px;
+  height: var(--h-statusbar);
   padding: 0 12px;
   background: var(--surface-solid);
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   flex-shrink: 0;
   z-index: 10;
 }
 
+/* Statusbar dropdown menu */
+.statusbar-menu {
+  position: relative;
+}
+.statusbar-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-micro);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
+}
+.statusbar-menu-btn:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+.statusbar-menu-btn.active {
+  background: var(--btn-active);
+  color: var(--text);
+}
+.statusbar-dropdown {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  background: var(--dialog-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: var(--shadow-float);
+  z-index: 100;
+}
+.statusbar-dropdown.open { display: flex; flex-direction: column; }
+.statusbar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-micro);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
+}
+.statusbar-dropdown-item:hover {
+  background: var(--accent-bg);
+  color: var(--text);
+}
+
 #selection-info {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -94,7 +151,7 @@
 #selection-info:empty { display: none; }
 
 #canvas-item-count {
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -115,7 +172,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1;
   display: flex;
   align-items: center;
@@ -127,7 +184,7 @@
 .zoom-level {
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-caption);
   font-family: inherit;
   min-width: 42px;
   height: 20px;
@@ -150,7 +207,7 @@
   -webkit-backdrop-filter: blur(16px);
   padding: 12px 20px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
@@ -163,7 +220,7 @@
   position: absolute;
   bottom: 32px;
   right: 12px;
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-muted);
   line-height: 1.6;
   text-align: right;
@@ -180,7 +237,7 @@
   border: 1px solid var(--border-strong);
   background: var(--surface-solid);
   font-family: inherit;
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 #hints-toggle {
   position: absolute;
@@ -193,7 +250,7 @@
   border-radius: 6px;
   background: var(--surface-solid);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-caption);
   cursor: pointer;
   display: flex;
   align-items: center;

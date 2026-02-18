@@ -36,7 +36,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-body);
   font-family: inherit;
   text-align: left;
   transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
@@ -57,14 +57,14 @@
 }
 .app-sidebar-nav-item.muted {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-label);
 }
 .app-sidebar-bottom {
   padding: 8px;
   border-top: 1px solid var(--border);
 }
 .app-sidebar-label {
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -108,7 +108,7 @@
   flex-shrink: 0;
 }
 .tag-sidebar-header h3 {
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -123,7 +123,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 600;
   cursor: pointer;
   transition: background 80ms var(--ease-out), border-color 80ms var(--ease-out), color 80ms var(--ease-out);
@@ -172,7 +172,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-label);
   text-align: left;
   font-family: inherit;
 }
@@ -186,7 +186,7 @@
 }
 .tag-item.tag-clear {
   color: var(--destructive);
-  font-size: 11px;
+  font-size: var(--font-caption);
   border-bottom: 1px solid var(--border-strong);
   margin-bottom: 4px;
   padding-bottom: 8px;
@@ -198,7 +198,7 @@
   flex: 1;
 }
 .tag-count {
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-muted);
   min-width: 20px;
   text-align: right;
@@ -208,7 +208,7 @@
 }
 .tag-empty {
   padding: 16px 12px;
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   line-height: 1.5;
 }

@@ -26,7 +26,7 @@
   flex-shrink: 0;
 }
 .panel-header h3 {
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.1px;
@@ -75,14 +75,14 @@
   gap: 6px;
 }
 .panel-section-label {
-  font-size: 10px;
+  font-size: var(--font-micro);
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-secondary);
   font-weight: 600;
 }
 .panel-section-value {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -110,7 +110,7 @@
   border-radius: 6px;
   background: var(--chip-bg);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--font-caption);
   border: 1px solid var(--chip-border);
   cursor: default;
   transition: background 80ms var(--ease-out), border-color 80ms var(--ease-out);
@@ -133,7 +133,7 @@
   border: 1px dashed var(--chip-border);
   color: var(--accent);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-caption);
 }
 .chip-add:hover {
   background: var(--accent-bg);
@@ -146,7 +146,7 @@
   border: 1px solid var(--accent);
   background: var(--surface-deep);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   outline: none;
 }
 
@@ -169,14 +169,14 @@
 
 /* ---- Buttons (macOS-style) ---- */
 .btn-primary {
-  height: 24px;
+  height: var(--h-control-sm);
   padding: 0 12px;
   border-radius: 6px;
   border: none;
   background: var(--accent);
   color: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: 500;
   font-family: inherit;
   flex: 1;
@@ -189,14 +189,14 @@
   background: var(--accent-pressed);
 }
 .btn-secondary {
-  height: 24px;
+  height: var(--h-control-sm);
   padding: 0 12px;
   border-radius: 6px;
   border: 1px solid var(--border-strong);
   background: var(--btn-bg);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-label);
   font-family: inherit;
   transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
 }
@@ -227,7 +227,7 @@
   align-items: center;
   gap: 12px;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .spinner {
   width: 28px;
@@ -257,13 +257,13 @@
   align-items: center;
   gap: 14px;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--font-body);
   box-shadow: var(--shadow-xl);
   min-width: 300px;
 }
 .model-dl-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-heading);
 }
 .model-dl-bar {
   width: 100%;
@@ -285,7 +285,7 @@
   100% { width: 10%; margin-left: 90%; }
 }
 .model-dl-detail {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-secondary);
   text-align: center;
   line-height: 1.5;
@@ -301,7 +301,7 @@
   color: #fff;
   padding: 8px 20px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-label);
   z-index: 100;
   display: none;
   max-width: 500px;
@@ -334,7 +334,7 @@
   gap: 8px;
 }
 #batch-progress-text {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text);
   flex: 1;
   white-space: nowrap;
@@ -342,7 +342,7 @@
   text-overflow: ellipsis;
 }
 #batch-progress-cancel {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-secondary);
   background: var(--btn-bg);
   border: 1px solid var(--border);
@@ -380,7 +380,7 @@
   border: 1px solid var(--border-strong);
   background: var(--surface-deep);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-label);
   font-family: inherit;
   outline: none;
   resize: vertical;
@@ -390,12 +390,12 @@
   box-shadow: var(--focus-ring);
 }
 .meta-filename {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
   word-break: break-all;
 }
 .meta-filesize {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
 }
 
@@ -425,7 +425,7 @@
   flex-shrink: 0;
 }
 .meta-conn-name {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -433,7 +433,7 @@
   flex: 1;
 }
 .meta-conn-label {
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-muted);
   background: var(--chip-bg);
   border: 1px solid var(--chip-border);
