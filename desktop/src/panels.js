@@ -669,6 +669,20 @@ async function loadSettingsFromBackend() {
   // Load compression settings + auto-analyze from localStorage
   loadCompressionSettings();
   loadAutoAnalyzeSetting();
+
+  // Load font size and sync the segmented control
+  try {
+    const fontSize = await invoke('get_font_size');
+    applyFontSize(fontSize || 'default');
+  } catch {}
+
+  // Load vision model selection
+  try {
+    const appConfig2 = await invoke('get_app_config');
+    const vm = appConfig2.visionModel || 'clip';
+    const radio = document.querySelector(`input[name="vision-model"][value="${vm}"]`);
+    if (radio) radio.checked = true;
+  } catch {}
 }
 
 /** Detect the frontend provider key from a backend config (reverse-map by endpoint). */
@@ -758,7 +772,56 @@ const SETTINGS_CATEGORIES = {
   compression: 'Compression',
 };
 
+// ============================================================
+// Font Size Preset
+// ============================================================
+
+/** Apply a font size preset to <html> and sync the segmented control UI. */
+function applyFontSize(size) {
+  if (size === 'compact' || size === 'large') {
+    document.documentElement.setAttribute('data-font-size', size);
+  } else {
+    document.documentElement.removeAttribute('data-font-size');
+  }
+  // Sync segmented control active state
+  const control = document.getElementById('settings-font-size');
+  if (control) {
+    control.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === (size || 'default'));
+    });
+  }
+}
+
+/** Load font size from backend and apply on startup. */
+export async function loadFontSizeOnStartup() {
+  try {
+    const size = await invoke('get_font_size');
+    applyFontSize(size || 'default');
+  } catch {
+    // Backend not ready yet — leave default
+  }
+}
+
+function setupFontSizeEvents() {
+  const control = document.getElementById('settings-font-size');
+  if (!control) return;
+  control.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.segmented-btn');
+    if (!btn) return;
+    const size = btn.dataset.value;
+    applyFontSize(size);
+    try {
+      await invoke('set_font_size', { size });
+    } catch (err) {
+      console.warn('Failed to save font size:', err);
+    }
+  });
+}
+
 function setupSettingsEvents() {
+  // Font size segmented control
+  setupFontSizeEvents();
+
   // Provider list click — sync hidden select + update form
   document.getElementById('ai-provider-list')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.ai-provider-item');
@@ -903,6 +966,11 @@ async function saveSettings() {
     }
     if (modelsInput) {
       appConfig.modelsFolder = modelsInput.value.trim() || null;
+    }
+    // Save vision model selection
+    const visionRadio = document.querySelector('input[name="vision-model"]:checked');
+    if (visionRadio) {
+      appConfig.visionModel = visionRadio.value === 'clip' ? null : visionRadio.value;
     }
     await invoke('set_app_config', { config: appConfig });
 

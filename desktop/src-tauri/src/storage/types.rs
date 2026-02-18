@@ -30,6 +30,9 @@ pub struct AppConfig {
     /// UI font size preset: "compact" | "default" | "large". None = "default".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub font_size: Option<String>,
+    /// Vision model: "clip" | "grounding-dino-sam". None = "clip".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vision_model: Option<String>,
 }
 
 /// Recent project entry for the home screen.

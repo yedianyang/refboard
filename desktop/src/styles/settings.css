@@ -15,9 +15,9 @@
 }
 .settings-page-card {
   display: flex;
-  width: 780px;
+  width: 1040px;
   max-width: calc(100vw - 80px);
-  height: 600px;
+  height: 800px;
   max-height: calc(100vh - 80px);
   background: var(--dialog-bg);
   border: 1px solid var(--border-strong);
@@ -36,7 +36,7 @@
   flex-shrink: 0;
 }
 .settings-page-title {
-  font-size: 13px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--text);
   padding: 0 10px 12px;
@@ -53,7 +53,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-label);
   font-family: inherit;
   text-align: left;
   transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
@@ -87,7 +87,7 @@
   flex-shrink: 0;
 }
 .settings-breadcrumb {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
 }
 .settings-page-body {
@@ -106,12 +106,12 @@
   gap: 6px;
 }
 .settings-label {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
   font-weight: 500;
 }
 .settings-desc {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
@@ -123,7 +123,7 @@
   border: 1px solid var(--border);
   background: var(--input-bg);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-label);
   font-family: inherit;
   outline: none;
   transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
@@ -143,7 +143,7 @@
   flex-shrink: 0;
 }
 .settings-status {
-  font-size: 12px;
+  font-size: var(--font-label);
   color: var(--text-secondary);
   flex: 1;
 }
@@ -158,6 +158,47 @@
 .settings-page-body::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
+}
+
+/* ---- Vision Model radio cards ---- */
+.vision-model-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vision-model-option {
+  cursor: pointer;
+}
+.vision-model-option input[type="radio"] {
+  display: none;
+}
+.vision-model-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  transition: border-color var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out);
+}
+.vision-model-option:hover .vision-model-card {
+  border-color: var(--border-hover);
+}
+.vision-model-option input[type="radio"]:checked + .vision-model-card {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.vision-model-title {
+  font-size: var(--font-label);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.vision-model-desc {
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.vision-model-option input[type="radio"]:checked + .vision-model-card .vision-model-title {
+  color: var(--accent);
 }
 
 /* ---- AI Provider panel: left list + right form ---- */
@@ -189,7 +230,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-body);
   font-family: inherit;
   text-align: left;
   transition: background 80ms var(--ease-out), color 80ms var(--ease-out), border-color 80ms var(--ease-out);
@@ -211,7 +252,7 @@
   justify-content: center;
   border-radius: 6px;
   background: var(--bg-tertiary, rgba(255,255,255,0.06));
-  font-size: 12px;
+  font-size: var(--font-label);
   font-weight: 700;
   color: var(--text-secondary);
   flex-shrink: 0;
@@ -244,17 +285,59 @@
   border-radius: 8px;
   background: var(--accent);
   color: #fff;
-  font-size: 16px;
+  font-size: var(--font-title);
   font-weight: 700;
   flex-shrink: 0;
 }
 .ai-provider-header-name {
-  font-size: 16px;
+  font-size: var(--font-title);
   font-weight: 600;
   color: var(--text);
 }
 .ai-provider-header-desc {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   margin-top: 1px;
+}
+
+/* ---- Settings Divider ---- */
+.settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ---- Segmented Control ---- */
+.segmented-control {
+  display: inline-flex;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+.segmented-btn {
+  height: var(--h-control-sm);
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-label);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-out),
+              color var(--dur-quick) var(--ease-out),
+              box-shadow var(--dur-quick) var(--ease-out);
+  white-space: nowrap;
+}
+.segmented-btn:hover {
+  color: var(--text);
+  background: var(--btn-hover);
+}
+.segmented-btn.active {
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
