@@ -89,10 +89,7 @@ export async function initHomeScreen(homeScreen, loading, deps) {
             <span class="home-new-project-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
           </div>
           <div class="home-project-info">
-            <div class="home-project-name">New Project</div>
-            <div class="home-project-meta">
-              <span>Create a new board</span>
-            </div>
+            <div class="home-project-name">Create Board</div>
           </div>
         </button>`;
 

@@ -220,18 +220,16 @@
   margin-bottom: 4px;
 }
 
-/* New Project card — dashed border, + icon */
+/* Create Board card — dashed border, matches board card style */
 .home-new-project-card {
   border-style: dashed;
   border-color: var(--border-strong);
-  background: transparent;
 }
 .home-new-project-card:hover {
   border-color: var(--accent);
-  background: var(--accent-bg);
 }
 .home-new-project-card .home-project-thumb {
-  background: transparent;
+  background: var(--surface-deep);
 }
 .home-new-project-icon {
   display: flex;
@@ -244,7 +242,7 @@
   color: var(--accent);
 }
 .home-new-project-card .home-project-name {
-  color: var(--text-secondary);
+  margin-bottom: 0;
 }
 .home-new-project-card:hover .home-project-name {
   color: var(--accent);

@@ -493,31 +493,21 @@ async function main() {
     setStatus,
   });
 
-  // Statusbar File menu
-  const fileBtn = document.getElementById('statusbar-file-btn');
-  const fileDropdown = document.getElementById('statusbar-file-dropdown');
-  if (fileBtn && fileDropdown) {
-    fileBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = fileDropdown.classList.toggle('open');
-      fileBtn.classList.toggle('active', isOpen);
+  // Native macOS menu events (from Tauri menu bar)
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    getCurrentWindow().listen('menu-event', (e) => {
+      const id = e.payload;
+      if (id === 'new-board' && window.__deco_newProject) window.__deco_newProject();
+      else if (id === 'open-folder' && window.__deco_openFolder) window.__deco_openFolder();
     });
-    // Close on outside click
-    window.addEventListener('click', () => {
-      fileDropdown.classList.remove('open');
-      fileBtn.classList.remove('active');
-    });
-    document.getElementById('sb-open-folder')?.addEventListener('click', () => {
-      fileDropdown.classList.remove('open');
-      fileBtn.classList.remove('active');
-      if (window.__deco_openFolder) window.__deco_openFolder();
-    });
-    document.getElementById('sb-new-project')?.addEventListener('click', () => {
-      fileDropdown.classList.remove('open');
-      fileBtn.classList.remove('active');
-      if (window.__deco_newProject) window.__deco_newProject();
-    });
-  }
+  } catch {}
+
+  // Help & Support button in app-sidebar
+  document.getElementById('sidebar-help-btn')?.addEventListener('click', () => {
+    const hints = document.getElementById('hints-overlay');
+    if (hints) hints.classList.toggle('visible');
+  });
 }
 
 /** Update active state based on current view. */

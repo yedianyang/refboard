@@ -12,6 +12,8 @@ mod web;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use tauri::menu::{MenuBuilder, SubmenuBuilder};
+use tauri::Emitter;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -577,6 +579,60 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(store.clone())
         .setup(move |app| {
+            // Native macOS menu bar
+            let app_menu = SubmenuBuilder::new(app, "Deco")
+                .about(None)
+                .separator()
+                .services()
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+            let file_menu = SubmenuBuilder::new(app, "File")
+                .text("new-board", "New Board")
+                .text("open-folder", "Open Folder")
+                .separator()
+                .close_window()
+                .build()?;
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+            let view_menu = SubmenuBuilder::new(app, "View")
+                .text("toggle-sidebar", "Toggle Sidebar")
+                .separator()
+                .text("zoom-in", "Zoom In")
+                .text("zoom-out", "Zoom Out")
+                .text("zoom-reset", "Actual Size")
+                .build()?;
+            let window_menu = SubmenuBuilder::new(app, "Window")
+                .minimize()
+                .maximize()
+                .separator()
+                .fullscreen()
+                .build()?;
+            let menu = MenuBuilder::new(app)
+                .item(&app_menu)
+                .item(&file_menu)
+                .item(&edit_menu)
+                .item(&view_menu)
+                .item(&window_menu)
+                .build()?;
+            app.set_menu(menu)?;
+
+            // Handle menu events → emit to frontend
+            app.on_menu_event(move |app_handle, event| {
+                let _ = app_handle.emit("menu-event", event.id().0.as_str());
+            });
+
             let handle = app.handle().clone();
             let api_storage = store;
             tauri::async_runtime::spawn(async move {
