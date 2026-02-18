@@ -11,7 +11,7 @@
   pointer-events: none;
 }
 #drop-overlay .drop-label {
-  font-size: 18px;
+  font-size: var(--font-title);
   font-weight: 600;
   color: var(--accent);
   background: var(--surface);
@@ -34,14 +34,16 @@
   padding: 24px 40px 28px;
 }
 .home-logo {
-  font-size: 32px;
+  font-family: var(--ff-logo);
+  font-size: var(--font-display);
   font-weight: 700;
-  color: var(--text);
+  color: var(--accent);
   letter-spacing: -0.5px;
   margin-bottom: 6px;
+  text-shadow: 0 2px 8px rgba(64, 156, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .home-tagline {
-  font-size: 13px;
+  font-size: var(--font-body);
   color: var(--text-secondary);
 }
 .home-body {
@@ -57,7 +59,7 @@
   margin-bottom: 14px;
 }
 .home-section-title {
-  font-size: 11px;
+  font-size: var(--font-caption);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -76,7 +78,7 @@
   background: var(--surface-card);
   color: var(--text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-body);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -108,7 +110,7 @@
   gap: 2px;
 }
 .home-action-sub {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
   font-weight: 400;
 }
@@ -184,7 +186,7 @@
   padding: 12px;
 }
 .home-project-name {
-  font-size: 13px;
+  font-size: var(--font-body);
   color: var(--text);
   font-weight: 500;
   overflow: hidden;
@@ -196,7 +198,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--text-muted);
 }
 .home-empty {
@@ -204,7 +206,7 @@
   text-align: center;
   padding: 60px 20px 48px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.6;
 }
 .home-empty-icon {
@@ -212,10 +214,49 @@
   margin-bottom: 12px;
 }
 .home-empty-title {
-  font-size: 14px;
+  font-size: var(--font-heading);
   color: var(--text-secondary);
   font-weight: 500;
   margin-bottom: 4px;
+}
+
+/* New Project card — dashed border, + icon */
+.home-new-project-card {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+}
+.home-new-project-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.home-new-project-card .home-project-thumb {
+  background: transparent;
+}
+.home-new-project-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 80ms var(--ease-out);
+}
+.home-new-project-card:hover .home-new-project-icon {
+  color: var(--accent);
+}
+.home-new-project-card .home-project-name {
+  color: var(--text-secondary);
+}
+.home-new-project-card:hover .home-project-name {
+  color: var(--accent);
+}
+
+/* List view: new project card */
+.home-project-grid.list-view .home-new-project-card .home-project-thumb {
+  border: none;
+}
+.home-project-grid.list-view .home-new-project-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* View toggle (grid / list) */
@@ -291,7 +332,7 @@
   border: 1px solid var(--border);
   background: var(--input-bg);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   font-family: inherit;
   outline: none;
   transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
@@ -306,7 +347,7 @@
   left: 7px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px;
+  font-size: var(--font-micro);
   color: var(--text-muted);
   pointer-events: none;
 }

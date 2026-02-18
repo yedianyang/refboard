@@ -27,8 +27,8 @@ export async function initHomeScreen(homeScreen, loading, deps) {
   const { openProject, setStatus } = deps;
 
   const gridEl = document.getElementById('home-project-list');
-  const openBtn = document.getElementById('home-open-btn');
-  const newBtn = document.getElementById('home-new-btn');
+  const openBtn = document.getElementById('open-folder-btn');
+  const newBtn = null; // New Project is now a card in the grid
 
   // Reusable function to fetch and render project list
   async function refreshProjectList() {
@@ -82,8 +82,22 @@ export async function initHomeScreen(homeScreen, loading, deps) {
         }
       }
 
+      // New Project card — always first in grid
+      const newProjectCard = `
+        <button class="home-project-card home-new-project-card" id="home-new-card">
+          <div class="home-project-thumb">
+            <span class="home-new-project-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
+          </div>
+          <div class="home-project-info">
+            <div class="home-project-name">New Project</div>
+            <div class="home-project-meta">
+              <span>Create a new board</span>
+            </div>
+          </div>
+        </button>`;
+
       if (projects.length > 0) {
-        gridEl.innerHTML = projects.map((p) => {
+        gridEl.innerHTML = newProjectCard + projects.map((p) => {
           const safeName = p.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
           const safePath = p.path.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
           return `
@@ -101,7 +115,7 @@ export async function initHomeScreen(homeScreen, loading, deps) {
         }).join('');
 
         // Click card to open project
-        gridEl.querySelectorAll('.home-project-card').forEach((card) => {
+        gridEl.querySelectorAll('.home-project-card[data-path]').forEach((card) => {
           card.addEventListener('click', () => {
             const path = card.dataset.path;
             openProject(path, loading);
@@ -109,7 +123,7 @@ export async function initHomeScreen(homeScreen, loading, deps) {
         });
 
         // Lazy-load thumbnail mosaics for each project card
-        for (const card of gridEl.querySelectorAll('.home-project-card')) {
+        for (const card of gridEl.querySelectorAll('.home-project-card[data-path]')) {
           const path = card.dataset.path;
           const thumbEl = card.querySelector('.home-project-thumb');
           if (!thumbEl) continue;
@@ -130,12 +144,22 @@ export async function initHomeScreen(homeScreen, loading, deps) {
           }).catch(() => {});
         }
       } else {
-        gridEl.innerHTML = `
-          <div class="home-empty">
-            <div class="home-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
-            <div class="home-empty-title">No recent projects</div>
-            Open an image folder or create a new project to get started.
-          </div>`;
+        gridEl.innerHTML = newProjectCard;
+      }
+
+      // Wire New Project card click → show dialog
+      const newCard = gridEl.querySelector('#home-new-card');
+      if (newCard) {
+        newCard.addEventListener('click', () => {
+          const dlg = document.getElementById('new-project-dialog');
+          if (dlg) {
+            dlg.classList.add('open');
+            const nameInput = document.getElementById('new-project-name');
+            if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+            const preview = document.getElementById('new-project-path-preview');
+            if (preview) preview.textContent = '~/Documents/Deco/';
+          }
+        });
       }
     } catch (err) {
       console.warn('Could not load recent projects:', err);
@@ -212,9 +236,9 @@ export async function initHomeScreen(homeScreen, loading, deps) {
     if (e.key === 'Escape') hideContextMenu();
   });
 
-  // Attach context menu to project cards
+  // Attach context menu to project cards (skip New Project card)
   gridEl.addEventListener('contextmenu', (e) => {
-    const card = e.target.closest('.home-project-card');
+    const card = e.target.closest('.home-project-card[data-path]');
     if (!card) return;
     e.preventDefault();
     showContextMenu(e.clientX, e.clientY, card);
@@ -288,15 +312,6 @@ export async function initHomeScreen(homeScreen, loading, deps) {
           console.error('[Delete] Failed:', err);
         }
         targetCard.remove();
-        // Show empty state if no cards left
-        if (gridEl.querySelectorAll('.home-project-card').length === 0) {
-          gridEl.innerHTML = `
-            <div class="home-empty">
-              <div class="home-empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
-              <div class="home-empty-title">No recent projects</div>
-              Open an image folder or create a new project to get started.
-            </div>`;
-        }
       }
     }
   });
@@ -316,23 +331,14 @@ export async function initHomeScreen(homeScreen, loading, deps) {
     });
   }
 
-  // New project button — show dialog
+  // New project dialog wiring
   const newDialog = document.getElementById('new-project-dialog');
   const newNameInput = document.getElementById('new-project-name');
   const newPreview = document.getElementById('new-project-path-preview');
   const newCancelBtn = document.getElementById('new-project-cancel-btn');
   const newCreateBtn = document.getElementById('new-project-create-btn');
 
-  if (newBtn && newDialog) {
-    newBtn.addEventListener('click', () => {
-      newDialog.classList.add('open');
-      if (newNameInput) {
-        newNameInput.value = '';
-        newNameInput.focus();
-      }
-      if (newPreview) newPreview.textContent = '~/Documents/Deco/';
-    });
-
+  if (newDialog) {
     // Update path preview as user types
     if (newNameInput && newPreview) {
       newNameInput.addEventListener('input', () => {
@@ -362,13 +368,11 @@ export async function initHomeScreen(homeScreen, loading, deps) {
         if (!name) return;
         newDialog.classList.remove('open');
         try {
-          // Use Tauri's documentDir for correct base path
           let base;
           try {
             const { documentDir } = await import('@tauri-apps/api/path');
             base = await documentDir();
           } catch {
-            // Fallback if Tauri path API unavailable
             const home = await getHomePath();
             base = home ? `${home}/Documents` : null;
           }
@@ -395,4 +399,25 @@ export async function initHomeScreen(homeScreen, loading, deps) {
       }
     }
   }
+
+  // Expose openFolder for use by statusbar File menu
+  window.__deco_openFolder = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({ directory: true, title: 'Open Image Folder' });
+      if (selected) openProject(selected, loading);
+    } catch (err) {
+      console.error('[Dialog] Open folder failed:', err);
+    }
+  };
+  window.__deco_newProject = () => {
+    const dlg = document.getElementById('new-project-dialog');
+    if (dlg) {
+      dlg.classList.add('open');
+      const nameInput = document.getElementById('new-project-name');
+      if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+      const preview = document.getElementById('new-project-path-preview');
+      if (preview) preview.textContent = '~/Documents/Deco/';
+    }
+  };
 }

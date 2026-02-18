@@ -44,25 +44,6 @@
           <div class="home-tagline">Visual reference board for creative projects</div>
         </div>
         <div class="home-body">
-          <div class="home-section-header">
-            <span class="home-section-title">Get Started</span>
-          </div>
-          <div class="home-actions">
-            <button class="home-action-btn" id="home-open-btn">
-              <span class="home-action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></span>
-              <span class="home-action-label">
-                Open Folder
-                <span class="home-action-sub">Browse for an image directory</span>
-              </span>
-            </button>
-            <button class="home-action-btn" id="home-new-btn">
-              <span class="home-action-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
-              <span class="home-action-label">
-                New Project
-                <span class="home-action-sub">Create an empty project</span>
-              </span>
-            </button>
-          </div>
           <div class="home-recent">
             <div class="home-section-header">
               <span class="home-section-title">Recent Projects</span>
@@ -94,6 +75,7 @@
         <button class="sidebar-btn" title="Note (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></button>
         <button class="sidebar-btn" title="Connect (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg></button>
         <div style="flex: 1;"></div>
+        <button class="sidebar-btn" id="open-folder-btn" title="Open Folder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="sidebar-btn" id="web-sidebar-btn" title="Web Collection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></button>
         <button class="sidebar-btn" id="tag-sidebar-btn" title="Tags"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8 18.01"/><circle cx="6.5" cy="9.5" r=".5" fill="currentColor"/></svg></button>
       </div>
@@ -415,6 +397,19 @@
 
     <!-- Status bar -->
     <div id="statusbar">
+      <div class="statusbar-menu" id="statusbar-file-menu">
+        <button class="statusbar-menu-btn" id="statusbar-file-btn">File</button>
+        <div class="statusbar-dropdown" id="statusbar-file-dropdown">
+          <button class="statusbar-dropdown-item" id="sb-open-folder">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+            Open Folder
+          </button>
+          <button class="statusbar-dropdown-item" id="sb-new-project">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            New Project
+          </button>
+        </div>
+      </div>
       <span id="status-text">Ready</span>
       <span id="selection-info"></span>
       <div class="toolbar-spacer"></div>
@@ -591,6 +586,27 @@
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input id="settings-models-folder" type="text" class="settings-input" placeholder="~/.cache/huggingface" style="flex: 1;" />
                 <button id="settings-browse-models-btn" class="btn-secondary" style="flex: none; white-space: nowrap;">Browse</button>
+              </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-group">
+              <label class="settings-label">Vision Model</label>
+              <div class="settings-desc">Choose the local vision model for image search and analysis.</div>
+              <div class="vision-model-options" id="settings-vision-model">
+                <label class="vision-model-option">
+                  <input type="radio" name="vision-model" value="clip" checked />
+                  <div class="vision-model-card">
+                    <div class="vision-model-title">CLIP</div>
+                    <div class="vision-model-desc">Global image embeddings for similarity search. Lightweight (~150MB). Fast: 15-40ms per image.</div>
+                  </div>
+                </label>
+                <label class="vision-model-option">
+                  <input type="radio" name="vision-model" value="grounding-dino-sam" />
+                  <div class="vision-model-card">
+                    <div class="vision-model-title">Grounding DINO + SAM</div>
+                    <div class="vision-model-desc">Semantic detection &amp; segmentation. Find elements by natural language. Larger (~440MB). 3-5s per image.</div>
+                  </div>
+                </label>
               </div>
             </div>
           </div>

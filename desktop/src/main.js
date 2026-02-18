@@ -7,7 +7,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initCanvas, loadProject, fitAll, setUIElements, onCardSelect, applyFilter, getBoardState, restoreBoardState, startAutoSave, getSelection, addImageCard, getViewport, applySavedTheme, setThemeMode, exportCanvasPNG, getAllCards, getSelectionScreenBounds, handleContextAction, changeSelectionColor, changeShapeStrokeWidth, changeTextFontSize, toggleTextBold, toggleTextItalic, toggleSelectionFill, toggleSelectionLineStyle } from './canvas/index.js';
-import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog, isAutoAnalyzeEnabled } from './panels.js';
+import { initPanels, showMetadata, closePanel, openSettings, closeSettings, analyzeCard, analyzeBatch, openGenerateDialog, startGenerate, initGenerateDialog, closeGenerateDialog, isAutoAnalyzeEnabled, loadFontSizeOnStartup } from './panels.js';
 import { initSearch, setProject, updateSearchMetadata, findSimilar, clusterProject, searchByColor } from './search.js';
 import { initCollection, setCollectionProject, findMoreLike, toggleWebPanel } from './collection.js';
 
@@ -33,6 +33,9 @@ async function main() {
       document.documentElement.setAttribute('data-theme', 'light');
     }
   }
+
+  // Load font size preference early (before layout)
+  await loadFontSizeOnStartup();
 
   const container = document.getElementById('canvas-container');
   const loading = document.getElementById('loading-indicator');
@@ -489,6 +492,32 @@ async function main() {
     openProject: (path, loadingEl) => openProject(path, loadingEl),
     setStatus,
   });
+
+  // Statusbar File menu
+  const fileBtn = document.getElementById('statusbar-file-btn');
+  const fileDropdown = document.getElementById('statusbar-file-dropdown');
+  if (fileBtn && fileDropdown) {
+    fileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = fileDropdown.classList.toggle('open');
+      fileBtn.classList.toggle('active', isOpen);
+    });
+    // Close on outside click
+    window.addEventListener('click', () => {
+      fileDropdown.classList.remove('open');
+      fileBtn.classList.remove('active');
+    });
+    document.getElementById('sb-open-folder')?.addEventListener('click', () => {
+      fileDropdown.classList.remove('open');
+      fileBtn.classList.remove('active');
+      if (window.__deco_openFolder) window.__deco_openFolder();
+    });
+    document.getElementById('sb-new-project')?.addEventListener('click', () => {
+      fileDropdown.classList.remove('open');
+      fileBtn.classList.remove('active');
+      if (window.__deco_newProject) window.__deco_newProject();
+    });
+  }
 }
 
 /** Update active state based on current view. */
