@@ -136,6 +136,36 @@ Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
 3. **template** 按契约实现前端调用
 4. Lead 用 `addBlockedBy` 确保 template 的 task 被 generator 的 task 阻塞
 
+### Context 监控（防止意外中断）
+
+**问题：** Agent Teams 长时间运行时 context 可能耗尽，导致任务中断。
+
+**解决方案：** 自动监控 context 使用，低于阈值时提醒。
+
+**使用方法：**
+
+```bash
+# 启动监控（后台运行）
+.claude/scripts/start-context-monitor.sh
+
+# 停止监控
+.claude/scripts/stop-context-monitor.sh
+
+# 查看日志
+tail -f .claude/logs/context-monitor.log
+```
+
+**监控机制：**
+- 每 60 秒检查一次 tmux session 输出
+- 提取 context 剩余百分比
+- < 10% 时发送 Discord 警告到 #claude-code-research
+- 30 分钟冷却期，避免重复通知
+
+**收到警告后的操作：**
+1. 保存当前进度（`git commit`）
+2. 使用 `/compact` 压缩 context
+3. 或准备重启 session（Lead 重新分配任务）
+
 ---
 
 ## 工程流程
