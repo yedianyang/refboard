@@ -1,5 +1,20 @@
 # CLAUDE.md — Deco 核心规范
 
+## ⚠️ 重要：废弃文件说明
+
+**已废弃（2026-02-21）：**
+- ❌ `TEAM.md` — 已归档至 `.claude/archive/`，改用 **SendMessage** 工具通讯
+- ❌ `TODO.md` — 已归档至 `.claude/archive/`，改用 **TaskList** 工具管理任务
+
+**新的协作方式：**
+- 任务管理 → 使用 `TaskCreate/TaskList/TaskUpdate` 工具（Claude Code 内建）
+- Agent 通讯 → 使用 `SendMessage` 工具（点对点/广播）
+- 进度追踪 → 使用 `TaskList` 查看所有任务状态
+
+详见下方「Agent Team 协作规范」章节。
+
+---
+
 ## 项目概述
 
 Deco 是一个 AI 驱动的视觉参考收集器 + 可整理的 Moodboard 工具。支持图片导入、AI 分析打标签、CLIP 相似图搜索、Web 图片采集。
