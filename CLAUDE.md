@@ -168,6 +168,81 @@ tail -f .claude/logs/context-monitor.log
 
 ---
 
+## Skills 系统（高频操作自动化）
+
+Deco 项目预置了 4 个 Skills，将重复操作封装为可复用工具。
+
+### 可用 Skills
+
+| Skill | 触发方式 | 用途 |
+|-------|---------|------|
+| **techdebt** | 自动/手动 | 清理重复代码、更新文档 |
+| **rust-test** | 自动/手动 | 运行 Rust 测试 + Clippy |
+| **tauri-rebuild** | 仅手动 | 完整重建 Tauri app 并启动 |
+| **context-dump** | 自动/手动 | 7天 git 历史摘要（快速恢复上下文） |
+
+### 自动触发（disable-model-invocation: false）
+
+Claude Code 会在合适时机自动调用：
+
+- **techdebt** — session 结束时自动检查代码重复
+- **rust-test** — 修改 Rust 文件后自动测试
+- **context-dump** — 新 session 开始时自动恢复上下文
+
+### 手动触发
+
+在 Claude Code 中输入：
+
+```bash
+# 清理技术债
+/techdebt
+
+# 运行 Rust 测试
+/rust-test
+
+# 重建 Tauri app
+/tauri-rebuild
+
+# 生成上下文摘要
+/context-dump
+```
+
+或对话方式：
+```
+"Run rust-test to verify my changes"
+"Dump context for last week"
+```
+
+### Skills 位置
+
+所有 Skills 位于 `.claude/skills/` 目录：
+
+```
+.claude/skills/
+├── techdebt/
+│   └── SKILL.md
+├── rust-test/
+│   ├── SKILL.md
+│   └── run.sh
+├── tauri-rebuild/
+│   ├── SKILL.md
+│   └── run.sh
+└── context-dump/
+    ├── SKILL.md
+    └── run.sh
+```
+
+### 创建新 Skill
+
+1. 在 `.claude/skills/` 创建新目录
+2. 添加 `SKILL.md` 包含元数据和描述
+3. （可选）添加 `run.sh` 执行脚本
+4. 设置 `disable-model-invocation: true/false`
+
+详见官方文档：https://code.claude.com/docs/en/skills
+
+---
+
 ## 工程流程
 
 详见 @.claude/reference/workflow.md
