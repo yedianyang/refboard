@@ -334,12 +334,13 @@ Hooks 在 `.claude/settings.json` 中配置：
 - 2026-02-21: Use `/compact` when context < 15%, not wait until exhausted
 
 #### 技术规范
-- Skills 创建时必须明确设置 `disable-model-invocation: true/false`
-- Rust API 修改后必须用 SendMessage 通知 template agent
 - 提交前必须通过 pre-commit hook 检查，不能 bypass
+- 复杂功能拆分需要先测试核心机制，避免大规模回滚（见 2026-02-18 node connections 两次 revert）
+- 大文件重构需要一次性完成，避免多次拆分（canvas.js 拆分了两次）
 
 #### 工作流程
 - 每个 task 完成立即 commit，不积攒多个任务一起提交
+- UI 交互功能（按钮、面板、快捷键）必须手动测试后再提交，避免 "fix: X broken" 类提交
 - 发现重复代码必须立即调用 `/techdebt` 清理
 - 踩坑经验必须记录到 `@.claude/reference/lessons-learned.md`
 
