@@ -111,12 +111,9 @@ Context 是你最稀缺的资源。当 context 降到 20% 以下时：
 | Agent | 独占文件/目录 |
 |-------|--------------|
 | **generator** | `desktop/src-tauri/src/*.rs`, `desktop/src-tauri/Cargo.toml`, `lib/*.js`, `bin/*.js` |
-| **template** | `desktop/src/canvas/*.js`, `desktop/src/main.js`, `desktop/src/search.js`, `desktop/src/collection.js` |
-| **designer** | `desktop/src/styles/*.css`, `desktop/src/panels.js`, `desktop/index.html` |
-| **tester** | `**/*.test.js`, `**/*.test.ts`, `#[cfg(test)]` blocks, `docs/test-report.md` |
-| **docs** | `docs/*.md`, `README.md`, `CHANGELOG.md` |
-| **researcher** | `docs/research/*.md`（只读其他文件） |
-| **code-reviewer** | 无写权限（只读审查） |
+| **frontend** | `desktop/src/canvas/*.js`, `desktop/src/main.js`, `desktop/src/search.js`, `desktop/src/collection.js`, `desktop/src/panels.js`, `desktop/src/styles/*.css`, `desktop/index.html`, `templates/` |
+| **quality** | `**/*.test.js`, `**/*.test.ts`, `#[cfg(test)]` blocks, `docs/test-report.md`（只读源码，不改） |
+| **docs** | `docs/*.md`, `docs/research/*.md`, `README.md`, `CHANGELOG.md` |
 
 **冲突规则：** 如两个 teammate 需要改同一文件 → 串行执行，不要并行。
 
@@ -135,13 +132,13 @@ Context 是你最稀缺的资源。当 context 降到 20% 以下时：
 ### 并行策略
 
 **可并行：**
-- designer + generator（前端样式 + 后端）
-- researcher（独立调研）
-- template + generator（无交叉文件时）
+- frontend + generator（前端 + 后端，无交叉文件）
+- docs（文档/调研独立进行）
 
 **必须串行：**
-- tester 等功能完成
-- docs 等功能 + 测试完成
+- generator → frontend（API 契约：Rust 先定义，JS 再调用）
+- quality 等功能完成后才测试/审查
+- docs 等测试通过后才更新文档
 - 同一文件的修改
 
 ## 错误处理

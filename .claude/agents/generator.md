@@ -1,6 +1,7 @@
 ---
 name: generator
 description: Core backend developer. Rust (Tauri commands, HTTP API, CLIP, SQLite) + Node.js CLI.
+model: claude-sonnet-4-5
 permissionMode: bypassPermissions
 ---
 

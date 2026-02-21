@@ -73,18 +73,15 @@ cd desktop && npm run tauri dev   # 启动开发模式
 - **delegate mode** (Shift+Tab) — 强制 Lead 只协调不写码
 - **plan approval** — teammate 提交 Plan → Lead 审批 → 执行
 
-### 角色定义 & 文件 Ownership
+### 角色定义 & 文件 Ownership（5 agents）
 
 | Agent | Model | 文件 ownership | 用途 |
 |---|---|---|---|
 | **lead** | opus | 不碰源码 | 拆任务、分配、审批 Plan |
-| **designer** | sonnet | `styles/*.css`, `index.html`, `panels.js` | UI/UX、CSS、动效 |
-| **generator** | opus | `src-tauri/src/*.rs`, `Cargo.toml`, `lib/*.js`, `bin/*.js` | Rust 后端、核心逻辑 |
-| **template** | sonnet | `canvas/*.js`, `main.js`, `search.js`, `collection.js` | 前端交互、PixiJS |
-| **researcher** | opus | `docs/research/*.md` | 技术调研（只读） |
-| **tester** | sonnet | `*.test.js`, `#[cfg(test)]` blocks, `docs/test-report.md` | 测试（不改源码） |
-| **docs** | sonnet | `README.md`, `CHANGELOG.md`, `docs/*.md` | 文档 |
-| **code-reviewer** | sonnet | 无写权限 | 只读审查 |
+| **generator** | sonnet | `src-tauri/src/*.rs`, `Cargo.toml`, `lib/*.js`, `bin/*.js` | Rust 后端、CLI |
+| **frontend** | sonnet | `canvas/*.js`, `main.js`, `search.js`, `collection.js`, `panels.js`, `styles/*.css`, `index.html`, `templates/` | 前端全栈：PixiJS + UI + CSS |
+| **quality** | sonnet | `*.test.js`, `#[cfg(test)]` blocks, `docs/test-report.md` | 测试 + 代码审查 |
+| **docs** | sonnet | `README.md`, `CHANGELOG.md`, `docs/*.md`, `docs/research/*.md` | 文档 + 技术调研 |
 
 ### Team Lead 规则
 
@@ -121,12 +118,12 @@ Lead: TaskList → 检查进度 → 分配下一个 / SendMessage 反馈
 ### 并行策略
 
 **可并行：**
-- designer(CSS) + generator(Rust) + template(canvas JS) + researcher(docs)
+- frontend(JS/CSS) + generator(Rust) + docs(文档/调研)
 
 **必须串行：**
-- generator → template（API 契约：generator 先定义，template 再调用）
-- generator + template → tester（功能完成后才测试）
-- tester → docs（测试通过后才写文档）
+- generator → frontend（API 契约：generator 先定义 Tauri command，frontend 再调用）
+- generator + frontend → quality（功能完成后才测试/审查）
+- quality → docs（测试通过后才写文档）
 
 ### Rust ↔ JS 协作（API 契约）
 
