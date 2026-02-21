@@ -243,6 +243,86 @@ Claude Code 会在合适时机自动调用：
 
 ---
 
+## Hooks 系统（安全加固）
+
+自动拦截危险命令和执行代码质量检查。
+
+### 可用 Hooks
+
+| Hook | 触发时机 | 用途 |
+|------|---------|------|
+| **permission** | 执行任何命令前 | 拦截危险操作（rm -rf, force push等） |
+| **pre-commit** | Git commit 前 | 代码质量检查（lint, compile, 敏感信息） |
+
+### Permission Hook（命令拦截）
+
+**拦截的危险操作：**
+- ❌ `rm -rf` → 建议使用 `trash`
+- ❌ `git push --force` → 建议使用 `--force-with-lease`
+- ❌ 删除项目根目录
+- ❌ 修改归档文件（`.claude/archive/`）
+- ⚠️  修改 `node_modules/` 或 `target/`（警告）
+
+**退出码：**
+- `0` — 允许执行
+- `1` — 阻止执行（硬拒绝）
+- `2` — 需要用户确认
+
+### Pre-Commit Hook（提交前检查）
+
+**检查项：**
+- ✅ Frontend linting（ESLint）
+- ✅ Rust compilation（`cargo check`）
+- ✅ Rust linting（`cargo clippy`，仅警告）
+- ⚠️  TODO/FIXME 标记（警告不阻止）
+- ❌ 敏感信息（API key/密码，阻止提交）
+- ⚠️  大文件（> 1MB，警告）
+
+**输出示例：**
+```bash
+🔍 Pre-commit checks...
+✅ ESLint passed
+✅ Cargo check passed
+✅ Clippy clean
+⚠️  警告：提交中包含 TODO
+✅ No sensitive data detected
+✅ All pre-commit checks passed
+```
+
+### 配置
+
+Hooks 在 `.claude/settings.json` 中配置：
+
+```json
+{
+  "hooks": {
+    "permission": {
+      "script": ".claude/hooks/permission-check.sh",
+      "enabled": true
+    },
+    "pre-commit": {
+      "script": ".claude/hooks/pre-commit.sh",
+      "enabled": true
+    }
+  }
+}
+```
+
+**临时禁用：** 将 `"enabled"` 设为 `false`
+
+### Hooks 位置
+
+```
+.claude/hooks/
+├── README.md             # 使用指南
+├── permission-check.sh   # 命令拦截
+└── pre-commit.sh         # 提交检查
+```
+
+详见：`.claude/hooks/README.md`
+
+---
+
 ## 工程流程
 
 详见 @.claude/reference/workflow.md

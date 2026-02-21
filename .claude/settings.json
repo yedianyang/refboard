@@ -1,4 +1,15 @@
 {
+  "hooks": {
+    "permission": {
+      "script": ".claude/hooks/permission-check.sh",
+      "enabled": true
+    },
+    "pre-commit": {
+      "script": ".claude/hooks/pre-commit.sh",
+      "enabled": true
+    }
+  },
+
   "permissions": {
     "allow": [
       "Read(*)",
