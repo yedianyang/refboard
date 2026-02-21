@@ -323,6 +323,72 @@ Hooks 在 `.claude/settings.json` 中配置：
 
 ---
 
+## 自我改进机制（Claude 自动更新规则）
+
+### Past Mistakes to Avoid
+
+> Claude Code 自动生成和维护，记录已识别的错误模式。
+
+**最后更新：2026-02-22**
+
+#### 协作相关
+- 2026-02-21: Don't modify TEAM.md/TODO.md — use TaskList/SendMessage internal tools
+- 2026-02-21: Always start context monitor before long Agent Teams sessions
+- 2026-02-21: Use `/compact` when context < 15%, not wait until exhausted
+
+#### 技术规范
+- Skills 创建时必须明确设置 `disable-model-invocation: true/false`
+- Rust API 修改后必须用 SendMessage 通知 template agent
+- 提交前必须通过 pre-commit hook 检查，不能 bypass
+
+#### 工作流程
+- 每个 task 完成立即 commit，不积攒多个任务一起提交
+- 发现重复代码必须立即调用 `/techdebt` 清理
+- 踩坑经验必须记录到 `@.claude/reference/lessons-learned.md`
+
+### 自动更新机制
+
+**每周 Review（周日凌晨）：**
+
+OpenClaw cron 任务 `claude-code-weekly-review` 会：
+1. 分析过去 7 天的 git commits
+2. 提取失败的尝试、修复的 bug、学到的经验
+3. 更新 CLAUDE.md 的 "Past Mistakes" 章节
+4. Commit 更新（如有）
+
+**手动触发 Review：**
+
+```bash
+# 在 Claude Code 中
+/review
+
+# 或完整 prompt
+"Review CLAUDE.md based on last week's work. 
+Update 'Past Mistakes to Avoid' with new lessons learned.
+Remove outdated rules that are now obvious.
+Commit changes with message: 'docs: weekly CLAUDE.md review'"
+```
+
+**每次纠正后立即更新：**
+
+当 Lead 纠正 teammate 的错误时：
+
+```markdown
+SendMessage(to="teammate", content="
+You made mistake X. Please update CLAUDE.md:
+
+## Past Mistakes to Avoid
+- [date]: Don't do X because Y. Instead, do Z.
+")
+```
+
+Teammate 执行：
+1. 添加错误到 "Past Mistakes" 章节
+2. Commit: `docs: add lesson learned - [简短描述]`
+3. SendMessage 确认更新完成
+
+---
+
 ## 工程流程
 
 详见 @.claude/reference/workflow.md
