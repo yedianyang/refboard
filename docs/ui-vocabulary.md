@@ -29,9 +29,29 @@ Intended for team communication between Jingxi and Metro.
 
 ---
 
-## 3. Toolbar / 工具栏 (Title Bar)
+## 3. Native Menu Bar / 原生菜单栏
 
-The macOS-style title bar at the top of the window. Supports window dragging.
+Tauri native macOS menu bar, replacing the old HTML-based statusbar/toolbar file dropdowns. Built in `desktop/src-tauri/src/lib.rs` using `MenuBuilder` + `SubmenuBuilder`. Menu events are emitted to the frontend via `app.emit("menu-event", id)` and listened for in `desktop/src/main.js`.
+
+| English Name | Chinese Name | Description | Code Reference |
+|---|---|---|---|
+| Deco Menu | Deco 菜单 | App menu with About, Services, Hide, Show All, Quit | `SubmenuBuilder::new(app, "Deco")` |
+| File Menu | 文件菜单 | New Board, Open Folder, Close Window | `SubmenuBuilder::new(app, "File")` |
+| New Board | 新建画板 | Creates a new empty board project | menu id `"new-board"` |
+| Open Folder | 打开文件夹 | Opens a folder picker to load an image directory | menu id `"open-folder"` |
+| Edit Menu | 编辑菜单 | Standard Undo, Redo, Cut, Copy, Paste, Select All | `SubmenuBuilder::new(app, "Edit")` |
+| View Menu | 视图菜单 | Toggle Sidebar, Zoom In/Out, Actual Size | `SubmenuBuilder::new(app, "View")` |
+| Toggle Sidebar (Menu) | 切换侧边栏(菜单) | Shows/hides the App Sidebar from the View menu | menu id `"toggle-sidebar"` |
+| Zoom In (Menu) | 放大(菜单) | Increases canvas zoom from the View menu | menu id `"zoom-in"` |
+| Zoom Out (Menu) | 缩小(菜单) | Decreases canvas zoom from the View menu | menu id `"zoom-out"` |
+| Actual Size (Menu) | 实际大小(菜单) | Resets zoom to 100% from the View menu | menu id `"zoom-reset"` |
+| Window Menu | 窗口菜单 | Standard Minimize, Maximize, Fullscreen | `SubmenuBuilder::new(app, "Window")` |
+
+---
+
+## 4. Toolbar / 工具栏 (Title Bar)
+
+The macOS-style title bar at the top of the window. Supports window dragging. Contains only the Home button and Sidebar Toggle; file actions have moved to the native menu bar (see section 3).
 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
@@ -41,7 +61,7 @@ The macOS-style title bar at the top of the window. Supports window dragging.
 
 ---
 
-## 4. App Sidebar / 应用侧边栏 (Navigation)
+## 5. App Sidebar / 应用侧边栏 (Navigation)
 
 The left navigation panel (200px) with settings and help links.
 
@@ -52,12 +72,12 @@ The left navigation panel (200px) with settings and help links.
 | Sidebar Nav Item | 侧边导航项 | Individual clickable navigation entry (e.g., Settings, Help) | `.app-sidebar-nav-item` |
 | Sidebar Label | 侧边标签 | Section header text (e.g., "Preferences") | `.app-sidebar-label` |
 | Settings Button | 设置按钮 | Opens the Settings Page modal | `#sidebar-settings-btn` |
-| Help Button | 帮助按钮 | Help and support link in sidebar bottom | `#sidebar-help-btn` |
+| Help & Support Button | 帮助与支持按钮 | Opens the keyboard hints overlay (`#hints-overlay`); located in `.app-sidebar-bottom`. Wired in `main.js` | `#sidebar-help-btn` |
 | Sidebar Bottom | 侧边底部 | Bottom section of sidebar separated by a border | `.app-sidebar-bottom` |
 
 ---
 
-## 5. Tool Sidebar / 工具侧边栏 (Tool Palette)
+## 6. Tool Sidebar / 工具侧边栏 (Tool Palette)
 
 The narrow left-side toolbar (40px) with drawing/selection tools. Only visible in Canvas View.
 
@@ -77,7 +97,7 @@ The narrow left-side toolbar (40px) with drawing/selection tools. Only visible i
 
 ---
 
-## 6. Canvas / 画布
+## 7. Canvas / 画布
 
 The infinite PixiJS WebGL canvas where all cards, shapes, and text are rendered.
 
@@ -94,7 +114,7 @@ The infinite PixiJS WebGL canvas where all cards, shapes, and text are rendered.
 
 ---
 
-## 7. Canvas Elements / 画布元素
+## 8. Canvas Elements / 画布元素
 
 Objects placed on the infinite canvas.
 
@@ -128,7 +148,7 @@ Objects placed on the infinite canvas.
 
 ---
 
-## 8. Floating Toolbar / 浮动工具栏
+## 9. Floating Toolbar / 浮动工具栏
 
 Context-aware toolbar that appears above the current selection.
 
@@ -158,7 +178,7 @@ Context-aware toolbar that appears above the current selection.
 
 ---
 
-## 9. Properties Bar / 属性栏
+## 10. Properties Bar / 属性栏
 
 Secondary bar for detailed property editing (stroke width, font size, opacity).
 
@@ -172,7 +192,7 @@ Secondary bar for detailed property editing (stroke width, font size, opacity).
 
 ---
 
-## 10. Home Screen / 主页
+## 11. Home Screen / 主页
 
 The landing page displayed when no project is open.
 
@@ -196,12 +216,12 @@ The landing page displayed when no project is open.
 | List View Button | 列表视图按钮 | Switches recent projects to list layout | `#home-list-btn` |
 | View Toggle | 视图切换 | Container for grid/list toggle buttons | `.home-view-toggle` |
 | Empty State | 空状态 | Placeholder shown when no recent projects exist | `.home-empty` |
-| New Project Card | 新建项目卡片 | First item in the project grid; dashed-border card with + icon that opens the New Project dialog. Replaces the old separate "New Project" button | `.home-new-project-card` / `#home-new-card` |
-| New Project Icon | 新建项目图标 | Centered + icon inside the New Project Card thumbnail area | `.home-new-project-icon` |
+| Create Board Card | 新建画板卡片 | First item in the project grid; dashed-border card (`border-style: dashed`) with centered + icon. Text reads "Create Board" with no subtitle. No divider line between thumbnail and info areas. Opens the New Project dialog on click | `.home-new-project-card` / `#home-new-card` |
+| Create Board Icon | 新建画板图标 | Centered + icon inside the Create Board Card thumbnail area | `.home-new-project-icon` |
 
 ---
 
-## 11. Right Panel / 右侧面板
+## 12. Right Panel / 右侧面板
 
 Slide-in panel (300px) on the right side, used for AI suggestions and image metadata.
 
@@ -252,7 +272,7 @@ Slide-in panel (300px) on the right side, used for AI suggestions and image meta
 
 ---
 
-## 12. Tag Filter Sidebar / 标签筛选侧栏
+## 13. Tag Filter Sidebar / 标签筛选侧栏
 
 Slide-in panel (200px) between tool sidebar and canvas for filtering by tags.
 
@@ -272,7 +292,7 @@ Slide-in panel (200px) between tool sidebar and canvas for filtering by tags.
 
 ---
 
-## 13. Find Bar / 查找栏
+## 14. Find Bar / 查找栏
 
 macOS-style floating search bar at the bottom of the canvas (Cmd+F).
 
@@ -288,7 +308,7 @@ macOS-style floating search bar at the bottom of the canvas (Cmd+F).
 
 ---
 
-## 14. Search Results Panel / 搜索结果面板
+## 15. Search Results Panel / 搜索结果面板
 
 Slide-in panel (280px) on the left side of the canvas showing search/similarity/cluster results.
 
@@ -316,7 +336,7 @@ Slide-in panel (280px) on the left side of the canvas showing search/similarity/
 
 ---
 
-## 15. Web Collection Panel / 网页采集面板
+## 16. Web Collection Panel / 网页采集面板
 
 Slide-in panel (340px) for searching and downloading images from the web.
 
@@ -339,7 +359,7 @@ Slide-in panel (340px) for searching and downloading images from the web.
 
 ---
 
-## 16. Settings Page / 设置页
+## 17. Settings Page / 设置页
 
 Modal dialog with a two-column layout: categories on the left, settings form on the right.
 
@@ -415,7 +435,7 @@ Modal dialog with a two-column layout: categories on the left, settings form on 
 
 ---
 
-## 17. Context Menus / 右键菜单
+## 18. Context Menus / 右键菜单
 
 Native-style context menus triggered by right-click.
 
@@ -439,7 +459,7 @@ Native-style context menus triggered by right-click.
 
 ---
 
-## 18. Modals & Dialogs / 弹窗与对话框
+## 19. Modals & Dialogs / 弹窗与对话框
 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
@@ -463,19 +483,13 @@ Native-style context menus triggered by right-click.
 
 ---
 
-## 19. Status Bar / 状态栏
+## 20. Status Bar / 状态栏
 
-Bottom bar (24px) showing status messages, selection info, item count, and zoom controls.
+Bottom bar (24px) showing status messages, selection info, item count, and zoom controls. File actions (New Board, Open Folder) have moved to the native macOS menu bar (see section 3).
 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
 | Status Bar | 状态栏 | Bottom bar with status text, selection info, counts, and zoom | `#statusbar` |
-| Statusbar File Menu | 状态栏文件菜单 | Dropdown menu container at the left of the status bar; opens upward | `.statusbar-menu` / `#statusbar-file-menu` |
-| File Menu Button | 文件菜单按钮 | "File" button that toggles the dropdown open/closed | `.statusbar-menu-btn` / `#statusbar-file-btn` |
-| File Menu Dropdown | 文件菜单下拉 | Upward-opening dropdown panel with file actions (Open Folder, New Project) | `.statusbar-dropdown` / `#statusbar-file-dropdown` |
-| File Menu Item | 文件菜单项 | Individual action button inside the file dropdown | `.statusbar-dropdown-item` |
-| Open Folder (Statusbar) | 打开文件夹(状态栏) | File menu item that opens a folder picker to load an image directory | `#sb-open-folder` |
-| New Project (Statusbar) | 新建项目(状态栏) | File menu item that opens the New Project dialog | `#sb-new-project` |
 | Status Text | 状态文字 | Current operation status message (e.g., "Ready", "Imported 5 images") | `#status-text` |
 | Selection Info | 选择信息 | Details about the current selection (name, size, count) | `#selection-info` |
 | Item Count | 元素计数 | Total count of images and annotations on canvas | `#canvas-item-count` |
@@ -486,7 +500,7 @@ Bottom bar (24px) showing status messages, selection info, item count, and zoom 
 
 ---
 
-## 20. Overlays & Feedback / 覆盖层与反馈
+## 21. Overlays & Feedback / 覆盖层与反馈
 
 | English Name | Chinese Name | Description | Code ID/Class |
 |---|---|---|---|
@@ -504,7 +518,7 @@ Bottom bar (24px) showing status messages, selection info, item count, and zoom 
 
 ---
 
-## 21. Shared UI Components / 通用 UI 组件
+## 22. Shared UI Components / 通用 UI 组件
 
 Reusable components used across multiple panels and views.
 
@@ -526,7 +540,7 @@ Reusable components used across multiple panels and views.
 
 ---
 
-## 22. Features & Actions / 功能与操作
+## 23. Features & Actions / 功能与操作
 
 Feature-level terms used in UI labels, commands, and team discussions.
 
@@ -558,7 +572,7 @@ Feature-level terms used in UI labels, commands, and team discussions.
 
 ---
 
-## 23. Backend Concepts / 后端概念
+## 24. Backend Concepts / 后端概念
 
 Technical terms for the Rust/Tauri backend, used in architecture and API discussions.
 
@@ -586,7 +600,7 @@ Technical terms for the Rust/Tauri backend, used in architecture and API discuss
 
 ---
 
-## 24. Theme & Styling / 主题与样式
+## 25. Theme & Styling / 主题与样式
 
 | English Name | Chinese Name | Description | Code Reference |
 |---|---|---|---|
@@ -598,7 +612,7 @@ Technical terms for the Rust/Tauri backend, used in architecture and API discuss
 
 ---
 
-## 25. Keyboard Shortcuts / 快捷键
+## 26. Keyboard Shortcuts / 快捷键
 
 Reference for all keyboard shortcuts documented in the hints overlay.
 
