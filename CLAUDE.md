@@ -95,6 +95,21 @@ cd desktop && npm run tauri dev   # 启动开发模式
    - 数据库 schema 变更
    - 单文件 bug fix、单模块功能**不需要** plan approval
 
+### Interview Mode（新模块/新功能必须）
+
+新模块或复杂功能开发前，Lead **必须**用 plan mode 向用户提问：
+- 不问显而易见的问题，专攻**用户可能没想到的**
+- 像 Staff Engineer 一样挑战需求：边界情况、性能瓶颈、技术取舍
+- 持续追问直到覆盖完整，然后输出 SPEC 到 `docs/specs/`
+- 基于 SPEC 拆任务，不基于模糊描述拆任务
+
+```
+"Interview me about this feature. 
+Ask hard questions I might not have considered.
+Don't ask obvious things — dig into edge cases, tradeoffs, and things that could break.
+Keep interviewing until we've covered everything, then write a spec."
+```
+
 ### 任务流程
 
 ```
