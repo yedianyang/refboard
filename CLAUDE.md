@@ -57,8 +57,28 @@ cd desktop && npm run tauri dev   # 启动开发模式
 
 **核心原则：**
 - 函数命名：camelCase (JS) / snake_case (Rust)
-- 每个功能完成后必须测试通过再 commit
 - 所有新功能必须记录日志：`crate::log::log("TAG", &format!("..."))`
+
+## 验证标准（Commit 前必须通过）
+
+```bash
+# Rust — 编译 + 测试 + lint（全部零错误）
+cd desktop/src-tauri && cargo check && cargo test && cargo clippy -- -D warnings
+
+# Frontend — lint
+cd desktop && npx eslint src/ --quiet
+
+# 完整构建验证（重大变更时）
+cd desktop && npm run tauri build -- --debug
+```
+
+**什么算"通过"：**
+- `cargo check` — 零编译错误
+- `cargo test` — 全绿，无 ignored 测试（除非有注释说明原因）
+- `cargo clippy -- -D warnings` — 零警告
+- `eslint` — 零错误（warning 可接受）
+
+**不通过不准 commit。没有例外。**
 
 ---
 
